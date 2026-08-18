@@ -10,14 +10,14 @@ errors = []
 
 props = (root / "library.properties").read_text()
 version_match = re.search(r"^version=(.+)$", props, re.MULTILINE)
-if not version_match or version_match.group(1).strip() != "0.7.0":
-    errors.append("library.properties version is not exactly 0.7.0")
+if not version_match or version_match.group(1).strip() != "0.7.0.0":
+    errors.append("library.properties version is not exactly 0.7.0.0")
 libjson = json.loads((root / "library.json").read_text())
-if libjson.get("version") != "0.7.0":
-    errors.append("library.json version is not 0.7.0")
+if libjson.get("version") != "0.7.0.0":
+    errors.append("library.json version is not 0.7.0.0")
 
 readme = (root / "README.md").read_text()
-if "Simple-AstroTracker-Arduino v0.7.0" not in readme:
+if "Simple-AstroTracker-Arduino v0.7.0.0" not in readme:
     errors.append("README version missing")
 if "—" in readme:
     errors.append("README contains em dash")
@@ -158,6 +158,28 @@ for header in (root / "src").glob("*.h"):
             continue
         if member_decl.match(stripped) and "//" not in line:
             errors.append(f"{header.name}:{line_no} stored member is missing a comment")
+
+required_tc_menu = [
+    "tcMenu_Display_AdaFruitGfx.cpp", "tcMenu_Display_AdaFruitGfx.h", "tcMenu_Display_AdaFruitGfx.hpp",
+    "tcMenu_Display_LiquidCrystal.cpp", "tcMenu_Display_LiquidCrystal.h",
+    "tcMenu_Display_TfteSpi.cpp", "tcMenu_Display_TfteSpi.h",
+    "tcMenu_Display_U8g2.cpp", "tcMenu_Display_U8g2.h",
+    "tcMenu_Extra_BspUserSettings.h", "tcMenu_Extra_StChromaArt.cpp", "tcMenu_Extra_StChromaArt.h",
+    "tcMenu_Font_AdafruitGFXArial14.h", "tcMenu_Font_tcUnicodeArial14.h",
+    "tcMenu_Input_AdaTouchDriver.cpp", "tcMenu_Input_AdaTouchDriver.h",
+    "tcMenu_Input_ESP32TouchKeysAbstraction.cpp", "tcMenu_Input_ESP32TouchKeysAbstraction.h",
+    "tcMenu_Remote_EthernetTransport.cpp", "tcMenu_Remote_EthernetTransport.h",
+    "tcMenu_Remote_SerialTransport.cpp", "tcMenu_Remote_SerialTransport.h",
+    "tcMenu_Remote_SimhubConnector.cpp", "tcMenu_Remote_SimhubConnector.h",
+    "tcMenu_Remote_WiFiTransport.cpp", "tcMenu_Remote_WiFiTransport.h",
+    "tcMenu_Theme_CoolBlueModern.h", "tcMenu_Theme_CoolBlueTraditional.h",
+    "tcMenu_Theme_DarkModeModern.h", "tcMenu_Theme_DarkModeTraditional.h",
+    "tcMenu_Theme_MonoBordered.h", "tcMenu_Theme_MonoInverse.h",
+]
+for filename in required_tc_menu:
+    path = root / "src" / "shared" / filename
+    if not path.exists() or path.stat().st_size < 1000:
+        errors.append(f"missing/incomplete shared tcMenu adapter: {filename}")
 
 required_tests = [
     "AstroLibExportToCPP/AstroLibExportToCPP.ino",

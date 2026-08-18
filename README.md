@@ -1,7 +1,7 @@
 # Astruino
 Astruino: Simple Astro Tracker Automation Controller.
 
-**Simple-AstroTracker-Arduino v0.7.0**
+**Simple-AstroTracker-Arduino v0.7.0.0**
 
 Simple automation controller for DIY astronomical tracking systems.  
 Licensed under the non-restrictive MIT license.
@@ -266,7 +266,7 @@ The examples intentionally use callbacks around the final motor/sensor hardware 
 
 The Helioduino-style `full`, `min`, and `shared` tcMenu layout is included so the library can grow into the same UI architecture without reorganizing the project later.
 
-Astruino UI files are still work in progress. Their TODO markers are intentional in v0.7.0. The tracking, catalog, scheduler, sensors, actuators, reporting, and offline operation do not depend on a completed GUI.
+Astruino UI files are still work in progress. Their TODO markers are intentional in v0.7.0.0. The tracking, catalog, scheduler, sensors, actuators, reporting, and offline operation do not depend on a completed GUI.
 
 ## Host Tests
 

@@ -1,7 +1,89 @@
-/*  Astruino UI support.
-    Inherited tcMenu integration placeholder from the Helioduino layout.
-
-    // TODO: Port and validate against Astruino object/menu types.
+/*  Astruino: Simple automation controller for DIY astronomical tracking systems.
+    Copyright (C) 2026 NachtRaveVL
+    tcMenu Simhub Remote Control
 */
+#include <Astruino.h>
+#ifdef ASTRO_USE_GUI
+#include "AstruinoUI.h"
 
-#pragma once
+/*
+ * Copyright (c) 2018 https://www.thecoderscorner.com (Dave Cherry).
+ * This product is licensed under an Apache license, see the LICENSE file in the top-level directory.
+ */
+
+/* Changelist:
+ * - Enclosed inside of #ifdef & reorg'ed for general inclusion
+ */
+
+/**
+ * @file tcMenu_Remote_SimhubConnector.h
+ * 
+ * SimHub Connector  that connects to simhub using the serial port and changes menu items based on simhub update.
+ * This class should not be directly edited, it will be replaced each time the project is built.
+ * If you want to edit this file in place, make sure to rename it first.
+ */
+
+#ifndef TCLIBRARYDEV_SIMHUBCONNECTOR_H
+#define TCLIBRARYDEV_SIMHUBCONNECTOR_H
+
+/**
+ * this is the maximum number of chars on a line
+ */
+#define MAX_LINE_WIDTH 32
+
+#include <RemoteConnector.h>
+#include <RemoteAuthentication.h>
+#include <IoLogging.h>
+#include <remote/BaseRemoteComponents.h>
+
+#if defined(ESP8266) || defined(ESP32)
+# define SerPortName HardwareSerial
+#else
+# define SerPortName Stream
+#endif
+
+namespace tcremote {
+
+    class SimhubConnector {
+    private:
+        SerPortName* serialPort;
+        BooleanMenuItem* statusMenuItem;
+        char lineBuffer[MAX_LINE_WIDTH];
+        int linePosition;
+        bool connected;
+    public:
+        SimhubConnector(SerPortName* serialPort, menuid_t statusMenuId);
+        void tick();
+        bool getStatus() { return connected; }
+    private:
+        void processCommandFromSimhub();
+        void processTcMenuCommand();
+        void changeStatus(bool b);
+    };
+
+
+    class SimHubRemoteConnection : public BaseRemoteServerConnection {
+    private:
+        SimhubConnector connector;
+        NoInitialisationNeeded noInitialisation;
+    public:
+        SimHubRemoteConnection(SerPortName* serialPort, menuid_t statusMenuId)
+        : BaseRemoteServerConnection(noInitialisation, SIMHUB_CONNECTOR), connector(serialPort, statusMenuId) {
+        }
+
+        void init(int remoteNumber, const ConnectorLocalInfo &info) override;
+
+        void tick() override;
+
+        bool connected() override;
+
+        void copyConnectionStatus(char *buffer, int bufferSize) override;
+    };
+}
+
+#ifndef TC_MANUAL_NAMESPACING
+using namespace tcremote;
+#endif // TC_MANUAL_NAMESPACING
+
+#endif //TCLIBRARYDEV_SIMHUBCONNECTOR_H
+#endif
