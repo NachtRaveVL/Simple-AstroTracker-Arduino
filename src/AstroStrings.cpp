@@ -403,6 +403,10 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr[] PROGMEM = "Stowing";
             return flashStr;
         }
+        case AStr_Fault: {
+            static const char flashStr[] PROGMEM = "Fault";
+            return flashStr;
+        }
         case AStr_Empty: {
             static const char flashStr[] PROGMEM = "";
             return flashStr;

@@ -46,6 +46,12 @@
 
 // Mount Defaults
 #define ASTRO_MOUNT_AXIS_RATE_DEGPS     8.0                 // Default simulated/limited mount axis rate, in degrees per second
+#define ASTRO_MOUNT_SIDEREAL_RATE_DEGPS 0.0041780746        // Sidereal tracking rate, in degrees per second
+#define ASTRO_MOUNT_GUIDE_RATE           0.5                 // Default pulse-guide rate as a multiple of sidereal
+
+// Cover Defaults
+#define ASTRO_COVER_TRAVEL_RATE          0.2f                // Default normalized cover travel rate per second
+#define ASTRO_COVER_TRAVEL_TIMEOUT_SECS  120.0               // Default cover movement timeout, in seconds
 
 // Scheduler Defaults
 #define ASTRO_SCH_DEPLOY_SUN_ALT_DEG    -6.0                // Sun altitude below which nighttime deployment may begin
@@ -410,6 +416,7 @@ enum Astro_SchedulerStage : int8_t {
     Astro_SchedulerStage_Warming,                            // Warming
     Astro_SchedulerStage_Stowing,                            // Stowing
     Astro_SchedulerStage_SafeStowed,                         // Safe stowed
+    Astro_SchedulerStage_Fault,                              // Hardware or motion fault requiring intervention
     Astro_SchedulerStage_Count,                              // Placeholder
     Astro_SchedulerStage_Undefined = -1                       // Placeholder
 };

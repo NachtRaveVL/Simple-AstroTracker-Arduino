@@ -15,6 +15,7 @@ class AstroAxisDriver;
 class AstroTrigger;
 class AstroObservationDevice;
 class AstroCover;
+class AstroFocuser;
 
 template<class TObject> class AstroAttachment;
 class AstroActuatorAttachment;
@@ -123,10 +124,8 @@ public:
 };
 
 // Measurement Units Storage
-// Provides fixed-size backing storage for one or more measurement rows.
+// Provides fixed-size backing storage shared by single, double, and triple measurement interfaces.
 template <size_t N>
-// Measurement Units Storage
-// Small fixed-size unit array shared by single, double, and triple measurement interfaces.
 class AstroMeasurementUnitsStorage {
 protected:
     Astro_UnitsType _measurementUnits[N];                   // Stored measurement units by row
@@ -221,9 +220,12 @@ class AstroMountObjectInterface {
 public:
     virtual ~AstroMountObjectInterface() { ; }
     virtual void setTarget(Astro_TargetId targetId) = 0;
+    virtual void park() = 0;
+    virtual void unpark() = 0;
     virtual void stow() = 0;
     virtual void track() = 0;
     virtual bool isAligned(double toleranceDegrees = 0.25) const = 0;
+    virtual bool isParked() const = 0;
 };
 
 // Power Rail Object Interface
@@ -258,6 +260,19 @@ public:
     virtual bool ready() const = 0;
     virtual void startObservation() = 0;
     virtual void stopObservation() = 0;
+};
+
+// Focuser Object Interface
+// Common absolute-position interface for telescope focus mechanisms.
+class AstroFocuserObjectInterface {
+public:
+    virtual ~AstroFocuserObjectInterface() { ; }
+    virtual void moveTo(int32_t position) = 0;
+    virtual void moveBy(int32_t steps) = 0;
+    virtual void halt() = 0;
+    virtual int32_t getPosition() const = 0;
+    virtual int32_t getTargetPosition() const = 0;
+    virtual bool isMoving() const = 0;
 };
 
 

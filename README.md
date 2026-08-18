@@ -19,6 +19,7 @@ The system is designed around the same Keep-It-Simple ideas used by Hydruino and
   * Right ascension and declination targets can be converted into local horizontal coordinates.
   * Local sidereal time, Julian dates, coordinate normalization, and J2000 precession are calculated in the library.
   * Mount movement is kept separate from motor hardware so steppers, servos, DC motors, and custom controllers can be adapted without changing astronomy code.
+  * Park/unpark handling, per-axis software limits, optional position feedback, basic pulse guiding, and wrapped Alt/Az azimuth motion are supported by the mount layer.
 * Includes `AstroLib`, based on the same checkout/cache approach used by Hydruino's CropLib.
   * Includes all 110 Messier objects.
   * Includes a useful set of bright stars for alignment and basic observing.
@@ -32,11 +33,13 @@ The system is designed around the same Keep-It-Simple ideas used by Hydruino and
   * Enum import decoding is generated as a compact minimum-discriminator tree instead of repeatedly comparing full strings.
 * Supports familiar hobby electronics and Arduino-style I/O.
   * Digital and analog pins, active-low inputs, PWM outputs, pin muxing, callbacks, sensors, actuators, activation handles, triggers, measurements, and power rails use the same general patterns as the sibling libraries.
-  * Optional time and location providers allow RTC, GPS, network, or user-supplied implementations without changing tracking logic.
+  * Optional time and location providers allow RTC, GPS, network, or application-supplied implementations without changing tracking logic.
   * Manual time and fixed-location providers are included for simple offline builds.
+  * `AstroFocuser` provides absolute/relative step positioning with optional position feedback for common stepper-driven focusers.
 * Supports a generic `Cover` mechanism.
   * A cover can represent a telescope cap, sliding cover, bay opening, roll-off roof, dome shutter, or another open/closed mechanism.
   * The scheduler only needs to know the cover state and how to command its actuator.
+  * Optional open/closed limit sensors and travel timeout handling allow enclosure motion to be confirmed by hardware instead of estimated only from elapsed time.
 * Supports generic observation devices and a simple camera trigger.
   * The trigger can drive a shutter pin, relay, external controller, or another recording device.
   * Observation control remains separate from the telescope mount so other instruments can use the same scheduling path.
@@ -50,6 +53,7 @@ The system is designed around the same Keep-It-Simple ideas used by Hydruino and
   * Night operation can deploy the system, cool equipment, slew, settle, observe, warm up, and return to safe stow.
   * Unsafe weather can interrupt the sequence and force a safe stow.
   * Deployment and stow use configurable Sun-altitude thresholds.
+  * Safe stow waits for the mount to park before closing the cover, and mount/cover motion faults stop the observation sequence.
 * Includes system event logging and polling-frame data publishing.
   * Logger, Publisher, and Scheduler settings are stored as sub-data inside `AstroSystemData` in the same style as the sibling libraries.
   * Output sinks remain optional so an offline controller does not need networking or external storage.
@@ -63,7 +67,7 @@ Made primarily for Arduino microcontrollers and Arduino-like build environments.
 
 Astruino is aimed at DIY'ers, students, experimenters, and hobby astronomers who want to build tracking equipment from common parts. A useful first project should not require a commercial mount controller, cloud account, internet connection, or expensive astronomy-specific electronics.
 
-A basic system can be an Arduino-compatible MCU, an RTC, known latitude and longitude, one or two motorized axes, motor drivers, and home or limit switches. That is enough to work with sidereal time, celestial coordinates, gearing, mechanical error, sensors, and control systems while building something that moves under the real night sky.
+A basic system can be an Arduino-compatible MCU, an RTC, known latitude and longitude, one or two motorized axes, and motor drivers. Home or limit switches and position feedback can be added as the mechanics become more capable. That is enough to work with sidereal time, celestial coordinates, gearing, mechanical error, sensors, and control systems while building something that moves under the real night sky.
 
 More hardware can be added as the project grows. Encoders can improve position feedback. A humidity sensor can add dew protection. A servo can operate a cover. A relay can trigger a camera. A rain or wind sensor can force a safe stow. GPS can remove manual time and location setup. None of these are required to get started.
 
@@ -188,7 +192,7 @@ if (target) {
 }
 ```
 
-Repeated checkouts share the same loaded target book. Returning the last normal checkout unloads the object again. User-modified target data can remain resident when appropriate. This avoids keeping every built-in object expanded in RAM.
+Repeated checkouts share the same loaded target book. Returning the last normal checkout unloads the object again. Custom target data can remain resident when appropriate. This avoids keeping every built-in object expanded in RAM.
 
 Moving solar-system targets use the same `AstroTargetData` interface but resolve their coordinates for the requested time.
 
@@ -201,7 +205,7 @@ Development/export sketches are included under `tests/`:
 * `EnumConversionTests` checks the string conversions used by those generated decoders.
 * `JSONExportTests` exercises the serializable target and pin data structures on an Arduino build.
 
-The `DataWriter` example shows the built-in target data in compact serialized form for users preparing their own external-storage workflow.
+The `DataWriter` example shows the built-in target data in compact serialized form for external-storage workflows.
 
 Common library text uses the `AstroStrings` Flash lookup layer. `SFP()` is the normal helper for code that needs a resident string, while `CFP()` gives a Flash pointer when the caller can use it directly.
 
@@ -275,14 +279,10 @@ ctest --test-dir build-host --output-on-failure
 python3 tests/validate_source.py
 ```
 
-The host suite covers astronomy math, precession, moving-body sanity, catalog lookup/cache behavior, automation, mount/cover control, thermal balancing, sensors, actuators, activation handles, pins, muxing, measurements, triggers, power rails, factory creation, provider interfaces, controller lifecycle, serialization, reporting, enum round trips, generated trie freshness, source-parity guards, and example syntax.
-
-`tests/generate_enum_trie.py` regenerates `AstroEnumTrie.h` directly from the shipping `toString()` vocabulary. Source validation fails if the checked-in decoder no longer matches generated output.
-
-The source validator also guards several family conventions that are easy to accidentally regress, including the PROGMEM string API, core framework file depth, comments on stored members/enums, and the absence of positional `sscanf()` serialization.
+The host suite covers astronomy math, precession, moving-body sanity, catalog lookup/cache behavior, automation, mount/cover control, thermal balancing, sensors, actuators, activation handles, pins, muxing, measurements, triggers, power rails, factory creation, provider interfaces, controller lifecycle, serialization, reporting, enum conversions, and example syntax.
 
 ## Accuracy
 
 The astronomy calculations are intended for DIY pointing and tracking. The goal is correct, consistent coordinates with errors small compared with the normal mechanical limits of home-built mounts. The library does not try to replace professional high-precision astrometry or ephemeris software.
 
-Alignment models, encoders, guiding, periodic-error correction, and other feedback layers can improve final pointing without making those systems mandatory for a first build.
+Alignment models, periodic-error correction, automatic meridian handling, and higher-order pointing corrections remain natural extensions for mounts that require more precision.

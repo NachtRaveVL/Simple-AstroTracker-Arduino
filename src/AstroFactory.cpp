@@ -85,6 +85,11 @@ AstroServoAxisDriver *AstroFactory::newMountAxisServo(pintype_t outputPin, doubl
     return newServoAxisDriver(AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes), minDegrees, maxDegrees);
 }
 
+AstroFocuser *AstroFactory::newFocuser(int32_t maximumPosition, aposi_t positionIndex)
+{
+    return new AstroFocuser(maximumPosition, positionIndex);
+}
+
 AstroDigitalSensor *AstroFactory::newLimitSwitch(pintype_t inputPin, bool activeLow, aposi_t positionIndex)
 {
     return newDigitalSensor(Astro_SensorType_LimitSwitch,
@@ -172,7 +177,8 @@ AstroObject *AstroFactory::newObjectFromData(const AstroObjectData *dataIn)
     if (!dataIn) { return nullptr; }
 
     switch (dataIn->idType) {
-        case AstroIdentity::Actuator: return new AstroActuator(dataIn);
+        case AstroIdentity::Actuator:
+            return dataIn->objType == Astro_ActuatorType_Focuser ? (AstroObject *)new AstroFocuser(dataIn) : (AstroObject *)new AstroActuator(dataIn);
         case AstroIdentity::Sensor: return new AstroValueSensor(dataIn);
         case AstroIdentity::Mount: return new AstroMount(dataIn);
         case AstroIdentity::Rail: return new AstroRail(dataIn);

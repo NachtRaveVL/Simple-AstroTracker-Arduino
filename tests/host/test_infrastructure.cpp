@@ -24,6 +24,13 @@ static bool readValue(void *context, double *valueOut)
 static void writePower(void *context, float power) { ((CallbackState *)context)->power = power; }
 static void writeTarget(void *context, double target) { ((CallbackState *)context)->target = target; }
 static void stopTarget(void *context) { ((CallbackState *)context)->stopped = true; }
+static bool readAxisPosition(void *context, double *positionOut) { *positionOut = ((CallbackState *)context)->value; return true; }
+
+struct FocuserState { int32_t target = 0; int32_t position = 0; bool stopped = false; };
+static void moveFocuser(void *context, int32_t target) { ((FocuserState *)context)->target = target; }
+static void stopFocuser(void *context) { ((FocuserState *)context)->stopped = true; }
+static bool readFocuser(void *context, int32_t *positionOut) { *positionOut = ((FocuserState *)context)->position; return true; }
+
 static bool getTime(void *, int64_t *timeOut) { *timeOut = 123456789; return true; }
 static bool getLocation(void *, AstroObserver *observerOut) { *observerOut = AstroObserver(49.0, -123.0, 10.0); return true; }
 
@@ -162,10 +169,30 @@ int main()
     CHECK(stream.available() == sizeof(bytes));
 
     AstroCallbackAxisDriver axis(writeTarget, stopTarget, &state);
+    axis.setPositionCallback(readAxisPosition);
     axis.setTargetDegrees(123.25);
     CHECK(nearly(state.target, 123.25));
+    double axisPosition = 0.0;
+    CHECK(axis.getPositionDegrees(&axisPosition));
+    CHECK(nearly(axisPosition, state.value));
     axis.stop();
     CHECK(state.stopped);
+
+    FocuserState focuserState;
+    AstroFocuser focuser(20000);
+    focuser.setMoveCallback(moveFocuser, &focuserState);
+    focuser.setStopCallback(stopFocuser);
+    focuser.setPositionCallback(readFocuser);
+    focuser.moveTo(12000);
+    CHECK(focuser.isMoving());
+    CHECK(focuserState.target == 12000);
+    focuserState.position = 12000; focuser.update();
+    CHECK(!focuser.isMoving());
+    CHECK(focuser.getPosition() == 12000);
+    focuser.moveBy(20000);
+    CHECK(focuser.getTargetPosition() == 20000);
+    focuser.halt();
+    CHECK(focuserState.stopped);
 
     AstroManualTimeProvider manualTime(123456789);
     AstroFixedLocationProvider fixedLocation(AstroObserver(49.0, -123.0, 10.0));
@@ -213,6 +240,11 @@ int main()
     CHECK(!factoryTrigger->update(6.0, 1));
     CHECK(factoryTrigger->update(6.0, 101));
     delete factoryTrigger;
+
+    AstroFocuser *factoryFocuser = AstroFactory::newFocuser(15000);
+    CHECK(factoryFocuser != nullptr);
+    CHECK(factoryFocuser->getMaximumPosition() == 15000);
+    delete factoryFocuser;
 
     Astruino controller;
     controller.init(Astro_SystemMode_Tracking, Astro_MeasurementMode_Metric);

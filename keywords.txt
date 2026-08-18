@@ -6,3 +6,4 @@ AstroScheduler	KEYWORD1
 AstroThermalBalancer	KEYWORD1
 AstroCover	KEYWORD1
 AstroCameraTrigger	KEYWORD1
+AstroFocuser	KEYWORD1

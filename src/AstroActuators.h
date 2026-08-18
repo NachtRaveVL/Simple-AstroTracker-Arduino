@@ -39,7 +39,7 @@ protected:
 };
 
 // Callback Actuator
-// Routes normalized actuator output through a user supplied callback.
+// Routes normalized actuator output through a application supplied callback.
 class AstroCallbackActuator : public AstroActuator {
 public:
     typedef void (*WriteCallback)(void *context, float power);
@@ -54,7 +54,7 @@ public:
 
 protected:
     WriteCallback _callback;                                 // Callback function
-    void *_context;                                          // Callback user context
+    void *_context;                                          // Callback context
 };
 
 // Digital Actuator
@@ -85,6 +85,49 @@ public:
 
 protected:
     AstroAnalogPin _outputPin;                               // Output pin
+};
+
+// Telescope Focuser
+// Absolute-position focuser wrapper intended for stepper focusers and external focus
+// controllers. Positions are expressed as integer device steps, matching common focuser
+// hardware and avoiding floating-point drift in repeated relative moves.
+class AstroFocuser : public AstroActuator, public AstroFocuserObjectInterface {
+public:
+    typedef void (*MoveCallback)(void *context, int32_t targetPosition);
+    typedef void (*StopCallback)(void *context);
+    typedef bool (*PositionCallback)(void *context, int32_t *positionOut);
+
+    AstroFocuser(int32_t maximumPosition = 10000,
+                 aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);
+    AstroFocuser(const AstroObjectData *dataIn, int32_t maximumPosition = 10000);
+
+    virtual void update() override;
+    virtual void moveTo(int32_t position) override;
+    virtual void moveBy(int32_t steps) override;
+    virtual void halt() override;
+
+    void setMoveCallback(MoveCallback callback, void *context = nullptr);
+    void setStopCallback(StopCallback callback);
+    void setPositionCallback(PositionCallback callback);
+    void setPosition(int32_t position);
+    void setLimits(int32_t minimumPosition, int32_t maximumPosition);
+
+    virtual int32_t getPosition() const override { return _position; }
+    virtual int32_t getTargetPosition() const override { return _targetPosition; }
+    virtual bool isMoving() const override { return _moving; }
+    inline int32_t getMinimumPosition() const { return _minimumPosition; }
+    inline int32_t getMaximumPosition() const { return _maximumPosition; }
+
+protected:
+    int32_t _position;                                      // Current measured/estimated focuser position, in steps
+    int32_t _targetPosition;                                // Current focuser target position, in steps
+    int32_t _minimumPosition;                               // Minimum allowed focuser position, in steps
+    int32_t _maximumPosition;                               // Maximum allowed focuser position, in steps
+    bool _moving;                                           // Focuser movement active flag
+    MoveCallback _moveCallback;                             // Absolute move callback
+    StopCallback _stopCallback;                             // Stop/halt callback
+    PositionCallback _positionCallback;                     // Optional position feedback callback
+    void *_context;                                         // Callback context, not owned
 };
 
 #endif // /ifndef AstroActuators_H

@@ -34,6 +34,15 @@ static void axisWrite(void *context, uint8_t axisIndex, double targetDegrees)
     if (axisIndex == 0) { state->primary = targetDegrees; } else { state->secondary = targetDegrees; }
 }
 
+struct AxisFeedbackState { double primary = 0.0; double secondary = 0.0; bool available = true; };
+static bool axisRead(void *context, uint8_t axisIndex, double *positionDegreesOut)
+{
+    AxisFeedbackState *state = (AxisFeedbackState *)context;
+    if (!state->available || !positionDegreesOut) { return false; }
+    *positionDegreesOut = axisIndex == 0 ? state->primary : state->secondary;
+    return true;
+}
+
 struct PublishState { int count = 0; uint8_t columns = 0; };
 static void publishSink(void *context, int64_t, const AstroDataColumn *, uint8_t columnCount)
 {
@@ -78,15 +87,66 @@ int main()
     cover.close(); cover.update(1.0);
     check(cover.isClosed(), "cover closes");
 
+    AstroValueSensor openLimit(Astro_SensorType_LimitSwitch, Astro_UnitsType_Raw_1, ASTRO_POS_SEARCH_FROMBEG, 0.0);
+    AstroValueSensor closedLimit(Astro_SensorType_LimitSwitch, Astro_UnitsType_Raw_1, ASTRO_POS_SEARCH_FROMBEG, 1.0);
+    AstroCover feedbackCover;
+    ActuatorState feedbackCoverActState; AstroCallbackActuator feedbackCoverAct(actuatorWrite, &feedbackCoverActState);
+    feedbackCover.setActuator(&feedbackCoverAct); feedbackCover.setOpenSensor(&openLimit); feedbackCover.setClosedSensor(&closedLimit);
+    feedbackCover.open(); feedbackCover.update(1.0);
+    check(!feedbackCover.isOpen() && feedbackCoverActState.power > 0.0f, "cover waits for open limit");
+    closedLimit.setValue(0.0); openLimit.setValue(1.0); feedbackCover.update(0.1);
+    check(feedbackCover.isOpen() && isFPEqual(feedbackCoverActState.power, 0.0f), "cover stops on open limit");
+    closedLimit.setValue(1.0); feedbackCover.update(0.1);
+    check(feedbackCover.isFaulted(), "contradictory cover limits fault");
+
+    AstroCover timeoutCover;
+    AstroValueSensor timeoutOpen(Astro_SensorType_LimitSwitch, Astro_UnitsType_Raw_1, ASTRO_POS_SEARCH_FROMBEG, 0.0);
+    timeoutCover.setOpenSensor(&timeoutOpen); timeoutCover.setTravelTimeout(0.25); timeoutCover.open(); timeoutCover.update(0.5);
+    check(timeoutCover.isFaulted(), "cover travel timeout faults");
+
     AstroMount mount(Astro_MountType_Equatorial);
     mount.setObserver(AstroObserver(49.2827, -123.1207));
     mount.setAxisRates(360.0, 360.0);
     AxisState axisState; mount.setAxisTargetCallback(axisWrite, &axisState);
-    mount.setTarget(Astro_Target_M42); mount.track(); mount.update(1787011200, 1.0);
+    mount.unpark(); mount.setTarget(Astro_Target_M42); mount.track(); mount.update(1787011200, 1.0);
     check(mount.isAligned(0.01), "mount slews to target");
     check(axisState.writes == 2, "mount axis targets exported");
-    mount.stow(); mount.update(1787011201, 1.0);
-    check(mount.isAligned(0.01), "mount stows");
+    mount.park(); mount.update(1787011201, 1.0);
+    check(mount.isParked(), "mount parks");
+
+    AstroMount parkedFeedbackMount(Astro_MountType_Equatorial);
+    AxisFeedbackState parkedFeedbackState; parkedFeedbackState.primary = 15.0; parkedFeedbackState.secondary = 5.0;
+    parkedFeedbackMount.setAxisPositionCallback(axisRead, &parkedFeedbackState); parkedFeedbackMount.update(1787011200, 0.0);
+    check(!parkedFeedbackMount.isParked(), "position feedback invalidates stale parked state");
+    parkedFeedbackMount.park();
+    check(parkedFeedbackMount.isParking(), "feedback mount begins park movement");
+
+    AstroMount feedbackMount(Astro_MountType_Equatorial);
+    feedbackMount.setObserver(AstroObserver(49.2827, -123.1207)); feedbackMount.setAxisRates(360.0, 360.0);
+    AxisFeedbackState feedbackState; feedbackMount.setAxisPositionCallback(axisRead, &feedbackState);
+    feedbackMount.unpark(); feedbackMount.setTarget(Astro_Target_M31); feedbackMount.track(); feedbackMount.update(1787011200, 1.0);
+    check(!feedbackMount.isAligned(0.01), "mount honors external position feedback");
+    feedbackState.primary = feedbackMount.getPrimaryAxis().targetDegrees; feedbackState.secondary = feedbackMount.getSecondaryAxis().targetDegrees;
+    feedbackMount.update(1787011200, 0.0);
+    check(feedbackMount.isAligned(0.01), "mount aligns from external position feedback");
+
+    AstroMount wrapMount(Astro_MountType_AltAz);
+    wrapMount.setAxisRates(1.0, 360.0); wrapMount.setAxisPosition(0, 359.0); wrapMount.setAxisPosition(1, 0.0);
+    wrapMount.setParkPosition(1.0, 0.0); wrapMount.unpark(); wrapMount.park(); wrapMount.update(1787011200, 1.0);
+    check(isFPEqual(wrapMount.getPrimaryAxis().positionDegrees, 0.0), "altaz axis crosses zero by shortest path");
+    wrapMount.update(1787011201, 1.0); check(wrapMount.isParked(), "altaz park completes across wrap");
+
+    AstroMount limitedMount(Astro_MountType_Equatorial);
+    limitedMount.setAxisLimits(0, -10.0, 10.0); limitedMount.setParkPosition(20.0, 0.0); limitedMount.unpark(); limitedMount.park();
+    check(limitedMount.isLimitHit() && isFPEqual(limitedMount.getPrimaryAxis().targetDegrees, 10.0), "mount software limit clamps unsafe target");
+
+    AstroMount singleAxis(Astro_MountType_SingleAxis);
+    AxisState singleAxisState; singleAxis.setAxisTargetCallback(axisWrite, &singleAxisState); singleAxis.unpark(); singleAxis.track();
+    singleAxis.pulseGuide(0, Astro_DirectionMode_Forward, 1000, 1.0); singleAxis.update(1787011200, 0.0);
+    check(isFPEqual(singleAxis.getPrimaryAxis().targetDegrees, ASTRO_MOUNT_SIDEREAL_RATE_DEGPS), "pulse guide adds sidereal offset");
+    singleAxis.update(1787011201, 10.0);
+    check(singleAxisState.writes == 2, "single-axis mount exports one axis per update");
+    check(singleAxis.getPrimaryAxis().targetDegrees > ASTRO_MOUNT_SIDEREAL_RATE_DEGPS, "single-axis mount advances at sidereal rate");
 
     TriggerState triggerState;
     AstroCameraTrigger camera(cameraTrigger, &triggerState);
@@ -115,6 +175,12 @@ int main()
     scheduler.update(t++, 1.0, -10.0, false, readings);
     check(scheduler.getStage() == Astro_SchedulerStage_SafeStowed, "unsafe condition forces safe state");
     check(!camera.isCapturing(), "unsafe condition stops camera");
+    scheduler.update(t++, 1.0, -10.0, false, readings);
+    scheduler.update(t++, 1.0, -10.0, false, readings);
+    check(mount.isParked() && cover.isClosed(), "safe stow completes before enclosure closure");
+
+    AstroScheduler faultScheduler; faultScheduler.setCover(&timeoutCover); faultScheduler.update(t++, 0.1, -10.0, true, readings);
+    check(faultScheduler.getStage() == Astro_SchedulerStage_Fault, "cover fault enters scheduler fault state");
 
     AstroLogger filterLogger; LogState filterState; filterLogger.setSink(logSink, &filterState); filterLogger.setLogLevel(Astro_LogLevel_Errors);
     filterLogger.logMessage(t, "hidden"); filterLogger.logWarning(t, "hidden"); filterLogger.logError(t, "shown");

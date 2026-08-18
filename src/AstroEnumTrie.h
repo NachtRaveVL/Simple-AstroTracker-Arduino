@@ -367,7 +367,13 @@ inline Astro_SchedulerStage astroDecodeSchedulerStage(const AstroString &schedul
         case 't':
             return Astro_SchedulerStage_Settling;
         case 'u':
-            return Astro_SchedulerStage_Count;
+            switch (schedulerStageStr.length() > 0 ? schedulerStageStr[0] : '\0') {
+                case 'C':
+                    return Astro_SchedulerStage_Count;
+                case 'F':
+                    return Astro_SchedulerStage_Fault;
+            }
+            return Astro_SchedulerStage_Undefined;
         case 'y':
             return Astro_SchedulerStage_DayStowed;
     }

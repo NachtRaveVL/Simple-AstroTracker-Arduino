@@ -17,14 +17,16 @@ public:
     virtual void setTargetDegrees(double targetDegrees) = 0;
     virtual void stop() = 0;
     virtual double getTargetDegrees() const = 0;
+    virtual bool getPositionDegrees(double *positionDegreesOut) const { (void)positionDegreesOut; return false; }
 };
 
 // Callback Axis Driver
-// Sends axis targets and stop requests through user supplied callbacks.
+// Sends axis targets and stop requests through application supplied callbacks.
 class AstroCallbackAxisDriver : public AstroAxisDriver {
 public:
     typedef void (*TargetCallback)(void *context, double targetDegrees);
     typedef void (*StopCallback)(void *context);
+    typedef bool (*PositionCallback)(void *context, double *positionDegreesOut);
 
     AstroCallbackAxisDriver(TargetCallback targetCallback = nullptr,
                             StopCallback stopCallback = nullptr,
@@ -33,11 +35,14 @@ public:
     virtual void setTargetDegrees(double targetDegrees) override;
     virtual void stop() override;
     virtual double getTargetDegrees() const override { return _targetDegrees; }
+    virtual bool getPositionDegrees(double *positionDegreesOut) const override;
+    void setPositionCallback(PositionCallback positionCallback);
 
 protected:
     TargetCallback _targetCallback;                          // Target update callback
     StopCallback _stopCallback;                              // Stop callback
-    void *_context;                                          // Callback user context
+    PositionCallback _positionCallback;                      // Optional position feedback callback
+    void *_context;                                          // Callback context
     double _targetDegrees;                                   // Current target angle, in degrees
 };
 

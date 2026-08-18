@@ -96,6 +96,7 @@ enum Astro_String : uint16_t {
     AStr_Observing,                          // "Observing"
     AStr_Warming,                            // "Warming"
     AStr_Stowing,                            // "Stowing"
+    AStr_Fault,                              // "Fault"
     AStr_Empty,                              // Blank string
     AStr_Astruino,                           // "Astruino"
     AStr_AstruinoDotCfg,                     // "Astruino.cfg"

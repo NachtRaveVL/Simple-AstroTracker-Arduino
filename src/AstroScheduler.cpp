@@ -32,23 +32,10 @@ void AstroScheduler::enterStage(Astro_SchedulerStage stage, int64_t unixTime)
     _stage = stage;
     _stageStart = unixTime;
     _settleStart = 0;
-    if (!_logger) { return; }
-    const char *name = "Unknown";
-    switch (stage) {
-        case Astro_SchedulerStage_DayStowed: name = "Day stowed"; break;
-        case Astro_SchedulerStage_Deploying: name = "Deploying"; break;
-        case Astro_SchedulerStage_Cooling: name = "Cooling"; break;
-        case Astro_SchedulerStage_Slewing: name = "Slewing"; break;
-        case Astro_SchedulerStage_Settling: name = "Settling"; break;
-        case Astro_SchedulerStage_Observing: name = "Observing"; break;
-        case Astro_SchedulerStage_Warming: name = "Warming"; break;
-        case Astro_SchedulerStage_Stowing: name = "Stowing"; break;
-        case Astro_SchedulerStage_SafeStowed: name = "Safe stowed"; break;
-        case Astro_SchedulerStage_Count:
-        case Astro_SchedulerStage_Undefined:
-            break;
+    if (_logger) {
+        AstroString stageName = schedulerStageToString(stage, true);
+        if (!stageName.empty()) { _logger->logMessage(unixTime, stageName.c_str()); }
     }
-    _logger->logMessage(unixTime, name);
 }
 
 void AstroScheduler::reportEnvironment(int64_t unixTime, const AstroThermalReadings &readings, const AstroThermalOutputs &outputs)
@@ -71,25 +58,25 @@ void AstroScheduler::update(int64_t unixTime, double elapsedSeconds, double sunA
     if (_cover) { _cover->update(elapsedSeconds); }
     if (_mount) { _mount->update(unixTime, elapsedSeconds); }
 
-    if (!safeToObserve) {
+    if ((_cover && _cover->isFaulted()) || (_mount && _mount->isLimitHit())) {
         if (_device) { _device->stopObservation(); }
-        if (_mount) { _mount->stow(); }
-        if (_cover && (!_mount || _mount->isAligned(_config.alignmentToleranceDegrees))) { _cover->close(); }
+        if (_mount && !_mount->isLimitHit()) { _mount->park(); }
         if (_thermal) { _thermal->setMode(Astro_ThermalMode_SafeStowed); }
-        enterStage(Astro_SchedulerStage_SafeStowed, unixTime);
+        enterStage(Astro_SchedulerStage_Fault, unixTime);
         return;
     }
 
-    if (_stage == Astro_SchedulerStage_SafeStowed && sunAltitudeDegrees < _config.deploySunAltitudeDegrees) {
-        enterStage(Astro_SchedulerStage_DayStowed, unixTime);
+    if (!safeToObserve && _stage != Astro_SchedulerStage_Fault) {
+        enterStage(Astro_SchedulerStage_SafeStowed, unixTime);
     }
 
     switch (_stage) {
         case Astro_SchedulerStage_DayStowed: {
             if (_thermal) { _thermal->setMode(Astro_ThermalMode_DayStorage); }
-            if (_mount) { _mount->stow(); }
-            if (_cover) { _cover->close(); }
-            if (sunAltitudeDegrees <= _config.deploySunAltitudeDegrees) {
+            if (_mount) { _mount->park(); }
+            if (_cover && (!_mount || _mount->isParked())) { _cover->close(); }
+            if (sunAltitudeDegrees <= _config.deploySunAltitudeDegrees &&
+                (!_cover || _cover->isClosed()) && (!_mount || _mount->isParked())) {
                 if (_cover) { _cover->open(); }
                 enterStage(Astro_SchedulerStage_Deploying, unixTime);
             }
@@ -98,6 +85,7 @@ void AstroScheduler::update(int64_t unixTime, double elapsedSeconds, double sunA
         case Astro_SchedulerStage_Deploying: {
             if (_cover) { _cover->open(); }
             if (!_cover || _cover->isOpen()) {
+                if (_mount) { _mount->unpark(); }
                 if (_thermal) { _thermal->setMode(Astro_ThermalMode_NightObserving); }
                 enterStage(Astro_SchedulerStage_Cooling, unixTime);
             }
@@ -106,7 +94,11 @@ void AstroScheduler::update(int64_t unixTime, double elapsedSeconds, double sunA
         case Astro_SchedulerStage_Cooling: {
             if (_thermal) { _thermal->setMode(Astro_ThermalMode_NightObserving); }
             if (!_thermal || _thermal->cameraStable(thermalReadings, ASTRO_SCH_CAMERA_STABLE_DEG)) {
-                if (_mount) { _mount->setTarget(_targetId); _mount->track(); }
+                if (_mount) {
+                    _mount->unpark();
+                    _mount->setTarget(_targetId);
+                    _mount->track();
+                }
                 enterStage(Astro_SchedulerStage_Slewing, unixTime);
             }
         } break;
@@ -114,7 +106,6 @@ void AstroScheduler::update(int64_t unixTime, double elapsedSeconds, double sunA
         case Astro_SchedulerStage_Slewing: {
             if (_mount) { _mount->track(); }
             if (!_mount || _mount->isAligned(_config.alignmentToleranceDegrees)) {
-                _settleStart = unixTime;
                 enterStage(Astro_SchedulerStage_Settling, unixTime);
                 _settleStart = unixTime;
             }
@@ -132,28 +123,43 @@ void AstroScheduler::update(int64_t unixTime, double elapsedSeconds, double sunA
         case Astro_SchedulerStage_Observing: {
             if (sunAltitudeDegrees >= _config.stowSunAltitudeDegrees) {
                 if (_device) { _device->stopObservation(); }
-                if (_mount) { _mount->stow(); }
+                if (_mount) { _mount->park(); }
                 if (_thermal) { _thermal->setMode(Astro_ThermalMode_DayStorage); }
                 enterStage(Astro_SchedulerStage_Warming, unixTime);
             }
         } break;
 
         case Astro_SchedulerStage_Warming: {
-            if (_mount) { _mount->stow(); }
+            if (_mount) { _mount->park(); }
             if (!_thermal || _thermal->cameraSafeToStow(thermalReadings)) {
                 enterStage(Astro_SchedulerStage_Stowing, unixTime);
             }
         } break;
 
         case Astro_SchedulerStage_Stowing: {
-            if (_mount) { _mount->stow(); }
-            if (!_mount || _mount->isAligned(_config.alignmentToleranceDegrees)) {
+            if (_mount) { _mount->park(); }
+            if (!_mount || _mount->isParked()) {
                 if (_cover) { _cover->close(); }
                 if (!_cover || _cover->isClosed()) { enterStage(Astro_SchedulerStage_DayStowed, unixTime); }
             }
         } break;
 
-        case Astro_SchedulerStage_SafeStowed:
+        case Astro_SchedulerStage_SafeStowed: {
+            if (_device) { _device->stopObservation(); }
+            if (_mount) { _mount->park(); }
+            if (_thermal) { _thermal->setMode(Astro_ThermalMode_SafeStowed); }
+            if (_cover && (!_mount || _mount->isParked())) { _cover->close(); }
+
+            if (safeToObserve && (!_mount || _mount->isParked()) && (!_cover || _cover->isClosed())) {
+                enterStage(Astro_SchedulerStage_DayStowed, unixTime);
+            }
+        } break;
+
+        case Astro_SchedulerStage_Fault: {
+            if (_device) { _device->stopObservation(); }
+            if (_thermal) { _thermal->setMode(Astro_ThermalMode_SafeStowed); }
+        } break;
+
         default:
             break;
     }

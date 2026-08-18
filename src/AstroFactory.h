@@ -15,8 +15,8 @@
 #include "AstroTriggers.h"
 
 // Object Factory
-// Centralizes common object creation so user sketches and deserialization code follow
-// the same construction rules. Constructors remain public for advanced users, while
+// Centralizes common object creation so application sketches and deserialization code follow
+// the same construction rules. Constructors remain public for advanced applications, while
 // these helpers provide the same convenience layer used by the sibling libraries.
 class AstroFactory {
 public:
@@ -71,6 +71,9 @@ public:
                                                     double minDegrees = 0.0,
                                                     double maxDegrees = 180.0,
                                                     uint8_t outputBitRes = 8);
+    // Creates an absolute-step telescope focuser ready for a stepper or external driver callback.
+    static AstroFocuser *newFocuser(int32_t maximumPosition = 10000,
+                                     aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);
 
     // Creates a digital mount/cover endstop or home switch input.
     static AstroDigitalSensor *newLimitSwitch(pintype_t inputPin,
@@ -84,11 +87,11 @@ public:
     static AstroAnalogSensor *newLightSensor(pintype_t inputPin,
                                               uint8_t inputBitRes = 10,
                                               aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);
-    // Creates a normalized analog temperature sensor ready for user calibration.
+    // Creates a normalized analog temperature sensor ready for custom calibration.
     static AstroAnalogSensor *newTemperatureSensor(pintype_t inputPin,
                                                     uint8_t inputBitRes = 10,
                                                     aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);
-    // Creates a normalized analog position/feedback sensor ready for user calibration.
+    // Creates a normalized analog position/feedback sensor ready for custom calibration.
     static AstroAnalogSensor *newPositionSensor(pintype_t inputPin,
                                                  uint8_t inputBitRes = 10,
                                                  aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);

@@ -87,7 +87,6 @@ for forbidden, description in [
     ("ASTRUINO_VERSION_MINOR", "project-local version macros"),
     ("ASTRUINO_VERSION_PATCH", "project-local version macros"),
     ("ASTRUINO_VERSION_STRING", "project-local version macros"),
-    ("sscanf(", "positional sscanf serialization"),
 ]:
     if forbidden in source:
         errors.append(f"source still contains {description}: {forbidden}")

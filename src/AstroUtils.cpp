@@ -302,6 +302,7 @@ AstroString schedulerStageToString(Astro_SchedulerStage value, bool excludeSpeci
         case Astro_SchedulerStage_Warming: return SFP(AStr_Warming);
         case Astro_SchedulerStage_Stowing: return SFP(AStr_Stowing);
         case Astro_SchedulerStage_SafeStowed: return SFP(AStr_SafeStowed);
+        case Astro_SchedulerStage_Fault: return SFP(AStr_Fault);
         case Astro_SchedulerStage_Count: return !excludeSpecial ? SFP(AStr_Enum_Count) : AstroString();
         case Astro_SchedulerStage_Undefined: break;
     }

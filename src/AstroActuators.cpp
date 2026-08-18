@@ -129,3 +129,78 @@ void AstroAnalogActuator::setPower(float power)
     AstroActuator::setPower(power);
     if (_outputPin.isValid()) { _outputPin.analogWrite(_power < 0.0f ? -_power : _power); }
 }
+
+AstroFocuser::AstroFocuser(int32_t maximumPosition, aposi_t positionIndex)
+    : AstroActuator(Astro_ActuatorType_Focuser, positionIndex), _position(0), _targetPosition(0),
+      _minimumPosition(0), _maximumPosition(maximumPosition > 0 ? maximumPosition : 0), _moving(false),
+      _moveCallback(nullptr), _stopCallback(nullptr), _positionCallback(nullptr), _context(nullptr)
+{ ; }
+
+AstroFocuser::AstroFocuser(const AstroObjectData *dataIn, int32_t maximumPosition)
+    : AstroActuator(dataIn), _position(0), _targetPosition(0),
+      _minimumPosition(0), _maximumPosition(maximumPosition > 0 ? maximumPosition : 0), _moving(false),
+      _moveCallback(nullptr), _stopCallback(nullptr), _positionCallback(nullptr), _context(nullptr)
+{ ; }
+
+void AstroFocuser::setMoveCallback(MoveCallback callback, void *context)
+{
+    _moveCallback = callback;
+    _context = context;
+}
+
+void AstroFocuser::setStopCallback(StopCallback callback)
+{
+    _stopCallback = callback;
+}
+
+void AstroFocuser::setPositionCallback(PositionCallback callback)
+{
+    _positionCallback = callback;
+}
+
+void AstroFocuser::setPosition(int32_t position)
+{
+    _position = position < _minimumPosition ? _minimumPosition : position > _maximumPosition ? _maximumPosition : position;
+    if (_position == _targetPosition) { _moving = false; }
+}
+
+void AstroFocuser::setLimits(int32_t minimumPosition, int32_t maximumPosition)
+{
+    if (maximumPosition < minimumPosition) { return; }
+    _minimumPosition = minimumPosition;
+    _maximumPosition = maximumPosition;
+    setPosition(_position);
+    _targetPosition = _targetPosition < _minimumPosition ? _minimumPosition :
+                      _targetPosition > _maximumPosition ? _maximumPosition : _targetPosition;
+}
+
+void AstroFocuser::moveTo(int32_t position)
+{
+    _targetPosition = position < _minimumPosition ? _minimumPosition : position > _maximumPosition ? _maximumPosition : position;
+    _moving = _targetPosition != _position;
+    if (_moveCallback) { _moveCallback(_context, _targetPosition); }
+}
+
+void AstroFocuser::moveBy(int32_t steps)
+{
+    int64_t target = (int64_t)_targetPosition + steps;
+    if (target < _minimumPosition) { target = _minimumPosition; }
+    if (target > _maximumPosition) { target = _maximumPosition; }
+    moveTo((int32_t)target);
+}
+
+void AstroFocuser::halt()
+{
+    _targetPosition = _position;
+    _moving = false;
+    setPower(0.0f);
+    if (_stopCallback) { _stopCallback(_context); }
+}
+
+void AstroFocuser::update()
+{
+    if (_positionCallback) {
+        int32_t position = _position;
+        if (_positionCallback(_context, &position)) { setPosition(position); }
+    }
+}
