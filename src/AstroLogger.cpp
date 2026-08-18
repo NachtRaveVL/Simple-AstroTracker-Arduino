@@ -62,7 +62,7 @@ void AstroLogger::logEnvironment(int64_t timestamp, double ambientC, double humi
                                  double opticsC, double cameraSensorC, double cameraBodyC,
                                  float dewHeaterPower, float cameraCoolingPower, float cameraFanPower)
 {
-    const AstroString envReport = SFP(AStr_Environmentreport);
+    const AstroString envReport = SFP(AStr_EnvironmentReport);
     logMessage(timestamp, envReport.c_str());
     logField(timestamp, "Ambient temperature", ambientC, "C");
     logField(timestamp, "Humidity", humidity, "%");

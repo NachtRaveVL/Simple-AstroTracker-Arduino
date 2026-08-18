@@ -411,63 +411,63 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr[] PROGMEM = "Astruino";
             return flashStr;
         }
-        case AStr_AstruinoDotcfg: {
+        case AStr_AstruinoDotCfg: {
             static const char flashStr[] PROGMEM = "Astruino.cfg";
             return flashStr;
         }
-        case AStr_Environmentreport: {
+        case AStr_EnvironmentReport: {
             static const char flashStr[] PROGMEM = "Environment report";
             return flashStr;
         }
-        case AStr_Observationstarted: {
+        case AStr_ObservationStarted: {
             static const char flashStr[] PROGMEM = "Observation started";
             return flashStr;
         }
-        case AStr_Observationstopped: {
+        case AStr_ObservationStopped: {
             static const char flashStr[] PROGMEM = "Observation stopped";
             return flashStr;
         }
-        case AStr_Coveropening: {
+        case AStr_CoverOpening: {
             static const char flashStr[] PROGMEM = "Cover opening";
             return flashStr;
         }
-        case AStr_Coverclosing: {
+        case AStr_CoverClosing: {
             static const char flashStr[] PROGMEM = "Cover closing";
             return flashStr;
         }
-        case AStr_Systemdatasaved: {
+        case AStr_SystemDataSaved: {
             static const char flashStr[] PROGMEM = "System data saved";
             return flashStr;
         }
-        case AStr_SystemuptimeColon: {
+        case AStr_SystemUptimeColon: {
             static const char flashStr[] PROGMEM = "System uptime: ";
             return flashStr;
         }
-        case AStr_Allocationfailure: {
+        case AStr_AllocationFailure: {
             static const char flashStr[] PROGMEM = "Allocation failure";
             return flashStr;
         }
-        case AStr_Invalidparameter: {
+        case AStr_InvalidParameter: {
             static const char flashStr[] PROGMEM = "Invalid parameter";
             return flashStr;
         }
-        case AStr_Importfailure: {
+        case AStr_ImportFailure: {
             static const char flashStr[] PROGMEM = "Import failure";
             return flashStr;
         }
-        case AStr_Exportfailure: {
+        case AStr_ExportFailure: {
             static const char flashStr[] PROGMEM = "Export failure";
             return flashStr;
         }
-        case AStr_Operationfailure: {
+        case AStr_OperationFailure: {
             static const char flashStr[] PROGMEM = "Operation failure";
             return flashStr;
         }
-        case AStr_Alreadyinitialized: {
+        case AStr_AlreadyInitialized: {
             static const char flashStr[] PROGMEM = "Already initialized";
             return flashStr;
         }
-        case AStr_Notyetinitialized: {
+        case AStr_NotYetInitialized: {
             static const char flashStr[] PROGMEM = "Not yet initialized";
             return flashStr;
         }
