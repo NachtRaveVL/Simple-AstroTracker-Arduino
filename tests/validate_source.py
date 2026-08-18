@@ -94,6 +94,25 @@ for forbidden, description in [
 if re.search(r"\bAstroPi\b", source):
     errors.append("source still contains project-local PI constant: AstroPi")
 
+# Computed floating-point values must not use exact equality/inequality against decimal literals.
+# Use isFPEqual() or an explicit tolerance/range comparison instead.
+float_equality = re.compile(r"(?:==|!=)\s*-?\d+\.\d+(?:[eE][+-]?\d+)?[fFlL]?|-?\d+\.\d+(?:[eE][+-]?\d+)?[fFlL]?\s*(?:==|!=)")
+for path in [p for p in (root / "src").glob("Astro*.*") if p.suffix in {".h", ".hpp", ".hh", ".cpp"}]:
+    if path.name == "AstroEnumTrie.h":
+        continue
+    for line_no, line in enumerate(path.read_text(errors="ignore").splitlines(), 1):
+        if float_equality.search(line):
+            errors.append(f"{path.name}:{line_no} uses direct floating-point equality/inequality")
+
+# Keep floating-point equality decisions routed through isFPEqual() rather than
+# duplicating the epsilon comparison at individual call sites.
+for path in [p for p in (root / "src").glob("Astro*.*") if p.suffix in {".h", ".hpp", ".hh", ".cpp"}]:
+    if path.name in {"AstroDefines.h", "AstroInlines.hh"}:
+        continue
+    for line_no, line in enumerate(path.read_text(errors="ignore").splitlines(), 1):
+        if "ASTRO_FLT_EPSILON" in line or "ASTRO_DBL_EPSILON" in line:
+            errors.append(f"{path.name}:{line_no} bypasses isFPEqual() with a raw epsilon comparison")
+
 for required in [
     "enum Astro_String", "stringFromPGM", "stringFromPGMAddr", "pgmAddrForStr",
     "#define SFP", "#define CFP",

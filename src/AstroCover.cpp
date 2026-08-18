@@ -3,7 +3,7 @@
     Astruino Cover
 */
 
-#include "AstroCover.h"
+#include "Astruino.h"
 
 AstroCover::AstroCover(aposi_t positionIndex)
     : AstroObject(AstroIdentity(AstroIdentity::Cover, 0, positionIndex)), _position(0.0f), _target(0.0f), _travelRate(0.2f), _actuator(nullptr)
@@ -25,5 +25,5 @@ void AstroCover::update(double elapsedSeconds)
     float step = _travelRate * (float)elapsedSeconds;
     if (_position < _target) { _position = _position + step > _target ? _target : _position + step; }
     else if (_position > _target) { _position = _position - step < _target ? _target : _position - step; }
-    if (_actuator && _position == _target) { _actuator->setPower(0.0f); }
+    if (_actuator && isFPEqual(_position, _target)) { _actuator->setPower(0.0f); }
 }

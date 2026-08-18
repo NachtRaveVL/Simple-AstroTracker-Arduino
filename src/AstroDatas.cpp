@@ -3,9 +3,7 @@
     Astruino Datas
 */
 
-#include "AstroDatas.h"
-#include "AstroUtils.h"
-#include <math.h>
+#include "Astruino.h"
 #include <stdio.h>
 
 AstroCalibrationData::AstroCalibrationData()
@@ -25,7 +23,7 @@ double AstroCalibrationData::transform(double value) const
 
 double AstroCalibrationData::inverseTransform(double value) const
 {
-    return multiplier != 0.0 ? (value - offset) / multiplier : value;
+    return !isFPEqual(multiplier, 0.0) ? (value - offset) / multiplier : value;
 }
 
 void AstroCalibrationData::transform(AstroSingleMeasurement *measurementInOut) const
@@ -46,7 +44,7 @@ void AstroCalibrationData::setFromTwoPoints(double point1RawMeasuredAt, double p
                                             double point2RawMeasuredAt, double point2CalibratedTo)
 {
     double rawDelta = point2RawMeasuredAt - point1RawMeasuredAt;
-    if (fabs(rawDelta) < 1.0e-12) {
+    if (isFPEqual(rawDelta, 0.0)) {
         multiplier = 1.0;
         offset = 0.0;
         return;

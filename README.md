@@ -286,9 +286,3 @@ The source validator also guards several family conventions that are easy to acc
 The astronomy calculations are intended for DIY pointing and tracking. The goal is correct, consistent coordinates with errors small compared with the normal mechanical limits of home-built mounts. The library does not try to replace professional high-precision astrometry or ephemeris software.
 
 Alignment models, encoders, guiding, periodic-error correction, and other feedback layers can improve final pointing without making those systems mandatory for a first build.
-
-## Current 0.7.0 Scope
-
-Version 0.7.0 establishes the common controller framework and the first astronomy-specific layer. Catalog lookup, coordinate conversion, moving solar-system targets, mount targets, cover control, camera signaling, thermal balancing, scheduler stages, object identity, pins, sensors, actuators, measurements, triggers, rails, factory helpers, logger/publisher configuration, Flash strings, examples, and host tests are present.
-
-The UI remains intentionally unfinished. Additional guiding, periodic-error correction, richer alignment models, autofocus, satellite tracking, larger catalogs, more direct motor adapters, and Astruino-specific tcMenu screens can be added later without changing the offline-first foundation.

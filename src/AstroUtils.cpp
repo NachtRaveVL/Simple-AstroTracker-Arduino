@@ -3,7 +3,7 @@
     Astruino Utilities
 */
 
-#include "AstroUtils.h"
+#include "Astruino.h"
 #include "AstroStrings.h"
 #include "AstroEnumTrie.h"
 #include "AstroLogger.h"
@@ -360,11 +360,11 @@ bool astroConvertUnits(double valueIn, Astro_UnitsType unitsIn, Astro_UnitsType 
     if (!valueOut) { return false; }
     if (unitsIn == unitsOut) { *valueOut = valueIn; return true; }
     if (unitsCategoryForType(unitsIn) != unitsCategoryForType(unitsOut)) {
-        if (unitsIn == Astro_UnitsType_Power_Wattage && unitsOut == Astro_UnitsType_Current_Amperage && convertParam != 0.0) {
+        if (unitsIn == Astro_UnitsType_Power_Wattage && unitsOut == Astro_UnitsType_Current_Amperage && !isFPEqual(convertParam, 0.0)) {
             *valueOut = valueIn / convertParam;
             return true;
         }
-        if (unitsIn == Astro_UnitsType_Current_Amperage && unitsOut == Astro_UnitsType_Power_Wattage && convertParam != 0.0) {
+        if (unitsIn == Astro_UnitsType_Current_Amperage && unitsOut == Astro_UnitsType_Power_Wattage && !isFPEqual(convertParam, 0.0)) {
             *valueOut = valueIn * convertParam;
             return true;
         }
@@ -682,8 +682,8 @@ bool checkPinIsAnalogOutput(pintype_t pin)
 
 Astro_DirectionMode directionFromSignedValue(double value)
 {
-    return value > ASTRO_DBL_EPSILON ? Astro_DirectionMode_Forward :
-           value < -ASTRO_DBL_EPSILON ? Astro_DirectionMode_Reverse : Astro_DirectionMode_Stop;
+    return isFPEqual(value, 0.0) ? Astro_DirectionMode_Stop :
+           value > 0.0 ? Astro_DirectionMode_Forward : Astro_DirectionMode_Reverse;
 }
 
 double signedValueFromDirection(Astro_DirectionMode direction, double magnitude)

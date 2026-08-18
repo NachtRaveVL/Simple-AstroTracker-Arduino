@@ -67,8 +67,8 @@ int main()
     check(out.dewHeaterPower > 0.0f, "dew heater balances upward");
     check(out.cameraCoolingPower > 0.0f, "camera cooling demand");
     check(out.opticsTargetC <= readings.ambientTemperatureC + 4.01, "optics heat capped near ambient");
-    check(dewActState.writes == 1 && dewActState.power == out.dewHeaterPower, "dew heater actuator output");
-    check(coolActState.writes == 1 && coolActState.power == out.cameraCoolingPower, "camera cooler actuator output");
+    check(dewActState.writes == 1 && isFPEqual(dewActState.power, out.dewHeaterPower), "dew heater actuator output");
+    check(coolActState.writes == 1 && isFPEqual(coolActState.power, out.cameraCoolingPower), "camera cooler actuator output");
 
     AstroCover cover;
     ActuatorState coverActState; AstroCallbackActuator coverAct(actuatorWrite, &coverActState); cover.setActuator(&coverAct);

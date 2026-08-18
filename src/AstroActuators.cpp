@@ -3,8 +3,7 @@
     Astruino Actuators
 */
 
-#include "AstroActuators.h"
-#include <math.h>
+#include "Astruino.h"
 
 AstroActuator::AstroActuator(Astro_ActuatorType actuatorType, aposi_t positionIndex)
     : AstroObject(AstroIdentity(actuatorType, positionIndex)), _actuatorType(actuatorType),
@@ -114,7 +113,7 @@ void AstroDigitalActuator::setPower(float power)
 {
     AstroActuator::setPower(power);
     if (_outputPin.isValid()) {
-        if (_power != 0.0f) { _outputPin.activate(); }
+        if (!isFPEqual(_power, 0.0f)) { _outputPin.activate(); }
         else { _outputPin.deactivate(); }
     }
 }
