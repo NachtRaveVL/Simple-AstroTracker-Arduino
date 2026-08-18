@@ -1,0 +1,384 @@
+/*  Astruino: Simple automation controller for DIY astronomical tracking systems.
+    Copyright (C) 2026 NachtRaveVL
+    Astruino Interfaces
+*/
+
+#ifndef AstroInterfaces_H
+#define AstroInterfaces_H
+
+class AstroObject;
+class AstroActuator;
+class AstroSensor;
+class AstroMount;
+class AstroRail;
+class AstroAxisDriver;
+class AstroTrigger;
+class AstroObservationDevice;
+class AstroCover;
+
+template<class TObject> class AstroAttachment;
+class AstroActuatorAttachment;
+class AstroSensorAttachment;
+class AstroAxisDriverAttachment;
+class AstroTriggerAttachment;
+class AstroObservationDeviceAttachment;
+
+struct AstroIdentity;
+struct AstroMeasurement;
+struct AstroSingleMeasurement;
+
+#include "AstroDefines.h"
+
+// Object Interface
+// Common interface shared by system objects and sub-objects so that attachments and
+// controller code can refer to them without depending on a concrete implementation.
+class AstroObjInterface {
+public:
+    virtual ~AstroObjInterface() { ; }
+
+    // Releases references to a system object before it is removed from object storage.
+    virtual void unresolveAny(AstroObject *object) = 0;
+
+    // Returns the object's hashed key and human-readable key string.
+    virtual akey_t getKey() const = 0;
+    virtual AstroString getKeyString() const = 0;
+
+    // Returns true for main system objects and false for embedded sub-objects.
+    virtual bool isObject() const = 0;
+    inline bool isSubObject() const { return !isObject(); }
+};
+
+
+// Digital Input Pin Interface
+struct AstroDigitalInputPinInterface {
+    virtual ~AstroDigitalInputPinInterface() { ; }
+    virtual int digitalRead() = 0;
+    inline int get() { return digitalRead(); }
+};
+
+// Digital Output Pin Interface
+struct AstroDigitalOutputPinInterface {
+    virtual ~AstroDigitalOutputPinInterface() { ; }
+    virtual void digitalWrite(int status) = 0;
+    inline void set(int status) { digitalWrite(status); }
+};
+
+// Analog Input Pin Interface
+struct AstroAnalogInputPinInterface {
+    virtual ~AstroAnalogInputPinInterface() { ; }
+    virtual float analogRead() = 0;
+    virtual int analogRead_raw() = 0;
+    inline float get() { return analogRead(); }
+    inline int get_raw() { return analogRead_raw(); }
+};
+
+// Analog Output Pin Interface
+struct AstroAnalogOutputPinInterface {
+    virtual ~AstroAnalogOutputPinInterface() { ; }
+    virtual void analogWrite(float amount) = 0;
+    virtual void analogWrite_raw(int amount) = 0;
+    inline void set(float amount) { analogWrite(amount); }
+    inline void set_raw(int amount) { analogWrite_raw(amount); }
+};
+
+
+// Angle Units Interface + Storage
+class AstroAngleUnitsInterfaceStorage {
+public:
+    virtual ~AstroAngleUnitsInterfaceStorage() { ; }
+    virtual void setAngleUnits(Astro_UnitsType angleUnits) { _angleUnits = angleUnits; }
+    inline Astro_UnitsType getAngleUnits() const { return _angleUnits; }
+
+protected:
+    Astro_UnitsType _angleUnits;                            // Stored angle units
+    inline AstroAngleUnitsInterfaceStorage(Astro_UnitsType angleUnits = Astro_UnitsType_Undefined)
+        : _angleUnits(angleUnits) { ; }
+};
+
+// Distance Units Interface + Storage
+class AstroDistanceUnitsInterfaceStorage {
+public:
+    virtual ~AstroDistanceUnitsInterfaceStorage() { ; }
+    virtual void setDistanceUnits(Astro_UnitsType distanceUnits) { _distanceUnits = distanceUnits; }
+    inline Astro_UnitsType getDistanceUnits() const { return _distanceUnits; }
+    inline void setSpeedUnits(Astro_UnitsType speedUnits);
+    inline Astro_UnitsType getSpeedUnits() const;
+
+protected:
+    Astro_UnitsType _distanceUnits;                         // Stored distance units
+    inline AstroDistanceUnitsInterfaceStorage(Astro_UnitsType distanceUnits = Astro_UnitsType_Undefined)
+        : _distanceUnits(distanceUnits) { ; }
+};
+
+// Measurement Units Interface
+// Uses virtual accessors so units may be stored locally or shadow another object.
+class AstroMeasurementUnitsInterface {
+public:
+    virtual ~AstroMeasurementUnitsInterface() { ; }
+    virtual void setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t measurementRow = 0) = 0;
+    virtual Astro_UnitsType getMeasurementUnits(uint8_t measurementRow = 0) const = 0;
+
+    inline Astro_UnitsType getRateUnits(uint8_t measurementRow = 0) const;
+    inline Astro_UnitsType getBaseUnits(uint8_t measurementRow = 0) const;
+};
+
+// Measurement Units Storage
+// Provides fixed-size backing storage for one or more measurement rows.
+template <size_t N>
+// Measurement Units Storage
+// Small fixed-size unit array shared by single, double, and triple measurement interfaces.
+class AstroMeasurementUnitsStorage {
+protected:
+    Astro_UnitsType _measurementUnits[N];                   // Stored measurement units by row
+
+    inline AstroMeasurementUnitsStorage(Astro_UnitsType measurementUnits = Astro_UnitsType_Undefined)
+    {
+        for (size_t index = 0; index < N; ++index) { _measurementUnits[index] = measurementUnits; }
+    }
+};
+
+// Single Measurement Units Interface + Storage
+class AstroMeasurementUnitsInterfaceStorageSingle : public AstroMeasurementUnitsInterface,
+                                                    public AstroMeasurementUnitsStorage<1> {
+public:
+    virtual void setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t measurementRow = 0) override;
+    virtual Astro_UnitsType getMeasurementUnits(uint8_t measurementRow = 0) const override;
+
+protected:
+    inline AstroMeasurementUnitsInterfaceStorageSingle(Astro_UnitsType measurementUnits = Astro_UnitsType_Undefined)
+        : AstroMeasurementUnitsStorage<1>(measurementUnits) { ; }
+};
+
+// Double Measurement Units Interface + Storage
+class AstroMeasurementUnitsInterfaceStorageDouble : public AstroMeasurementUnitsInterface,
+                                                    public AstroMeasurementUnitsStorage<2> {
+public:
+    virtual void setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t measurementRow = 0) override;
+    virtual Astro_UnitsType getMeasurementUnits(uint8_t measurementRow = 0) const override;
+
+protected:
+    inline AstroMeasurementUnitsInterfaceStorageDouble(Astro_UnitsType measurementUnits = Astro_UnitsType_Undefined)
+        : AstroMeasurementUnitsStorage<2>(measurementUnits) { ; }
+};
+
+// Triple Measurement Units Interface + Storage
+class AstroMeasurementUnitsInterfaceStorageTriple : public AstroMeasurementUnitsInterface,
+                                                    public AstroMeasurementUnitsStorage<3> {
+public:
+    virtual void setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t measurementRow = 0) override;
+    virtual Astro_UnitsType getMeasurementUnits(uint8_t measurementRow = 0) const override;
+
+protected:
+    inline AstroMeasurementUnitsInterfaceStorageTriple(Astro_UnitsType measurementUnits = Astro_UnitsType_Undefined)
+        : AstroMeasurementUnitsStorage<3>(measurementUnits) { ; }
+};
+
+// Power Units Interface + Storage
+class AstroPowerUnitsInterfaceStorage {
+public:
+    virtual ~AstroPowerUnitsInterfaceStorage() { ; }
+    virtual void setPowerUnits(Astro_UnitsType powerUnits) { _powerUnits = powerUnits; }
+    inline Astro_UnitsType getPowerUnits() const { return _powerUnits; }
+
+protected:
+    Astro_UnitsType _powerUnits;                            // Stored power units
+    inline AstroPowerUnitsInterfaceStorage(Astro_UnitsType powerUnits = Astro_UnitsType_Undefined)
+        : _powerUnits(powerUnits) { ; }
+};
+
+// Temperature Units Interface + Storage
+class AstroTemperatureUnitsInterfaceStorage {
+public:
+    virtual ~AstroTemperatureUnitsInterfaceStorage() { ; }
+    virtual void setTemperatureUnits(Astro_UnitsType temperatureUnits) { _temperatureUnits = temperatureUnits; }
+    inline Astro_UnitsType getTemperatureUnits() const { return _temperatureUnits; }
+
+protected:
+    Astro_UnitsType _temperatureUnits;                      // Stored temperature units
+    inline AstroTemperatureUnitsInterfaceStorage(Astro_UnitsType temperatureUnits = Astro_UnitsType_Undefined)
+        : _temperatureUnits(temperatureUnits) { ; }
+};
+
+
+// Actuator Object Interface
+class AstroActuatorObjectInterface {
+public:
+    virtual ~AstroActuatorObjectInterface() { ; }
+    virtual void setPower(float power) = 0;
+    virtual float getPower() const = 0;
+};
+
+// Sensor Object Interface
+class AstroSensorObjectInterface {
+public:
+    virtual ~AstroSensorObjectInterface() { ; }
+    virtual bool poll(int64_t timestamp = 0, aframe_t frame = 1) = 0;
+    virtual const AstroSingleMeasurement &getMeasurement() const = 0;
+};
+
+// Mount Object Interface
+class AstroMountObjectInterface {
+public:
+    virtual ~AstroMountObjectInterface() { ; }
+    virtual void setTarget(Astro_TargetId targetId) = 0;
+    virtual void stow() = 0;
+    virtual void track() = 0;
+    virtual bool isAligned(double toleranceDegrees = 0.25) const = 0;
+};
+
+// Power Rail Object Interface
+class AstroRailObjectInterface {
+public:
+    virtual ~AstroRailObjectInterface() { ; }
+    virtual bool requestPower(double watts) = 0;
+    virtual void releasePower(double watts) = 0;
+    virtual double getAvailablePower() const = 0;
+};
+
+// Axis Driver Object Interface
+class AstroDriverObjectInterface {
+public:
+    virtual ~AstroDriverObjectInterface() { ; }
+    virtual void setTargetDegrees(double targetDegrees) = 0;
+    virtual void stop() = 0;
+    virtual double getTargetDegrees() const = 0;
+};
+
+// Trigger Object Interface
+class AstroTriggerObjectInterface {
+public:
+    virtual ~AstroTriggerObjectInterface() { ; }
+    virtual bool isTriggered() const = 0;
+};
+
+// Observation Device Interface
+class AstroObservationDeviceInterface {
+public:
+    virtual ~AstroObservationDeviceInterface() { ; }
+    virtual bool ready() const = 0;
+    virtual void startObservation() = 0;
+    virtual void stopObservation() = 0;
+};
+
+
+// Parent Actuator Attachment Interface
+class AstroParentActuatorAttachmentInterface {
+public:
+    virtual AstroActuatorAttachment &getParentActuatorAttachment() = 0;
+    inline void setParentActuator(AstroActuator *actuator);
+    inline AstroActuator *getParentActuator();
+};
+
+// Parent Sensor Attachment Interface
+class AstroParentSensorAttachmentInterface {
+public:
+    virtual AstroSensorAttachment &getParentSensorAttachment() = 0;
+    inline void setParentSensor(AstroSensor *sensor);
+    inline AstroSensor *getParentSensor();
+};
+
+// Parent Mount Attachment Interface
+class AstroParentMountAttachmentInterface {
+public:
+    virtual AstroAttachment<AstroMount> &getParentMountAttachment() = 0;
+    inline void setParentMount(AstroMount *mount);
+    inline AstroMount *getParentMount();
+};
+
+// Parent Cover Attachment Interface
+class AstroParentCoverAttachmentInterface {
+public:
+    virtual AstroAttachment<AstroCover> &getParentCoverAttachment() = 0;
+    inline void setParentCover(AstroCover *cover);
+    inline AstroCover *getParentCover();
+};
+
+// Parent Rail Attachment Interface
+class AstroParentRailAttachmentInterface {
+public:
+    virtual AstroAttachment<AstroRail> &getParentRailAttachment() = 0;
+    inline void setParentRail(AstroRail *rail);
+    inline AstroRail *getParentRail();
+};
+
+// Sensor Attachment Interface
+class AstroSensorAttachmentInterface {
+public:
+    virtual AstroSensorAttachment &getSensorAttachment() = 0;
+    inline void setSensor(AstroSensor *sensor);
+    inline AstroSensor *getSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+};
+
+// Temperature Sensor Attachment Interface
+class AstroTemperatureSensorAttachmentInterface {
+public:
+    virtual AstroSensorAttachment &getTemperatureSensorAttachment() = 0;
+    inline void setTemperatureSensor(AstroSensor *sensor);
+    inline AstroSensor *getTemperatureSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+};
+
+// Humidity Sensor Attachment Interface
+class AstroHumiditySensorAttachmentInterface {
+public:
+    virtual AstroSensorAttachment &getHumiditySensorAttachment() = 0;
+    inline void setHumiditySensor(AstroSensor *sensor);
+    inline AstroSensor *getHumiditySensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+};
+
+// Wind Speed Sensor Attachment Interface
+class AstroWindSpeedSensorAttachmentInterface {
+public:
+    virtual AstroSensorAttachment &getWindSpeedSensorAttachment() = 0;
+    inline void setWindSpeedSensor(AstroSensor *sensor);
+    inline AstroSensor *getWindSpeedSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+};
+
+// Rain Sensor Attachment Interface
+class AstroRainSensorAttachmentInterface {
+public:
+    virtual AstroSensorAttachment &getRainSensorAttachment() = 0;
+    inline void setRainSensor(AstroSensor *sensor);
+    inline AstroSensor *getRainSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+};
+
+// Light Sensor Attachment Interface
+class AstroLightSensorAttachmentInterface {
+public:
+    virtual AstroSensorAttachment &getLightSensorAttachment() = 0;
+    inline void setLightSensor(AstroSensor *sensor);
+    inline AstroSensor *getLightSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+};
+
+// Position Sensor Attachment Interface
+class AstroPositionSensorAttachmentInterface {
+public:
+    virtual AstroSensorAttachment &getPositionSensorAttachment() = 0;
+    inline void setPositionSensor(AstroSensor *sensor);
+    inline AstroSensor *getPositionSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+};
+
+// Axis Driver Attachment Interface
+class AstroAxisDriverAttachmentInterface {
+public:
+    virtual AstroAxisDriverAttachment &getAxisDriverAttachment() = 0;
+    inline void setAxisDriver(AstroAxisDriver *driver);
+    inline AstroAxisDriver *getAxisDriver();
+};
+
+// Trigger Attachment Interface
+class AstroTriggerAttachmentInterface {
+public:
+    virtual AstroTriggerAttachment &getTriggerAttachment() = 0;
+    inline void setTrigger(AstroTrigger *trigger);
+    inline AstroTrigger *getTrigger();
+};
+
+// Observation Device Attachment Interface
+class AstroObservationDeviceAttachmentInterface {
+public:
+    virtual AstroObservationDeviceAttachment &getObservationDeviceAttachment() = 0;
+    inline void setObservationDevice(AstroObservationDevice *device);
+    inline AstroObservationDevice *getObservationDevice();
+};
+
+#endif // /ifndef AstroInterfaces_H

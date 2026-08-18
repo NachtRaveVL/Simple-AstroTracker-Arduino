@@ -1,0 +1,5 @@
+build-host/
+build/
+.vscode/
+*.user
+.DS_Store

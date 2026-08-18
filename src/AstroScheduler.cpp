@@ -1,0 +1,192 @@
+/*  Astruino: Simple automation controller for DIY astronomical tracking systems.
+    Copyright (C) 2026 NachtRaveVL
+    Astruino Scheduler
+*/
+
+#include "AstroScheduler.h"
+#include "AstroUtils.h"
+#include <stdio.h>
+
+AstroSchedulerConfig::AstroSchedulerConfig()
+    : deploySunAltitudeDegrees(ASTRO_SCH_DEPLOY_SUN_ALT_DEG), stowSunAltitudeDegrees(ASTRO_SCH_STOW_SUN_ALT_DEG),
+      alignmentToleranceDegrees(ASTRO_SCH_ALIGN_TOL_DEG), settleSeconds(ASTRO_SCH_SETTLE_SECS), reportIntervalSeconds(ASTRO_SCH_REPORT_INTERVAL_SECS)
+{ ; }
+
+AstroScheduler::AstroScheduler()
+    : _mount(nullptr), _cover(nullptr), _device(nullptr), _thermal(nullptr), _logger(nullptr),
+      _targetId(Astro_Target_M42), _config(), _stage(Astro_SchedulerStage_DayStowed),
+      _stageStart(0), _settleStart(0), _lastEnvReport(0)
+{ ; }
+
+void AstroScheduler::setMount(AstroMount *mount) { _mount = mount; }
+void AstroScheduler::setCover(AstroCover *cover) { _cover = cover; }
+void AstroScheduler::setObservationDevice(AstroObservationDevice *device) { _device = device; }
+void AstroScheduler::setThermalBalancer(AstroThermalBalancer *thermal) { _thermal = thermal; }
+void AstroScheduler::setLogger(AstroLogger *logger) { _logger = logger; }
+void AstroScheduler::setTarget(Astro_TargetId targetId) { _targetId = targetId; if (_mount) { _mount->setTarget(targetId); } }
+void AstroScheduler::setConfig(const AstroSchedulerConfig &config) { _config = config; }
+
+void AstroScheduler::enterStage(Astro_SchedulerStage stage, int64_t unixTime)
+{
+    if (_stage == stage) { return; }
+    _stage = stage;
+    _stageStart = unixTime;
+    _settleStart = 0;
+    if (!_logger) { return; }
+    const char *name = "Unknown";
+    switch (stage) {
+        case Astro_SchedulerStage_DayStowed: name = "Day stowed"; break;
+        case Astro_SchedulerStage_Deploying: name = "Deploying"; break;
+        case Astro_SchedulerStage_Cooling: name = "Cooling"; break;
+        case Astro_SchedulerStage_Slewing: name = "Slewing"; break;
+        case Astro_SchedulerStage_Settling: name = "Settling"; break;
+        case Astro_SchedulerStage_Observing: name = "Observing"; break;
+        case Astro_SchedulerStage_Warming: name = "Warming"; break;
+        case Astro_SchedulerStage_Stowing: name = "Stowing"; break;
+        case Astro_SchedulerStage_SafeStowed: name = "Safe stowed"; break;
+        case Astro_SchedulerStage_Count:
+        case Astro_SchedulerStage_Undefined:
+            break;
+    }
+    _logger->logMessage(unixTime, name);
+}
+
+void AstroScheduler::reportEnvironment(int64_t unixTime, const AstroThermalReadings &readings, const AstroThermalOutputs &outputs)
+{
+    if (!_logger || !_config.reportIntervalSeconds) { return; }
+    if (_lastEnvReport && unixTime < _lastEnvReport + _config.reportIntervalSeconds) { return; }
+    _logger->logEnvironment(unixTime, readings.ambientTemperatureC, readings.humidityPercent, outputs.dewPointC,
+                            readings.opticsTemperatureC, readings.cameraSensorTemperatureC, readings.cameraBodyTemperatureC,
+                            outputs.dewHeaterPower, outputs.cameraCoolingPower, outputs.cameraFanPower);
+    _lastEnvReport = unixTime;
+}
+
+void AstroScheduler::update(int64_t unixTime, double elapsedSeconds, double sunAltitudeDegrees,
+                            bool safeToObserve, const AstroThermalReadings &thermalReadings)
+{
+    AstroThermalOutputs outputs;
+    if (_thermal) { outputs = _thermal->update(thermalReadings, elapsedSeconds); }
+    reportEnvironment(unixTime, thermalReadings, outputs);
+
+    if (_cover) { _cover->update(elapsedSeconds); }
+    if (_mount) { _mount->update(unixTime, elapsedSeconds); }
+
+    if (!safeToObserve) {
+        if (_device) { _device->stopObservation(); }
+        if (_mount) { _mount->stow(); }
+        if (_cover && (!_mount || _mount->isAligned(_config.alignmentToleranceDegrees))) { _cover->close(); }
+        if (_thermal) { _thermal->setMode(Astro_ThermalMode_SafeStowed); }
+        enterStage(Astro_SchedulerStage_SafeStowed, unixTime);
+        return;
+    }
+
+    if (_stage == Astro_SchedulerStage_SafeStowed && sunAltitudeDegrees < _config.deploySunAltitudeDegrees) {
+        enterStage(Astro_SchedulerStage_DayStowed, unixTime);
+    }
+
+    switch (_stage) {
+        case Astro_SchedulerStage_DayStowed: {
+            if (_thermal) { _thermal->setMode(Astro_ThermalMode_DayStorage); }
+            if (_mount) { _mount->stow(); }
+            if (_cover) { _cover->close(); }
+            if (sunAltitudeDegrees <= _config.deploySunAltitudeDegrees) {
+                if (_cover) { _cover->open(); }
+                enterStage(Astro_SchedulerStage_Deploying, unixTime);
+            }
+        } break;
+
+        case Astro_SchedulerStage_Deploying: {
+            if (_cover) { _cover->open(); }
+            if (!_cover || _cover->isOpen()) {
+                if (_thermal) { _thermal->setMode(Astro_ThermalMode_NightObserving); }
+                enterStage(Astro_SchedulerStage_Cooling, unixTime);
+            }
+        } break;
+
+        case Astro_SchedulerStage_Cooling: {
+            if (_thermal) { _thermal->setMode(Astro_ThermalMode_NightObserving); }
+            if (!_thermal || _thermal->cameraStable(thermalReadings, ASTRO_SCH_CAMERA_STABLE_DEG)) {
+                if (_mount) { _mount->setTarget(_targetId); _mount->track(); }
+                enterStage(Astro_SchedulerStage_Slewing, unixTime);
+            }
+        } break;
+
+        case Astro_SchedulerStage_Slewing: {
+            if (_mount) { _mount->track(); }
+            if (!_mount || _mount->isAligned(_config.alignmentToleranceDegrees)) {
+                _settleStart = unixTime;
+                enterStage(Astro_SchedulerStage_Settling, unixTime);
+                _settleStart = unixTime;
+            }
+        } break;
+
+        case Astro_SchedulerStage_Settling: {
+            bool aligned = !_mount || _mount->isAligned(_config.alignmentToleranceDegrees);
+            if (!aligned) { _settleStart = unixTime; }
+            else if (unixTime >= _settleStart + _config.settleSeconds) {
+                if (_device && _device->ready()) { _device->startObservation(); }
+                enterStage(Astro_SchedulerStage_Observing, unixTime);
+            }
+        } break;
+
+        case Astro_SchedulerStage_Observing: {
+            if (sunAltitudeDegrees >= _config.stowSunAltitudeDegrees) {
+                if (_device) { _device->stopObservation(); }
+                if (_mount) { _mount->stow(); }
+                if (_thermal) { _thermal->setMode(Astro_ThermalMode_DayStorage); }
+                enterStage(Astro_SchedulerStage_Warming, unixTime);
+            }
+        } break;
+
+        case Astro_SchedulerStage_Warming: {
+            if (_mount) { _mount->stow(); }
+            if (!_thermal || _thermal->cameraSafeToStow(thermalReadings)) {
+                enterStage(Astro_SchedulerStage_Stowing, unixTime);
+            }
+        } break;
+
+        case Astro_SchedulerStage_Stowing: {
+            if (_mount) { _mount->stow(); }
+            if (!_mount || _mount->isAligned(_config.alignmentToleranceDegrees)) {
+                if (_cover) { _cover->close(); }
+                if (!_cover || _cover->isClosed()) { enterStage(Astro_SchedulerStage_DayStowed, unixTime); }
+            }
+        } break;
+
+        case Astro_SchedulerStage_SafeStowed:
+        default:
+            break;
+    }
+}
+
+AstroSchedulerSubData::AstroSchedulerSubData()
+    : AstroSchedulerConfig()
+{ ; }
+
+bool AstroSchedulerSubData::toJSON(char *bufferOut, size_t bufferSize) const
+{
+    if (!bufferOut || !bufferSize) { return false; }
+    int written = snprintf(bufferOut, bufferSize,
+        "{\"deploySunAlt\":%.4f,\"stowSunAlt\":%.4f,\"alignTol\":%.5f,\"settleSecs\":%u,\"reportSecs\":%lu}",
+        deploySunAltitudeDegrees, stowSunAltitudeDegrees, alignmentToleranceDegrees,
+        (unsigned int)settleSeconds, (unsigned long)reportIntervalSeconds);
+    return written >= 0 && (size_t)written < bufferSize;
+}
+
+bool AstroSchedulerSubData::fromJSON(const char *jsonIn)
+{
+    if (!jsonIn) { return false; }
+    double deployIn, stowIn, alignIn;
+    unsigned long settleIn, reportIn;
+    if (!astroJSONGetDouble(jsonIn, "deploySunAlt", &deployIn) ||
+        !astroJSONGetDouble(jsonIn, "stowSunAlt", &stowIn) ||
+        !astroJSONGetDouble(jsonIn, "alignTol", &alignIn) ||
+        !astroJSONGetUnsignedLong(jsonIn, "settleSecs", &settleIn) ||
+        !astroJSONGetUnsignedLong(jsonIn, "reportSecs", &reportIn)) { return false; }
+    deploySunAltitudeDegrees = deployIn;
+    stowSunAltitudeDegrees = stowIn;
+    alignmentToleranceDegrees = alignIn;
+    settleSeconds = (uint16_t)settleIn;
+    reportIntervalSeconds = (uint32_t)reportIn;
+    return true;
+}
