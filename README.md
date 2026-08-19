@@ -1,7 +1,7 @@
 # Astruino
 Astruino: Simple Astro Tracker Automation Controller.
 
-**Simple-AstroTracker-Arduino v0.7.0.0**
+**Simple-AstroTracker-Arduino v0.7.1.0**
 
 Simple automation controller for DIY astronomical tracking systems.  
 Licensed under the non-restrictive MIT license.
@@ -46,8 +46,6 @@ Our Keep-It-Simple controller system:
   * Astruino-specific menus and overview screens are still TODO work while the astronomy controller and equipment model are established.
 
 Made primarily for Arduino microcontrollers / build environments, but should also fit PlatformIO, Espressif, Teensy, STM32, Pico/RP2040/RP2350, GIGA, Portenta, and similar modern MCU platforms. Smaller boards may still be usable with the catalog, UI, networking, and other optional features trimmed down.
-
-Dependencies include: ArduinoJson, ArxContainer, ArxSmartPtr, I2C_EEPROM, IoAbstraction, RTClib, TaskManagerIO, Time, and platform-like SD/SPI/Wire libraries. Optional features may also use Adafruit GPS, MQTT, tcMenu, WiFi101, WiFiNINA_Generic, WiFiEspAT, or Ethernet. Additional tcMenu display/input dependencies depend on the UI hardware selected.
 
 *If you value the work that we do, our small team always appreciates a subscription to our [Patreon](www.patreon.com/nachtrave).*
 
@@ -159,13 +157,38 @@ Astruino-specific menu behavior is still TODO work, so the shared UI header does
 
 #### External Libraries
 
-Certain setups require extra libraries depending on the selected hardware.
+Astruino uses the following controller-side libraries depending on the enabled hardware and features:
 
-* **RTClib / Time** provide the normal Arduino-side time foundation. A fixed installation can also supply time through an `AstroTimeProvider`.
-* **Adafruit GPS** is optional and can provide time and location when GPS is preferred over a fixed location.
-* **tcMenu** and its display/input dependencies are optional. The common adapter layer is present, while Astruino-specific menus remain under development.
-* **MQTT** and the selected WiFi/Ethernet library are only needed when network publishing or remote integration is enabled.
-* **I2C_EEPROM** and platform storage libraries can be used by application or data-export workflows where external storage is desired.
+* **ArduinoJson** for JSON configuration data.
+* **ArxContainer** and **ArxSmartPtr** for container and shared-pointer support on Arduino targets.
+* **I2C_EEPROM** for external I2C EEPROM storage.
+* **RTClib** and **Time** for RTC and system time handling. A fixed installation can also provide time through an `AstroTimeProvider`.
+* **TaskManagerIO** and **IoAbstraction** for multitasking and I/O support when multitasking is enabled.
+* **Adafruit GPS** when GPS-derived time or location is enabled.
+* **MQTT** when MQTT publishing is enabled.
+* **SD** plus the platform SPI/Wire support for local storage and buses.
+* **WiFi101**, **WiFiNINA_Generic**, **WiFiEspAT**, or **Ethernet** when the matching optional network path is enabled.
+
+Networking is optional. Normal telescope tracking does not require a network connection.
+
+#### External UI Libraries
+
+The optional tcMenu UI layer can use the same display and input libraries across the controller family:
+
+* **tcMenu** for the menu, remote-control, and display abstraction layer.
+* **Adafruit GFX**, **Adafruit ILI9341**, and **Adafruit ST7735 and ST7789 Library** for supported color displays.
+* **Adafruit FT6206**, **Adafruit TouchScreen**, and optional **XPT2046_Touchscreen** for touch input.
+* **LiquidCrystalIO** for character LCD displays.
+* **U8g2** for monochrome OLED and LCD displays.
+* **TFT_eSPI** for supported advanced TFT configurations.
+* **tcUnicodeHelper** for Unicode-capable tcMenu display paths.
+
+* **U8g2** custom display setups use the selected U8g2 device class and are statically linked to that display configuration.
+* **TFT_eSPI** uses its `TFT_eSPI\User_Setup.h` configuration and therefore requires a rebuild when that hardware setup changes.
+* **BSP LCD / BSP Touch** support can use the included ChromaArt/BSP adapter layer on supported STM32/mbed targets. This is an advanced hardware-specific path.
+* **ST7789 custom TFT / TFT_eSPI** setups use statically configured screen dimensions and require a rebuild when those values change.
+
+Astruino-specific menus and overview screens are still TODO work. The shared tcMenu adapter files are already present so the project-specific UI can be built on the same plumbing as Hydruino and Helioduino.
 
 ### Initialization
 
@@ -295,49 +318,260 @@ Temperature and humidity sensors are useful for dew control. Rain, wind, and enc
 
 ## Example Usage
 
-Below are several examples of controller usage.
+Below are several of the main examples of controller usage. The example sketches in the repository remain the source of truth.
 
 ### Simple Equatorial Tracker Example
 
-The `SimpleEquatorial` example shows the smallest useful two-axis tracking setup. Motor hardware is supplied through callbacks so the mount code does not depend on one specific driver library.
+`SimpleEquatorial` is the basic two-axis tracking example and the best small starting point for a normal telescope mount.
 
 ```Arduino
+// Simple-AstroTracker-Arduino Equatorial Tracking Example
+//
+// A very small equatorial setup using two user supplied axis drivers. The callbacks here
+// only show where the actual stepper/servo calls would be made. This lets the example
+// work with whatever motor hardware and gear reduction the tracker was built around.
+
 #include <Astruino.h>
+
+// Observer Settings
+#define SETUP_LATITUDE                  49.2827             // Latitude, degrees (+N / -S)
+#define SETUP_LONGITUDE                -123.1207            // Longitude, degrees (+E / -W)
+#define SETUP_ELEVATION                70.0                 // Elevation, meters
+#define SETUP_START_UNIX               1787101200LL         // Replace with RTC/GPS/NTP time in a real setup
 
 Astruino astroController(Astro_MountType_Equatorial);
 
+static double axisTargets[2] = {0.0, 0.0};
+static millis_t lastUpdate = 0;
+
+void setAxisTarget(void *context, uint8_t axisIndex, double targetDegrees)
+{
+    (void)context;
+    if (axisIndex >= 2) { return; }
+    axisTargets[axisIndex] = targetDegrees;
+
+    // Send targetDegrees to the stepper/servo controller here.
+    // The mount does not care what kind of motor is attached to each axis.
+}
+
 void setup()
 {
-    AstroObserver observer(49.2827, -123.1207, 70.0);
+    Serial.begin(115200);
+    while (!Serial) { ; }
 
+    AstroObserver observer(SETUP_LATITUDE, SETUP_LONGITUDE, SETUP_ELEVATION);
     astroController.init();
     astroController.setObserver(observer);
+    astroController.launch();
 
     auto &mount = astroController.getMount();
     mount.setTarget(Astro_Target_M42);
     mount.setAxisRates(6.0, 6.0);
+    mount.setStowPosition(0.0, 0.0);
+    mount.setAxisTargetCallback(setAxisTarget);
     mount.track();
 
-    astroController.launch();
+    lastUpdate = millis();
+    Serial.println(F("Astruino equatorial tracker started"));
 }
 
 void loop()
 {
-    astroController.update();
+    millis_t now = millis();
+    double elapsedSeconds = (now - lastUpdate) / 1000.0;
+    lastUpdate = now;
+
+    int64_t unixTime = SETUP_START_UNIX + (now / 1000);
+    astroController.getMount().update(unixTime, elapsedSeconds);
+
+    static millis_t lastReport = 0;
+    if (now - lastReport >= 5000) {
+        lastReport = now;
+
+        Serial.print(F("RA axis target: "));
+        Serial.print(axisTargets[0], 4);
+        Serial.print(F(" deg, DEC axis target: "));
+        Serial.print(axisTargets[1], 4);
+        Serial.println(F(" deg"));
+    }
 }
 ```
 
-A real build still needs to connect the mount's axis target callbacks to stepper, servo, DC motor, or external motion-control hardware.
+### Night Session Example
+
+`NightSession` shows the mount, cover, observation trigger, environmental state, logging, and scheduler working together through a complete nighttime sequence.
+
+```Arduino
+// Simple-AstroTracker-Arduino Night Session Example
+//
+// Demonstrates the scheduler driving a simple homemade setup with a mount, powered
+// cover, camera trigger, weather safety input, and basic environmental readings.
+
+#include <Astruino.h>
+
+#define SETUP_LATITUDE                  49.2827
+#define SETUP_LONGITUDE                -123.1207
+#define SETUP_ELEVATION                70.0
+#define SETUP_START_UNIX               1787101200LL
+
+Astruino astroController(Astro_MountType_Equatorial);
+
+static millis_t lastUpdate = 0;
+static float coverPower = 0.0f;
+static bool cameraActive = false;
+
+void driveCover(void *context, float power)
+{
+    (void)context;
+    coverPower = power;
+    // Drive a relay/H-bridge/servo here. Positive opens, negative closes.
+}
+
+void triggerCamera(void *context, bool active)
+{
+    (void)context;
+    cameraActive = active;
+    digitalWrite(LED_BUILTIN, active ? HIGH : LOW); // Replace with shutter/record pin if desired.
+}
+
+void logEvent(void *context, const AstroLogEvent &event)
+{
+    (void)context;
+    Serial.print(event.prefix);
+    Serial.println(event.message);
+}
+
+void setup()
+{
+    Serial.begin(115200);
+    while (!Serial) { ; }
+    pinMode(LED_BUILTIN, OUTPUT);
+
+    AstroObserver observer(SETUP_LATITUDE, SETUP_LONGITUDE, SETUP_ELEVATION);
+    astroController.init();
+    astroController.setObserver(observer);
+    astroController.launch();
+
+    static AstroCallbackActuator coverActuator(driveCover, nullptr, Astro_ActuatorType_Cover);
+    astroController.getCover().setActuator(&coverActuator);
+    astroController.getCover().setTravelRate(0.15f);
+
+    astroController.getCamera().setTriggerCallback(triggerCamera);
+    astroController.getCamera().setReady(true);
+    astroController.getLogger().setSink(logEvent);
+
+    astroController.getScheduler().setTarget(Astro_Target_M31);
+
+    lastUpdate = millis();
+}
+
+void loop()
+{
+    millis_t now = millis();
+    double elapsedSeconds = (now - lastUpdate) / 1000.0;
+    lastUpdate = now;
+    int64_t unixTime = SETUP_START_UNIX + (now / 1000);
+
+    // Replace these example values with real light/weather/environment sensors.
+    double seconds = now / 1000.0;
+    double sunAltitude = -15.0;                            // Below twilight threshold in this example
+    bool safeToObserve = true;                             // Rain/wind/limit interlocks feed this value
+
+    AstroThermalReadings readings;
+    readings.ambientTemperatureC = 8.0 - seconds * 0.0002;
+    readings.humidityPercent = 78.0;
+    readings.opticsTemperatureC = 8.5;
+    readings.cameraSensorTemperatureC = -9.5;
+    readings.cameraBodyTemperatureC = 7.0;
+
+    astroController.update(unixTime, elapsedSeconds, sunAltitude, safeToObserve, readings);
+
+    static millis_t lastReport = 0;
+    if (now - lastReport >= 5000) {
+        lastReport = now;
+        Serial.print(F("Cover: "));
+        Serial.print(astroController.getCover().getPosition(), 2);
+        Serial.print(F(" power: "));
+        Serial.print(coverPower, 2);
+        Serial.print(F(" camera: "));
+        Serial.println(cameraActive ? F("recording") : F("idle"));
+    }
+}
+```
+
+### Data Writer Example
+
+`DataWriter` exports built-in target data for external-storage workflows. This is especially useful on storage-constrained controllers or when library data needs to be regenerated for another storage target.
+
+```Arduino
+// Simple-AstroTracker-Arduino Data Writer Example
+//
+// In this example we export the built-in AstroLib target records as compact JSON. This is
+// useful when preparing external SD/EEPROM storage for a constrained controller, or when
+// regenerating the built-in data after catalog changes.
+//
+// Astruino can operate with all built-in target data kept in Flash. External storage is
+// optional and is mainly useful when program space matters or user catalog data is desired.
+//
+// The companion tests/AstroLibExportToCPP sketch performs the opposite development task:
+// it exports checked-out target data as C++ PROGMEM cases for inclusion in the library.
+
+#include <Astruino.h>
+
+void setup()
+{
+    Serial.begin(115200);
+    while (!Serial) { ; }
+
+    Serial.println(F("Astruino external data export"));
+
+    Serial.println(F("=== Library strings ==="));
+    for (int stringIndex = 0; stringIndex < AStr_Count; ++stringIndex) {
+        Serial.print(stringIndex);
+        Serial.print(':');
+        Serial.println(SFP((Astro_String)stringIndex));
+        yield();
+    }
+
+    Serial.println(F("=== AstroLib targets ==="));
+
+    char jsonBuffer[256];
+    char targetId[ASTRO_TARGET_ID_MAXSIZE];
+
+    for (int targetIndex = 0; targetIndex < Astro_Target_Count; ++targetIndex) {
+        Astro_TargetId target = (Astro_TargetId)targetIndex;
+        const AstroTargetData *targetData = astroLib.checkoutTargetData(target);
+
+        if (targetData) {
+            if (astroTargetIdToString(target, targetId, sizeof(targetId)) &&
+                targetData->toJSON(jsonBuffer, sizeof(jsonBuffer))) {
+                Serial.print(targetId);
+                Serial.print(':');
+                Serial.println(jsonBuffer);
+            }
+
+            astroLib.returnTargetData(targetData);
+        }
+
+        yield();
+    }
+
+    Serial.println(F("Done!"));
+}
+
+void loop()
+{ ; }
+```
 
 ### Main System Examples
 
 * **SimpleEquatorial** shows a small equatorial tracker using user-supplied motor target callbacks.
 * **AstroLibLookup** shows target checkout, coordinate resolution, and return.
-* **NightSession** shows a mount, cover, camera trigger, environmental input, logger, and scheduler working together.
-* **ThermalCamera** shows the experimental camera/dew thermal-balancing path.
-* **DataWriter** shows catalog serialization for an external-data workflow.
+* **NightSession** shows a mount, cover, observation trigger, environmental input, logger, and scheduler working together.
+* **ThermalCamera** shows the camera/dew thermal-balancing path.
+* **DataWriter** exports target data for external-data workflows.
 
-The examples intentionally keep final motor and sensor hardware behind callbacks and interfaces so they can be adapted to whatever parts are available.
+The examples keep final motor and sensor hardware behind callbacks and interfaces so they can be adapted to the parts used by the actual build.
 
 ## Astronomy Callouts
 

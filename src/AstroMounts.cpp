@@ -192,19 +192,29 @@ bool AstroMount::isAtParkPosition(double toleranceDegrees) const
 
 bool AstroMount::updateAxisPosition(uint8_t axisIndex)
 {
+    AstroAxisState *axis = axisIndex == 0 ? &_primaryAxis : axisIndex == 1 ? &_secondaryAxis : nullptr;
+    if (!axis) { return false; }
+
     double positionDegrees = 0.0;
+    bool updated = false;
     if (_axisPositionCallback && _axisPositionCallback(_axisPositionContext, axisIndex, &positionDegrees)) {
         setAxisPosition(axisIndex, positionDegrees);
-        return true;
+        updated = true;
+    } else if (!_axisPositionCallback) {
+        AstroAxisDriver *driver = getAxisDriver(axisIndex);
+        if (driver && driver->getPositionDegrees(&positionDegrees)) {
+            setAxisPosition(axisIndex, positionDegrees);
+            updated = true;
+        }
     }
 
-    AstroAxisDriver *driver = getAxisDriver(axisIndex);
-    if (driver && driver->getPositionDegrees(&positionDegrees)) {
-        setAxisPosition(axisIndex, positionDegrees);
-        return true;
+    if (updated && axis->limitsEnabled && !axis->withinLimits(axis->positionDegrees)) {
+        _limitHit = true;
+        _tracking = false;
+        _parking = false;
+        _parked = false;
     }
-
-    return false;
+    return updated;
 }
 
 void AstroMount::moveAxis(AstroAxisState *axis, double elapsedSeconds, bool wrappedAxis)
@@ -225,7 +235,23 @@ void AstroMount::moveAxis(AstroAxisState *axis, double elapsedSeconds, bool wrap
 
 void AstroMount::update(int64_t unixTime, double elapsedSeconds)
 {
+    // An explicitly configured position callback is authoritative. If it stops
+    // reporting, do not replace missing real feedback with simulated motion.
+    bool primaryFeedback = false;
+    bool secondaryFeedback = _mountType == Astro_MountType_SingleAxis;
+    if (_axisPositionCallback) {
+        primaryFeedback = updateAxisPosition(0);
+        if (_mountType != Astro_MountType_SingleAxis) { secondaryFeedback = updateAxisPosition(1); }
+        if (!primaryFeedback || !secondaryFeedback || _limitHit) {
+            _tracking = false;
+            _parking = false;
+            _parked = false;
+            return;
+        }
+    }
+
     if (_tracking) { updateTarget(unixTime, elapsedSeconds); }
+    if (_limitHit) { return; }
 
     if (_primaryDriver) { _primaryDriver->setTargetDegrees(_primaryAxis.targetDegrees); }
     if (_secondaryDriver && _mountType != Astro_MountType_SingleAxis) {
@@ -239,8 +265,11 @@ void AstroMount::update(int64_t unixTime, double elapsedSeconds)
         }
     }
 
-    bool primaryFeedback = updateAxisPosition(0);
-    bool secondaryFeedback = _mountType == Astro_MountType_SingleAxis ? true : updateAxisPosition(1);
+    if (!_axisPositionCallback) {
+        primaryFeedback = updateAxisPosition(0);
+        secondaryFeedback = _mountType == Astro_MountType_SingleAxis ? true : updateAxisPosition(1);
+        if (_limitHit) { return; }
+    }
 
     if (!primaryFeedback) { moveAxis(&_primaryAxis, elapsedSeconds, _mountType == Astro_MountType_AltAz); }
     if (!secondaryFeedback && _mountType != Astro_MountType_SingleAxis) { moveAxis(&_secondaryAxis, elapsedSeconds); }

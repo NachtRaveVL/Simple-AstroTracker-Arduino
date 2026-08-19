@@ -1,14 +1,61 @@
 {
     "name": "Simple-AstroTracker-Arduino",
-    "version": "0.7.0.0",
+    "version": "0.7.1.0",
     "description": "Astruino: Simple automation controller for DIY astronomical tracking systems.",
-    "keywords": ["arduino", "astronomy", "telescope", "tracking", "astrophotography"],
+    "keywords": [
+        "arduino",
+        "astronomy",
+        "telescope",
+        "tracking",
+        "astrophotography"
+    ],
     "repository": {
         "type": "git",
         "url": "https://github.com/NachtRaveVL/Simple-AstroTracker-Arduino.git"
     },
-    "authors": [{"name": "NachtRaveVL"}],
+    "authors": [
+        {
+            "name": "NachtRaveVL"
+        }
+    ],
     "license": "MIT",
     "frameworks": "arduino",
-    "platforms": "*"
+    "platforms": "*",
+    "examples": [
+        {
+            "name": "SimpleEquatorial",
+            "base": "examples/SimpleEquatorial",
+            "files": [
+                "SimpleEquatorial.ino"
+            ]
+        },
+        {
+            "name": "AstroLibLookup",
+            "base": "examples/AstroLibLookup",
+            "files": [
+                "AstroLibLookup.ino"
+            ]
+        },
+        {
+            "name": "NightSession",
+            "base": "examples/NightSession",
+            "files": [
+                "NightSession.ino"
+            ]
+        },
+        {
+            "name": "ThermalCamera",
+            "base": "examples/ThermalCamera",
+            "files": [
+                "ThermalCamera.ino"
+            ]
+        },
+        {
+            "name": "DataWriter",
+            "base": "examples/DataWriter",
+            "files": [
+                "DataWriter.ino"
+            ]
+        }
+    ]
 }

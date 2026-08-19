@@ -120,6 +120,17 @@ int main()
     check(!parkedFeedbackMount.isParked(), "position feedback invalidates stale parked state");
     parkedFeedbackMount.park();
     check(parkedFeedbackMount.isParking(), "feedback mount begins park movement");
+    parkedFeedbackState.available = false;
+    parkedFeedbackMount.update(1787011201, 1.0);
+    check(!parkedFeedbackMount.isParked() && !parkedFeedbackMount.isParking(),
+          "lost explicit position feedback fails closed instead of simulating park motion");
+
+    AstroMount feedbackLimitMount(Astro_MountType_Equatorial);
+    AxisFeedbackState feedbackLimitState; feedbackLimitState.primary = 15.0; feedbackLimitState.secondary = 0.0;
+    feedbackLimitMount.setAxisLimits(0, -10.0, 10.0);
+    feedbackLimitMount.setAxisPositionCallback(axisRead, &feedbackLimitState);
+    feedbackLimitMount.update(1787011200, 0.0);
+    check(feedbackLimitMount.isLimitHit(), "external position feedback outside software limit faults mount");
 
     AstroMount feedbackMount(Astro_MountType_Equatorial);
     feedbackMount.setObserver(AstroObserver(49.2827, -123.1207)); feedbackMount.setAxisRates(360.0, 360.0);
