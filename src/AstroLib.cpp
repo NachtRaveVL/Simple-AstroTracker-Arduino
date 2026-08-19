@@ -286,7 +286,7 @@ bool AstroTargetsLibrary::dropUserTargetData(const AstroTargetData *targetData)
 {
     if (!targetData || (unsigned int)targetData->targetId >= Astro_Target_Count) { return false; }
     AstroTargetsLibraryBook *book = _targetsData[targetData->targetId];
-    if (!book || !book->userSet) { return false; }
+    if (!book || !book->userSet || book->count > 1) { return false; }
     delete book;
     _targetsData[targetData->targetId] = nullptr;
     _hasUserTargets = false;

@@ -4,11 +4,6 @@
 #include <stdio.h>
 #include <string.h>
 
-static bool nearValue(double actual, double expected, double tolerance = 1.0e-6)
-{
-    return fabs(actual - expected) <= tolerance;
-}
-
 static void testObjectData()
 {
     AstroMount mount(Astro_MountType_AltAz, 3);
@@ -71,7 +66,7 @@ static void testFactoryObjects()
     snprintf(data.name, sizeof(data.name), "DC12V #2");
     object = AstroFactory::newObjectFromData(&data);
     assert(object && object->getId().isRailType());
-    assert(nearValue(static_cast<AstroRail *>(object)->getVoltage(), 12.0));
+    assert(isFPEqual(static_cast<AstroRail *>(object)->getVoltage(), 12.0));
     delete object;
 
     data.idType = AstroIdentity::Cover;
@@ -103,7 +98,7 @@ static void testMeasurementData()
     AstroMeasurementData decoded;
     assert(decoded.fromJSON(json));
     assert(decoded.measurementRow == data.measurementRow);
-    assert(nearValue(decoded.value, data.value));
+    assert(isFPEqual(decoded.value, data.value));
     assert(decoded.units == data.units);
     assert(decoded.timestamp == data.timestamp);
     assert(decoded.frame == data.frame);
@@ -135,8 +130,8 @@ static void testSystemData()
     assert(strcmp(decoded.systemName, data.systemName) == 0);
     assert(decoded.systemMode == data.systemMode);
     assert(decoded.measurementMode == data.measurementMode);
-    assert(nearValue(decoded.observer.latitudeDegrees, data.observer.latitudeDegrees));
-    assert(nearValue(decoded.observer.longitudeDegrees, data.observer.longitudeDegrees));
+    assert(isFPEqual(decoded.observer.latitudeDegrees, data.observer.latitudeDegrees));
+    assert(isFPEqual(decoded.observer.longitudeDegrees, data.observer.longitudeDegrees));
     assert(decoded.scheduler.settleSeconds == data.scheduler.settleSeconds);
     assert(decoded.scheduler.reportIntervalSeconds == data.scheduler.reportIntervalSeconds);
     assert(decoded.logger.logLevel == data.logger.logLevel);
@@ -150,16 +145,16 @@ static void testCalibrationData()
 {
     AstroCalibrationData data(AstroIdentity(Astro_SensorType_Temperature, 1), Astro_UnitsType_Temperature_Celsius);
     data.setFromTwoPoints(0.1, -10.0, 0.9, 30.0);
-    assert(nearValue(data.transform(0.5), 10.0));
-    assert(nearValue(data.inverseTransform(10.0), 0.5));
+    assert(isFPEqual(data.transform(0.5), 10.0));
+    assert(isFPEqual(data.inverseTransform(10.0), 0.5));
 
     char json[256];
     assert(data.toJSON(json, sizeof(json)));
     AstroCalibrationData decoded;
     assert(decoded.fromJSON(json));
     assert(decoded.calibrationUnits == data.calibrationUnits);
-    assert(nearValue(decoded.multiplier, data.multiplier));
-    assert(nearValue(decoded.offset, data.offset));
+    assert(isFPEqual(decoded.multiplier, data.multiplier));
+    assert(isFPEqual(decoded.offset, data.offset));
 }
 
 int main()

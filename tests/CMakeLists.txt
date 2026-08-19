@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+    add_compile_options(-Wall -Wextra -Wpedantic -Wfloat-equal -Werror)
 endif()
 
 find_package(Python3 COMPONENTS Interpreter)
@@ -64,6 +64,9 @@ target_link_libraries(test_infrastructure PRIVATE astruino_host)
 add_executable(test_serialization host/test_serialization.cpp)
 target_link_libraries(test_serialization PRIVATE astruino_host)
 
+add_executable(test_hardening host/test_hardening.cpp)
+target_link_libraries(test_hardening PRIVATE astruino_host)
+
 enable_testing()
 add_test(NAME astronomy COMMAND test_astronomy)
 add_test(NAME catalog COMMAND test_catalog)
@@ -71,6 +74,7 @@ add_test(NAME automation COMMAND test_automation)
 add_test(NAME enums COMMAND test_enums)
 add_test(NAME infrastructure COMMAND test_infrastructure)
 add_test(NAME serialization COMMAND test_serialization)
+add_test(NAME hardening COMMAND test_hardening)
 
 if(Python3_Interpreter_FOUND)
     add_test(NAME enum_trie_generated COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_enum_trie.py --check)
