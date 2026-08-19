@@ -598,7 +598,3 @@ Camera cooling is still early functionality and should be reviewed carefully aga
 The astronomy calculations are intended for DIY pointing and tracking. The goal is correct, consistent coordinates with errors small compared with the normal mechanical limits of home-built mounts.
 
 Astruino does not try to replace professional high-precision astrometry or ephemeris software. Alignment models, periodic-error correction, automatic meridian handling, and higher-order pointing corrections remain natural extensions for mounts that require more precision.
-
-## License
-
-Astruino is released under the MIT License. See `LICENSE` for details.
