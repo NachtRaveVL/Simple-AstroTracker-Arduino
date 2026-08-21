@@ -1,7 +1,7 @@
 # Astruino
 Astruino: Simple Astro Tracker Automation Controller.
 
-**Simple-AstroTracker-Arduino v0.7.1.0**
+**Simple-AstroTracker-Arduino v0.7.2.0**
 
 Simple automation controller for DIY astronomical tracking systems.  
 Licensed under the non-restrictive MIT license.

@@ -19,7 +19,7 @@
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 
-    Simple-AstroTracker-Arduino - Version 0.7.1.0
+    Simple-AstroTracker-Arduino - Version 0.7.2.0
 */
 
 #ifndef Astruino_H
