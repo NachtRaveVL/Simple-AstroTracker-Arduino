@@ -113,13 +113,13 @@ void AstroThermalBalancer::applyOutput(AstroActuatorAttachment &attachment, floa
 {
     if (!attachment.isSet()) { return; }
     attachment.setupActivation(power);
-    if (fabsf(power) > ASTRO_FLT_EPSILON) { attachment.enableActivation(); }
+    if (fabsf(power) > FLT_EPSILON) { attachment.enableActivation(); }
     else { attachment.disableActivation(); }
 }
 
 void AstroThermalBalancer::update()
 {
-    millis_t now = astroNZMillis();
+    millis_t now = nzMillis();
     bool firstUpdate = !_lastUpdate;
     double elapsedSeconds = firstUpdate ? 0.0 : (double)(now - _lastUpdate) / 1000.0;
     _lastUpdate = now;

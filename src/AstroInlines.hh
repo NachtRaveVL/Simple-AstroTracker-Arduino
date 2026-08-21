@@ -33,9 +33,9 @@ inline bool isValidKey(akey_t key) { return key != akey_none; }
 inline bool isValidFrame(aframe_t frame) { return frame != aframe_none; }
 
 // Returns if two single-precision floating point values are equal within the library epsilon.
-inline bool isFPEqual(float lhs, float rhs) { return fabsf(rhs - lhs) <= ASTRO_FLT_EPSILON; }
+inline bool isFPEqual(float lhs, float rhs) { return fabsf(rhs - lhs) <= FLT_EPSILON; }
 // Returns if two double-precision floating point values are equal within the library epsilon.
-inline bool isFPEqual(double lhs, double rhs) { return fabs(rhs - lhs) <= ASTRO_DBL_EPSILON; }
+inline bool isFPEqual(double lhs, double rhs) { return fabs(rhs - lhs) <= DBL_EPSILON; }
 
 // Returns the first units value that is not undefined.
 inline Astro_UnitsType definedUnitsElse(Astro_UnitsType units1, Astro_UnitsType units2)
@@ -148,12 +148,12 @@ struct AstroBitResolution {
 
     inline float transform(int value) const
     {
-        return maxVal > 0 ? astroConstrain(value / (float)maxVal, 0.0f, 1.0f) : 0.0f;
+        return maxVal > 0 ? constrain(value / (float)maxVal, 0.0f, 1.0f) : 0.0f;
     }
 
     inline int inverseTransform(float value) const
     {
-        return astroConstrain((int)roundf(maxVal * astroConstrain(value, 0.0f, 1.0f)), 0, maxVal);
+        return constrain((int)roundf(maxVal * constrain(value, 0.0f, 1.0f)), 0, maxVal);
     }
 };
 

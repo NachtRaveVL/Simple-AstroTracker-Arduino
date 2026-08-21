@@ -48,7 +48,7 @@ void AstroCover::setTravelTimeout(double seconds)
 
 void AstroCover::setPosition(float position)
 {
-    _position = astroConstrain(position, 0.0f, 1.0f);
+    _position = constrain(position, 0.0f, 1.0f);
 }
 
 void AstroCover::clearFault()
@@ -87,13 +87,13 @@ void AstroCover::applyActuatorPower(float power)
 {
     if (!_actuator.isSet()) { return; }
     _actuator.setupActivation(power);
-    if (fabsf(power) > ASTRO_FLT_EPSILON) { _actuator.enableActivation(); }
+    if (fabsf(power) > FLT_EPSILON) { _actuator.enableActivation(); }
     else { _actuator.disableActivation(); }
 }
 
 void AstroCover::update()
 {
-    const millis_t now = astroNZMillis();
+    const millis_t now = nzMillis();
     const double elapsedSeconds = _lastUpdate ? (double)(now - _lastUpdate) / 1000.0 : 0.0;
     _lastUpdate = now;
     if (_openSensor.isSet()) { pollLimitSensor(_openSensor, &_openLimitActive); }
@@ -126,8 +126,8 @@ void AstroCover::update()
     applyActuatorPower(opening ? 1.0f : -1.0f);
 
     float step = _travelRate * (float)(elapsedSeconds > 0.0 ? elapsedSeconds : 0.0);
-    if (opening) { _position = astroConstrain(_position + step, 0.0f, 1.0f); }
-    else { _position = astroConstrain(_position - step, 0.0f, 1.0f); }
+    if (opening) { _position = constrain(_position + step, 0.0f, 1.0f); }
+    else { _position = constrain(_position - step, 0.0f, 1.0f); }
 
     if (!_openSensor.isSet() && !_closedSensor.isSet()) {
         targetReached = opening ? isOpen() : isClosed();

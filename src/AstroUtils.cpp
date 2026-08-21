@@ -5,7 +5,6 @@
 
 #include "Astruino.h"
 #include "AstroStrings.h"
-#include "AstroEnumTrie.h"
 #include "AstroLogger.h"
 #include <math.h>
 #include <ctype.h>
@@ -118,16 +117,37 @@ aposi_t astroPositionIndexFromString(const AstroString &positionIndexStr)
 AstroString systemModeToString(Astro_SystemMode value, bool excludeSpecial)
 {
     switch (value) {
-        case Astro_SystemMode_Tracking: return SFP(AStr_Tracking);
-        case Astro_SystemMode_Balancing: return SFP(AStr_Balancing);
-        case Astro_SystemMode_Manual: return SFP(AStr_Manual);
-        case Astro_SystemMode_Count: return !excludeSpecial ? SFP(AStr_Enum_Count) : AstroString();
+        case Astro_SystemMode_Tracking:
+            return SFP(AStr_Tracking);
+        case Astro_SystemMode_Balancing:
+            return SFP(AStr_Balancing);
+        case Astro_SystemMode_Manual:
+            return SFP(AStr_Manual);
+        case Astro_SystemMode_Count:
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : AstroString();
         case Astro_SystemMode_Undefined: break;
     }
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_SystemMode systemModeFromString(const AstroString &value) { return astroDecodeSystemMode(value); }
+// All remaining methods generated from minimum spanning trie
+
+Astro_SystemMode systemModeFromString(const AstroString &value)
+{
+    switch (value.length() > 0 ? value[0] : '\0') {
+        case 'B':
+            return Astro_SystemMode_Balancing;
+        case 'C':
+            return Astro_SystemMode_Count;
+        case 'M':
+            return Astro_SystemMode_Manual;
+        case 'T':
+            return Astro_SystemMode_Tracking;
+        case 'U':
+            return Astro_SystemMode_Undefined;
+    }
+    return Astro_SystemMode_Undefined;
+}
 
 AstroString measurementModeToString(Astro_MeasurementMode value, bool excludeSpecial)
 {
@@ -141,7 +161,22 @@ AstroString measurementModeToString(Astro_MeasurementMode value, bool excludeSpe
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_MeasurementMode measurementModeFromString(const AstroString &value) { return astroDecodeMeasurementMode(value); }
+Astro_MeasurementMode measurementModeFromString(const AstroString &value)
+{
+    switch (value.length() > 0 ? value[0] : '\0') {
+        case 'C':
+            return Astro_MeasurementMode_Count;
+        case 'I':
+            return Astro_MeasurementMode_Imperial;
+        case 'M':
+            return Astro_MeasurementMode_Metric;
+        case 'S':
+            return Astro_MeasurementMode_Scientific;
+        case 'U':
+            return Astro_MeasurementMode_Undefined;
+    }
+    return Astro_MeasurementMode_Undefined;
+}
 
 AstroString actuatorTypeToString(Astro_ActuatorType value, bool excludeSpecial)
 {
@@ -159,7 +194,34 @@ AstroString actuatorTypeToString(Astro_ActuatorType value, bool excludeSpecial)
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_ActuatorType actuatorTypeFromString(const AstroString &value) { return astroDecodeActuatorType(value); }
+Astro_ActuatorType actuatorTypeFromString(const AstroString &value)
+{
+    switch (value.length() > 6 ? value[6] : '\0') {
+        case '\0':
+            switch (value.length() > 2 ? value[2] : '\0') {
+                case 'n':
+                    return Astro_ActuatorType_Fan;
+                case 'u':
+                    return Astro_ActuatorType_Count;
+                case 'v':
+                    return Astro_ActuatorType_Cover;
+            }
+            return Astro_ActuatorType_Undefined;
+        case 'C':
+            return Astro_ActuatorType_CameraCooler;
+        case 'c':
+            return Astro_ActuatorType_Generic;
+        case 'n':
+            return Astro_ActuatorType_Undefined;
+        case 'r':
+            return Astro_ActuatorType_Focuser;
+        case 't':
+            return Astro_ActuatorType_DewHeater;
+        case 'x':
+            return Astro_ActuatorType_MountAxis;
+    }
+    return Astro_ActuatorType_Undefined;
+}
 
 AstroString sensorTypeToString(Astro_SensorType value, bool excludeSpecial)
 {
@@ -181,7 +243,46 @@ AstroString sensorTypeToString(Astro_SensorType value, bool excludeSpecial)
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_SensorType sensorTypeFromString(const AstroString &value) { return astroDecodeSensorType(value); }
+Astro_SensorType sensorTypeFromString(const AstroString &value)
+{
+    switch (value.length() > 0 ? value[0] : '\0') {
+        case 'C':
+            switch (value.length() > 1 ? value[1] : '\0') {
+                case 'a':
+                    return Astro_SensorType_CameraTemperature;
+                case 'o':
+                    return Astro_SensorType_Count;
+                case 'u':
+                    return Astro_SensorType_Current;
+            }
+            return Astro_SensorType_Undefined;
+        case 'G':
+            return Astro_SensorType_Generic;
+        case 'H':
+            return Astro_SensorType_Humidity;
+        case 'L':
+            switch (value.length() > 2 ? value[2] : '\0') {
+                case 'g':
+                    return Astro_SensorType_Light;
+                case 'm':
+                    return Astro_SensorType_LimitSwitch;
+            }
+            return Astro_SensorType_Undefined;
+        case 'P':
+            return Astro_SensorType_Position;
+        case 'R':
+            return Astro_SensorType_Rain;
+        case 'T':
+            return Astro_SensorType_Temperature;
+        case 'U':
+            return Astro_SensorType_Undefined;
+        case 'V':
+            return Astro_SensorType_Voltage;
+        case 'W':
+            return Astro_SensorType_WindSpeed;
+    }
+    return Astro_SensorType_Undefined;
+}
 
 AstroString mountTypeToString(Astro_MountType value, bool excludeSpecial)
 {
@@ -195,7 +296,22 @@ AstroString mountTypeToString(Astro_MountType value, bool excludeSpecial)
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_MountType mountTypeFromString(const AstroString &value) { return astroDecodeMountType(value); }
+Astro_MountType mountTypeFromString(const AstroString &value)
+{
+    switch (value.length() > 0 ? value[0] : '\0') {
+        case 'A':
+            return Astro_MountType_AltAz;
+        case 'C':
+            return Astro_MountType_Count;
+        case 'E':
+            return Astro_MountType_Equatorial;
+        case 'S':
+            return Astro_MountType_SingleAxis;
+        case 'U':
+            return Astro_MountType_Unknown;
+    }
+    return Astro_MountType_Unknown;
+}
 
 AstroString railTypeToString(Astro_RailType value, bool excludeSpecial)
 {
@@ -210,7 +326,24 @@ AstroString railTypeToString(Astro_RailType value, bool excludeSpecial)
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_RailType railTypeFromString(const AstroString &value) { return astroDecodeRailType(value); }
+Astro_RailType railTypeFromString(const AstroString &value)
+{
+    switch (value.length() > 2 ? value[2] : '\0') {
+        case '1':
+            return Astro_RailType_DC12V;
+        case '2':
+            return Astro_RailType_DC24V;
+        case '3':
+            return Astro_RailType_DC3V3;
+        case '5':
+            return Astro_RailType_DC5V;
+        case 'd':
+            return Astro_RailType_Undefined;
+        case 'u':
+            return Astro_RailType_Count;
+    }
+    return Astro_RailType_Undefined;
+}
 
 AstroString pinModeToString(Astro_PinMode value, bool excludeSpecial)
 {
@@ -228,7 +361,34 @@ AstroString pinModeToString(Astro_PinMode value, bool excludeSpecial)
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_PinMode pinModeFromString(const AstroString &value) { return astroDecodePinMode(value); }
+Astro_PinMode pinModeFromString(const AstroString &value)
+{
+    switch (value.length() > 16 ? value[16] : '\0') {
+        case '\0':
+            switch (value.length() > 7 ? value[7] : '\0') {
+                case '\0':
+                    return Astro_PinMode_Count;
+                case 'I':
+                    return Astro_PinMode_Digital_Input;
+                case 'O':
+                    return Astro_PinMode_Digital_Output;
+                case 'e':
+                    return Astro_PinMode_Undefined;
+                case 'n':
+                    return Astro_PinMode_Analog_Input;
+                case 'u':
+                    return Astro_PinMode_Analog_Output;
+            }
+            return Astro_PinMode_Undefined;
+        case 'D':
+            return Astro_PinMode_Digital_Input_PullDown;
+        case 'U':
+            return Astro_PinMode_Digital_Input_PullUp;
+        case 'h':
+            return Astro_PinMode_Digital_Output_PushPull;
+    }
+    return Astro_PinMode_Undefined;
+}
 
 AstroString enableModeToString(Astro_EnableMode value, bool excludeSpecial)
 {
@@ -245,7 +405,28 @@ AstroString enableModeToString(Astro_EnableMode value, bool excludeSpecial)
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_EnableMode enableModeFromString(const AstroString &value) { return astroDecodeEnableMode(value); }
+Astro_EnableMode enableModeFromString(const AstroString &value)
+{
+    switch (value.length() > 0 ? value[0] : '\0') {
+        case 'A':
+            return Astro_EnableMode_Average;
+        case 'C':
+            return Astro_EnableMode_Count;
+        case 'H':
+            return Astro_EnableMode_Highest;
+        case 'I':
+            return Astro_EnableMode_InOrder;
+        case 'L':
+            return Astro_EnableMode_Lowest;
+        case 'M':
+            return Astro_EnableMode_Multiply;
+        case 'R':
+            return Astro_EnableMode_RevOrder;
+        case 'U':
+            return Astro_EnableMode_Undefined;
+    }
+    return Astro_EnableMode_Undefined;
+}
 
 AstroString unitsCategoryToString(Astro_UnitsCategory value, bool excludeSpecial)
 {
@@ -266,7 +447,44 @@ AstroString unitsCategoryToString(Astro_UnitsCategory value, bool excludeSpecial
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_UnitsCategory unitsCategoryFromString(const AstroString &value) { return astroDecodeUnitsCategory(value); }
+Astro_UnitsCategory unitsCategoryFromString(const AstroString &value)
+{
+    switch (value.length() > 0 ? value[0] : '\0') {
+        case 'A':
+            return Astro_UnitsCategory_Angle;
+        case 'C':
+            switch (value.length() > 1 ? value[1] : '\0') {
+                case 'o':
+                    return Astro_UnitsCategory_Count;
+                case 'u':
+                    return Astro_UnitsCategory_Current;
+            }
+            return Astro_UnitsCategory_Undefined;
+        case 'D':
+            return Astro_UnitsCategory_Distance;
+        case 'H':
+            return Astro_UnitsCategory_Humidity;
+        case 'P':
+            switch (value.length() > 1 ? value[1] : '\0') {
+                case 'e':
+                    return Astro_UnitsCategory_Percentile;
+                case 'o':
+                    return Astro_UnitsCategory_Power;
+            }
+            return Astro_UnitsCategory_Undefined;
+        case 'R':
+            return Astro_UnitsCategory_Raw;
+        case 'S':
+            return Astro_UnitsCategory_Speed;
+        case 'T':
+            return Astro_UnitsCategory_Temperature;
+        case 'U':
+            return Astro_UnitsCategory_Undefined;
+        case 'V':
+            return Astro_UnitsCategory_Voltage;
+    }
+    return Astro_UnitsCategory_Undefined;
+}
 
 AstroString unitsTypeToSymbol(Astro_UnitsType value, bool excludeSpecial)
 {
@@ -292,7 +510,60 @@ AstroString unitsTypeToSymbol(Astro_UnitsType value, bool excludeSpecial)
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_UnitsType unitsTypeFromSymbol(const AstroString &value) { return astroDecodeUnitsType(value); }
+Astro_UnitsType unitsTypeFromSymbol(const AstroString &value)
+{
+    switch (value.length() > 1 ? value[1] : '\0') {
+        case '\0':
+            switch (value.length() > 0 ? value[0] : '\0') {
+                case '%':
+                    return Astro_UnitsType_Percentile_100;
+                case '1':
+                    return Astro_UnitsType_Raw_1;
+                case 'A':
+                    return Astro_UnitsType_Current_Amperage;
+                case 'C':
+                    return Astro_UnitsType_Temperature_Celsius;
+                case 'F':
+                    return Astro_UnitsType_Temperature_Fahrenheit;
+                case 'K':
+                    return Astro_UnitsType_Temperature_Kelvin;
+                case 'V':
+                    return Astro_UnitsType_Voltage_Volts;
+                case 'W':
+                    return Astro_UnitsType_Power_Wattage;
+                case 'm':
+                    return Astro_UnitsType_Distance_Meters;
+            }
+            return Astro_UnitsType_Undefined;
+        case '/':
+            switch (value.length() > 0 ? value[0] : '\0') {
+                case 'J':
+                    return Astro_UnitsType_Power_Wattage;
+                case 'm':
+                    return Astro_UnitsType_Speed_MetersPerSec;
+            }
+            return Astro_UnitsType_Undefined;
+        case 'R':
+            return Astro_UnitsType_Humidity_RH;
+        case 'a':
+            return Astro_UnitsType_Angle_Radians_2pi;
+        case 'e':
+            return Astro_UnitsType_Angle_Degrees_360;
+        case 'n':
+            return Astro_UnitsType_Undefined;
+        case 'o':
+            return Astro_UnitsType_Count;
+        case 't':
+            switch (value.length() > 2 ? value[2] : '\0') {
+                case '\0':
+                    return Astro_UnitsType_Distance_Feet;
+                case '/':
+                    return Astro_UnitsType_Speed_FeetPerSec;
+            }
+            return Astro_UnitsType_Undefined;
+    }
+    return Astro_UnitsType_Undefined;
+}
 
 AstroString targetClassToString(Astro_TargetClass value, bool excludeSpecial)
 {
@@ -311,7 +582,36 @@ AstroString targetClassToString(Astro_TargetClass value, bool excludeSpecial)
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_TargetClass targetClassFromString(const AstroString &value) { return astroDecodeTargetClass(value); }
+Astro_TargetClass targetClassFromString(const AstroString &value)
+{
+    switch (value.length() > 4 ? value[4] : '\0') {
+        case '\0':
+            return Astro_TargetClass_Star;
+        case 'C':
+            return Astro_TargetClass_OpenCluster;
+        case 'e':
+            return Astro_TargetClass_PlanetaryNebula;
+        case 'f':
+            return Astro_TargetClass_Unknown;
+        case 'l':
+            return Astro_TargetClass_Nebula;
+        case 'r':
+            switch (value.length() > 0 ? value[0] : '\0') {
+                case 'O':
+                    return Astro_TargetClass_Other;
+                case 'S':
+                    return Astro_TargetClass_SolarSystem;
+            }
+            return Astro_TargetClass_Unknown;
+        case 't':
+            return Astro_TargetClass_Count;
+        case 'u':
+            return Astro_TargetClass_GlobularCluster;
+        case 'x':
+            return Astro_TargetClass_Galaxy;
+    }
+    return Astro_TargetClass_Unknown;
+}
 
 AstroString thermalModeToString(Astro_ThermalMode value, bool excludeSpecial)
 {
@@ -325,7 +625,22 @@ AstroString thermalModeToString(Astro_ThermalMode value, bool excludeSpecial)
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_ThermalMode thermalModeFromString(const AstroString &value) { return astroDecodeThermalMode(value); }
+Astro_ThermalMode thermalModeFromString(const AstroString &value)
+{
+    switch (value.length() > 0 ? value[0] : '\0') {
+        case 'C':
+            return Astro_ThermalMode_Count;
+        case 'D':
+            return Astro_ThermalMode_DayStorage;
+        case 'N':
+            return Astro_ThermalMode_NightObserving;
+        case 'S':
+            return Astro_ThermalMode_SafeStowed;
+        case 'U':
+            return Astro_ThermalMode_Undefined;
+    }
+    return Astro_ThermalMode_Undefined;
+}
 
 AstroString schedulerStageToString(Astro_SchedulerStage value, bool excludeSpecial)
 {
@@ -346,7 +661,44 @@ AstroString schedulerStageToString(Astro_SchedulerStage value, bool excludeSpeci
     return !excludeSpecial ? SFP(AStr_Undefined) : AstroString();
 }
 
-Astro_SchedulerStage schedulerStageFromString(const AstroString &value) { return astroDecodeSchedulerStage(value); }
+Astro_SchedulerStage schedulerStageFromString(const AstroString &value)
+{
+    switch (value.length() > 2 ? value[2] : '\0') {
+        case 'd':
+            return Astro_SchedulerStage_Undefined;
+        case 'e':
+            return Astro_SchedulerStage_Slewing;
+        case 'f':
+            return Astro_SchedulerStage_SafeStowed;
+        case 'o':
+            switch (value.length() > 0 ? value[0] : '\0') {
+                case 'C':
+                    return Astro_SchedulerStage_Cooling;
+                case 'S':
+                    return Astro_SchedulerStage_Stowing;
+            }
+            return Astro_SchedulerStage_Undefined;
+        case 'p':
+            return Astro_SchedulerStage_Deploying;
+        case 'r':
+            return Astro_SchedulerStage_Warming;
+        case 's':
+            return Astro_SchedulerStage_Observing;
+        case 't':
+            return Astro_SchedulerStage_Settling;
+        case 'u':
+            switch (value.length() > 0 ? value[0] : '\0') {
+                case 'C':
+                    return Astro_SchedulerStage_Count;
+                case 'F':
+                    return Astro_SchedulerStage_Fault;
+            }
+            return Astro_SchedulerStage_Undefined;
+        case 'y':
+            return Astro_SchedulerStage_DayStowed;
+    }
+    return Astro_SchedulerStage_Undefined;
+}
 
 Astro_UnitsCategory unitsCategoryForType(Astro_UnitsType units)
 {

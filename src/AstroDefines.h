@@ -6,14 +6,94 @@
 #ifndef AstroDefines_H
 #define AstroDefines_H
 
-#include "AstroCompat.h"
-
-
-#ifndef ASTRO_FLT_EPSILON
-#define ASTRO_FLT_EPSILON 0.00001f                         // Single-precision floating point error tolerance
+#include <stddef.h>
+#include <stdint.h>
+#include <float.h>
+#ifndef ARDUINO
+#include <chrono>
 #endif
-#ifndef ASTRO_DBL_EPSILON
-#define ASTRO_DBL_EPSILON 0.0000000000001                  // Double-precision floating point error tolerance
+
+#ifndef JOIN
+#define JOIN_(X,Y) X##_##Y
+#define JOIN(X,Y) JOIN_(X,Y)
+#endif
+#ifndef JOIN3
+#define JOIN3_(X,Y,Z) X##_##Y##_##Z
+#define JOIN3(X,Y,Z) JOIN3_(X,Y,Z)
+#endif
+#ifndef STR
+#define STR_(X) #X
+#define STR(X) STR_(X)
+#endif
+
+#ifndef FLT_EPSILON
+#define FLT_EPSILON 0.00001f                         // Single-precision floating point error tolerance
+#endif
+#ifndef DBL_EPSILON
+#define DBL_EPSILON 0.0000000000001                  // Double-precision floating point error tolerance
+#endif
+#ifndef FLT_UNDEF
+#define FLT_UNDEF __FLT_MAX__
+#endif
+#ifndef DBL_UNDEF
+#define DBL_UNDEF __DBL_MAX__
+#endif
+#ifndef MIN_PER_DAY
+#define MIN_PER_DAY 1440
+#endif
+#ifndef TWO_PI
+#define TWO_PI 6.283185307179586476925286766559
+#endif
+
+#ifdef ARDUINO
+typedef typeof(millis()) millis_t;
+#else
+typedef uint32_t millis_t;
+inline millis_t millis()
+{
+    using namespace std::chrono;
+    return (millis_t)duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
+}
+template<class T> inline T constrain(T value, T low, T high) { return value < low ? low : (value > high ? high : value); }
+#ifndef HIGH
+#define HIGH 0x1
+#endif
+#ifndef LOW
+#define LOW 0x0
+#endif
+#ifndef INPUT
+#define INPUT 0x0
+#endif
+#ifndef OUTPUT
+#define OUTPUT 0x1
+#endif
+#ifndef INPUT_PULLUP
+#define INPUT_PULLUP 0x2
+#endif
+#ifndef INPUT_PULLDOWN
+#define INPUT_PULLDOWN 0x3
+#endif
+#ifndef PROGMEM
+#define PROGMEM
+#endif
+typedef int16_t pintype_t;
+#endif
+
+typedef int8_t aposi_t;
+typedef uint16_t akey_t;
+typedef int8_t aid_t;
+typedef uint32_t aframe_t;
+#define millis_none ((millis_t)0)
+#define apin_none ((pintype_t)-1)
+#define apin_virtual ((pintype_t)100)
+#define apinchnl_none ((int8_t)-127)
+#define aposi_none ((aposi_t)-1)
+#define akey_none ((akey_t)0)
+#define aid_none ((aid_t)-1)
+#define aframe_none ((aframe_t)0)
+
+#ifndef ASTRO_DEFAULT_MAXSIZE
+#define ASTRO_DEFAULT_MAXSIZE 8
 #endif
 
 #ifndef ASTRO_STRING_BUFFER_SIZE

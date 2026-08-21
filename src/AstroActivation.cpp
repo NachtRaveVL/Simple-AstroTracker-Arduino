@@ -3,7 +3,7 @@
     Astruino Activations
 */
 
-#include "AstroActivation.h"
+#include "Astruino.h"
 #include "AstroActuators.h"
 
 AstroActivationHandle::AstroActivationHandle(SharedPtr<AstroActuator> actuatorIn, Astro_DirectionMode direction,
@@ -31,7 +31,7 @@ AstroActivationHandle &AstroActivationHandle::operator=(SharedPtr<AstroActuator>
     if (actuator != actuatorIn && isValid()) {
         if (actuator) { unset(); }
         actuator = actuatorIn;
-        if (actuator && actuator->addActivationHandle(this)) { checkTime = astroNZMillis(); }
+        if (actuator && actuator->addActivationHandle(this)) { checkTime = nzMillis(); }
         else if (actuator) { actuator = nullptr; }
     }
     return *this;
@@ -40,7 +40,7 @@ AstroActivationHandle &AstroActivationHandle::operator=(SharedPtr<AstroActuator>
 AstroActivationHandle &AstroActivationHandle::operator=(const AstroActivation &activationIn)
 {
     activation = activationIn;
-    if (actuator && !checkTime) { checkTime = astroNZMillis(); }
+    if (actuator && !checkTime) { checkTime = nzMillis(); }
     return *this;
 }
 

@@ -43,6 +43,9 @@ extern time_t unixTime(DateTime localTime);
 extern DateTime localTime(time_t unixTime);
 #endif
 
+// This will return a non-zero millis time value, so that 0 time values can be reserved for other use.
+inline millis_t nzMillis() { return millis() ?: 1; }
+
 // Debug assertion helpers used by ASTRO_SOFT_ASSERT / ASTRO_HARD_ASSERT when enabled.
 extern void astroSoftAssert(bool condition, const AstroString &message, const char *file, const char *function, int line);
 extern void astroHardAssert(bool condition, const AstroString &message, const char *file, const char *function, int line);

@@ -17,7 +17,7 @@ AstroActuator::AstroActuator(const AstroObjectData *dataIn)
 
 void AstroActuator::setPower(float power)
 {
-    _power = astroConstrain(power, -1.0f, 1.0f);
+    _power = constrain(power, -1.0f, 1.0f);
 }
 
 bool AstroActuator::addActivationHandle(AstroActivationHandle *handle)
@@ -92,7 +92,7 @@ void AstroActuator::resolveActivations()
 
 void AstroActuator::update()
 {
-    millis_t now = astroMillis();
+    millis_t now = millis();
     for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
         _handles[i]->elapseTo(now);
     }

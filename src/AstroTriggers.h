@@ -25,7 +25,7 @@ public:
 
     virtual void update();
     virtual void unresolveAny(AstroObject *object) override { _sensor.unresolveAny(object); }
-    void reset(bool state = false, millis_t now = astroNZMillis());
+    void reset(bool state = false, millis_t now = nzMillis());
 
     virtual bool isTriggered() const override { return _state; }
     inline bool getPendingState() const { return _pendingState; }
@@ -41,7 +41,7 @@ protected:
     millis_t _pendingSince;                                  // Pending state start time, in milliseconds
     uint32_t _stableTimeMs;                                  // Minimum stable time, in milliseconds
 
-    bool updateState(bool requestedState, millis_t now = astroNZMillis());
+    bool updateState(bool requestedState, millis_t now = nzMillis());
     virtual bool evaluateMeasurement(const AstroSingleMeasurement &measurement) const = 0;
 };
 

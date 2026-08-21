@@ -50,7 +50,7 @@ public:
     void updateObjects();
 
 protected:
-    AstroMap<akey_t, SharedPtr<AstroObject>, ASTRO_SYS_OBJECTS_MAXSIZE> _objects; // Shared object collection, keyed by AstroIdentity
+    Map<akey_t, SharedPtr<AstroObject>, ASTRO_SYS_OBJECTS_MAXSIZE> _objects; // Shared object collection, keyed by AstroIdentity
 
     SharedPtr<AstroObject> objectById_Col(const AstroIdentity &id) const;
 };

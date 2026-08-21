@@ -27,7 +27,7 @@ struct AstroActivation {
                     float intensityIn = 0.0f,
                     millis_t durationIn = 0,
                     Astro_ActivationFlags flagsIn = Astro_ActivationFlags_None)
-        : direction(directionIn), intensity(astroConstrain(intensityIn, 0.0f, 1.0f)),
+        : direction(directionIn), intensity(constrain(intensityIn, 0.0f, 1.0f)),
           duration(durationIn), flags(flagsIn)
     { ; }
 
@@ -63,7 +63,7 @@ struct AstroActivationHandle {
 
     void unset();
     void elapseBy(millis_t delta);
-    void elapseTo(millis_t time = astroNZMillis());
+    void elapseTo(millis_t time = nzMillis());
 
     inline bool isActive() const { return actuator && checkTime; }
     inline bool isValid() const { return activation.isValid(); }
@@ -71,7 +71,7 @@ struct AstroActivationHandle {
     inline bool isUntimed() const { return activation.isUntimed(); }
     inline bool isForced() const { return activation.isForced(); }
     inline millis_t getTimeLeft() const { return activation.duration; }
-    inline millis_t getTimeActive(millis_t time = astroNZMillis()) const { return isActive() ? (time - checkTime) + elapsed : elapsed; }
+    inline millis_t getTimeActive(millis_t time = nzMillis()) const { return isActive() ? (time - checkTime) + elapsed : elapsed; }
     inline float getDriveIntensity() const { return activation.getDriveIntensity(); }
 };
 

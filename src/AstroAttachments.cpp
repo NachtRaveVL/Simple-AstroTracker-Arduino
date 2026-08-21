@@ -121,8 +121,8 @@ void AstroActuatorAttachment::updateIfNeeded(bool poll)
 
 void AstroActuatorAttachment::setupActivation(float value, millis_t duration, bool force)
 {
-    setupActivation(AstroActivation(value > ASTRO_FLT_EPSILON ? Astro_DirectionMode_Forward :
-                                    value < -ASTRO_FLT_EPSILON ? Astro_DirectionMode_Reverse : Astro_DirectionMode_Stop,
+    setupActivation(AstroActivation(value > FLT_EPSILON ? Astro_DirectionMode_Forward :
+                                    value < -FLT_EPSILON ? Astro_DirectionMode_Reverse : Astro_DirectionMode_Stop,
                                     fabsf(value), duration,
                                     force ? Astro_ActivationFlags_Forced : Astro_ActivationFlags_None));
 }

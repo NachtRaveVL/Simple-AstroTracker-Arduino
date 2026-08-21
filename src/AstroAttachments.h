@@ -45,7 +45,7 @@ public:
     template<class U> inline void unresolveIf(U object) { if (operator==(object)) { unresolve(); } }
 
     template<class U> inline void setObject(U object) { operator=(object); }
-    template<class U = AstroObjInterface> inline SharedPtr<U> getObject() { return astroReinterpretPointerCast<U>(resolveObject()); }
+    template<class U = AstroObjInterface> inline SharedPtr<U> getObject() { return reinterpret_pointer_cast<U>(resolveObject()); }
     template<class U = AstroObjInterface> inline U *get() { return getObject<U>().get(); }
 
     AstroIdentity getId() const;
@@ -143,7 +143,7 @@ public:
 
     virtual void updateIfNeeded(bool poll = false) override;
 
-    void setupActivation(const AstroActivation &activation);
+    inline void setupActivation(const AstroActivation &activation) { _actSetup = activation; _actHandle.activation = activation; }
     inline void setupActivation(Astro_DirectionMode direction, float intensity = 1.0f, millis_t duration = (millis_t)-1, bool force = false) { setupActivation(AstroActivation(direction, intensity, duration, force ? Astro_ActivationFlags_Forced : Astro_ActivationFlags_None)); }
     inline void setupActivation(millis_t duration = (millis_t)-1, bool force = false) { setupActivation(AstroActivation(Astro_DirectionMode_Forward, 1.0f, duration, force ? Astro_ActivationFlags_Forced : Astro_ActivationFlags_None)); }
     void setupActivation(float value, millis_t duration = (millis_t)-1, bool force = false);
@@ -153,7 +153,7 @@ public:
 
     inline bool isActivated() const { return _actHandle.isActive(); }
     inline millis_t getTimeLeft() const { return _actHandle.getTimeLeft(); }
-    inline millis_t getTimeActive(millis_t time = astroNZMillis()) const { return _actHandle.getTimeActive(time); }
+    inline millis_t getTimeActive(millis_t time = nzMillis()) const { return _actHandle.getTimeActive(time); }
     inline float getActiveDriveIntensity() const { return _actHandle.getDriveIntensity(); }
     inline float getSetupDriveIntensity() const { return _actSetup.getDriveIntensity(); }
 

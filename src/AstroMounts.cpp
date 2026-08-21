@@ -215,7 +215,7 @@ void AstroMount::moveAxis(AstroAxisState *axis, double elapsedSeconds, bool wrap
 
 void AstroMount::update()
 {
-    const millis_t now = astroNZMillis();
+    const millis_t now = nzMillis();
     const double elapsedSeconds = _lastUpdate ? (double)(now - _lastUpdate) / 1000.0 : 0.0;
     _lastUpdate = now;
 
