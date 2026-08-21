@@ -23,6 +23,14 @@ public:
     virtual bool readValue(double *valueOut) = 0;
     virtual bool poll(int64_t timestamp = 0, aframe_t frame = 1) override;
 
+    bool setCalibration(double rawMinimum, double rawMaximum,
+                        double valueMinimum, double valueMaximum,
+                        Astro_UnitsType units);
+    void clearCalibration();
+    bool getCalibration(double &rawMinimum, double &rawMaximum,
+                        double &valueMinimum, double &valueMaximum) const;
+    inline bool hasCalibration() const { return _calibrated; }
+
     inline Astro_SensorType getSensorType() const { return _sensorType; }
     inline Astro_UnitsType getUnits() const { return _measurement.units; }
     inline void setUnits(Astro_UnitsType units) { _measurement.units = units; }
@@ -33,6 +41,11 @@ public:
 protected:
     Astro_SensorType _sensorType;                            // Sensor type
     AstroSingleMeasurement _measurement;                     // Latest sensor measurement
+    double _rawMinimum;                                      // Raw calibration minimum
+    double _rawMaximum;                                      // Raw calibration maximum
+    double _valueMinimum;                                    // Calibrated output minimum
+    double _valueMaximum;                                    // Calibrated output maximum
+    bool _calibrated;                                        // Calibration configured flag
 };
 
 // Value Sensor
@@ -96,7 +109,8 @@ protected:
 };
 
 // Analog Sensor
-// Reads a normalized scalar measurement from an analog input pin.
+// Reads a normalized scalar measurement from an analog input pin and optionally maps it
+// through a linear user calibration into engineering units.
 class AstroAnalogSensor : public AstroSensor {
 public:
     AstroAnalogSensor(AstroAnalogPin inputPin = AstroAnalogPin(),

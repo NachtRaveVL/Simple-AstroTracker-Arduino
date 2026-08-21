@@ -222,9 +222,15 @@ void AstroMount::update()
     if (_tracking) { updateTarget((int64_t)unixNow(), elapsedSeconds); }
     if (_limitHit) { return; }
 
-    if (_primaryDriver.isSet()) { _primaryDriver.setTargetDegrees(_primaryAxis.targetDegrees); }
-    if (_secondaryDriver.isSet() && _mountType != Astro_MountType_SingleAxis) {
-        _secondaryDriver.setTargetDegrees(_secondaryAxis.targetDegrees);
+    SharedPtr<AstroAxisDriver> primaryDriver = getAxisDriver(0);
+    SharedPtr<AstroAxisDriver> secondaryDriver = getAxisDriver(1);
+    if (primaryDriver) {
+        primaryDriver->setTargetDegrees(_primaryAxis.targetDegrees);
+        primaryDriver->update();
+    }
+    if (secondaryDriver && _mountType != Astro_MountType_SingleAxis) {
+        secondaryDriver->setTargetDegrees(_secondaryAxis.targetDegrees);
+        secondaryDriver->update();
     }
 
     bool primaryFeedback = updateAxisPosition(0);

@@ -1,8 +1,8 @@
 // Simple-AstroTracker-Arduino Equatorial Tracking Example
 //
-// A very small equatorial setup using two user supplied axis drivers. The callbacks here
-// only show where the actual stepper/servo calls would be made. This lets the example
-// work with whatever motor hardware and gear reduction the tracker was built around.
+// A very small equatorial setup using two common STEP/DIR stepper motor drivers.
+// Adjust the pin assignments, steps-per-degree values, and maximum step rates to match
+// the motors, microstepping configuration, and mechanical reduction in the tracker.
 
 #include <Astruino.h>
 
@@ -12,20 +12,19 @@
 #define SETUP_ELEVATION                70.0                 // Elevation, meters
 #define SETUP_START_UNIX               1787101200LL         // Replace with RTC/GPS/NTP time in a real setup
 
+// Mount Hardware
+#define SETUP_RA_STEP_PIN              2                    // Right-ascension STEP pin
+#define SETUP_RA_DIR_PIN               3                    // Right-ascension DIR pin
+#define SETUP_RA_ENABLE_PIN            4                    // Right-ascension ENABLE pin, else -1
+#define SETUP_DEC_STEP_PIN             5                    // Declination STEP pin
+#define SETUP_DEC_DIR_PIN              6                    // Declination DIR pin
+#define SETUP_DEC_ENABLE_PIN           7                    // Declination ENABLE pin, else -1
+#define SETUP_RA_STEPS_PER_DEG         1280.0               // Motor steps per axis degree after microstepping/gearing
+#define SETUP_DEC_STEPS_PER_DEG        1280.0               // Motor steps per axis degree after microstepping/gearing
+#define SETUP_RA_MAX_STEPS_SEC         4000.0               // Maximum right-ascension step rate
+#define SETUP_DEC_MAX_STEPS_SEC        4000.0               // Maximum declination step rate
+
 Astruino astroController(Astro_MountType_Equatorial);
-
-static double axisTargets[2] = {0.0, 0.0};
-static uint8_t axisIndices[2] = {0, 1};
-
-void setAxisTarget(void *context, double targetDegrees)
-{
-    uint8_t axisIndex = context ? *(uint8_t *)context : 0;
-    if (axisIndex >= 2) { return; }
-    axisTargets[axisIndex] = targetDegrees;
-
-    // Send targetDegrees to the stepper/servo controller here.
-    // The mount does not care what kind of motor is attached to each axis.
-}
 
 void setup()
 {
@@ -37,15 +36,19 @@ void setup()
     astroController.setObserver(observer);
     setTime((time_t)SETUP_START_UNIX);
 
-    auto primaryDriver = astroController.addCallbackAxisDriver(setAxisTarget, nullptr, &axisIndices[0]);
-    auto secondaryDriver = astroController.addCallbackAxisDriver(setAxisTarget, nullptr, &axisIndices[1]);
+    auto primaryDriver = astroController.addMountAxisStepper(SETUP_RA_STEP_PIN, SETUP_RA_DIR_PIN,
+                                                              SETUP_RA_ENABLE_PIN, SETUP_RA_STEPS_PER_DEG,
+                                                              SETUP_RA_MAX_STEPS_SEC);
+    auto secondaryDriver = astroController.addMountAxisStepper(SETUP_DEC_STEP_PIN, SETUP_DEC_DIR_PIN,
+                                                                SETUP_DEC_ENABLE_PIN, SETUP_DEC_STEPS_PER_DEG,
+                                                                SETUP_DEC_MAX_STEPS_SEC);
 
     auto &mount = astroController.getMount();
     mount.setAxisDriver(0, primaryDriver);
     mount.setAxisDriver(1, secondaryDriver);
     mount.setTarget(Astro_Target_M42);
-    mount.setAxisRates(6.0, 6.0);
     mount.setStowPosition(0.0, 0.0);
+    mount.unpark();
     mount.track();
 
     astroController.launch();
@@ -61,10 +64,15 @@ void loop()
     if (now - lastReport >= 5000) {
         lastReport = now;
 
-        Serial.print(F("RA axis target: "));
-        Serial.print(axisTargets[0], 4);
-        Serial.print(F(" deg, DEC axis target: "));
-        Serial.print(axisTargets[1], 4);
+        auto &mount = astroController.getMount();
+        Serial.print(F("RA axis: "));
+        Serial.print(mount.getPrimaryAxis().positionDegrees, 4);
+        Serial.print(F(" / "));
+        Serial.print(mount.getPrimaryAxis().targetDegrees, 4);
+        Serial.print(F(" deg, DEC axis: "));
+        Serial.print(mount.getSecondaryAxis().positionDegrees, 4);
+        Serial.print(F(" / "));
+        Serial.print(mount.getSecondaryAxis().targetDegrees, 4);
         Serial.println(F(" deg"));
     }
 }

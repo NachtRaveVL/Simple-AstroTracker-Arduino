@@ -35,6 +35,9 @@ public:
     // Pin-backed actuator creation.
     SharedPtr<AstroDigitalActuator> addDigitalActuator(Astro_ActuatorType actuatorType,
                                                        AstroDigitalPin outputPin);
+    SharedPtr<AstroRelayMotorActuator> addRelayMotorActuator(Astro_ActuatorType actuatorType,
+                                                             AstroDigitalPin forwardPin,
+                                                             AstroDigitalPin reversePin);
     SharedPtr<AstroAnalogActuator> addAnalogActuator(Astro_ActuatorType actuatorType,
                                                      AstroAnalogPin outputPin);
 
@@ -53,9 +56,10 @@ public:
     // Creates a variable/PWM dew-heater output for proportional dew control.
     SharedPtr<AstroAnalogActuator> addDewHeaterPWM(pintype_t outputPin,
                                                    uint8_t outputBitRes = 8);
-    // Creates a binary cover motor/relay output. Directional mechanisms can use two outputs or a callback actuator.
-    SharedPtr<AstroDigitalActuator> addCoverRelay(pintype_t outputPin,
-                                                  bool activeLow = false);
+    // Creates a two-output forward/reverse cover motor using relays or an H-bridge input pair.
+    SharedPtr<AstroRelayMotorActuator> addCoverMotorRelay(pintype_t forwardPin,
+                                                          pintype_t reversePin,
+                                                          bool activeLow = false);
     // Creates a variable camera-cooler output suitable for a TEC controller input.
     SharedPtr<AstroAnalogActuator> addCameraCoolerPWM(pintype_t outputPin,
                                                       uint8_t outputBitRes = 8);
@@ -67,6 +71,14 @@ public:
                                                       double minDegrees = 0.0,
                                                       double maxDegrees = 180.0,
                                                       uint8_t outputBitRes = 8);
+    // Creates a STEP/DIR telescope axis driver for common external stepper motor drivers.
+    SharedPtr<AstroStepDirAxisDriver> addMountAxisStepper(pintype_t stepPin,
+                                                          pintype_t directionPin,
+                                                          pintype_t enablePin = apin_none,
+                                                          double stepsPerDegree = 200.0,
+                                                          double maxStepsPerSecond = 800.0,
+                                                          bool reverseDirection = false,
+                                                          bool enableActiveLow = true);
     // Creates an absolute-step telescope focuser ready for a stepper or external driver callback.
     SharedPtr<AstroFocuser> addFocuser(int32_t maximumPosition = 10000);
 

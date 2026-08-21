@@ -120,6 +120,31 @@ void AstroDigitalActuator::setPower(float power)
     }
 }
 
+AstroRelayMotorActuator::AstroRelayMotorActuator(AstroDigitalPin forwardPin, AstroDigitalPin reversePin,
+                                                 Astro_ActuatorType actuatorType, aposi_t positionIndex)
+    : AstroActuator(actuatorType, positionIndex), _forwardPin(forwardPin), _reversePin(reversePin)
+{
+    _forwardPin.init();
+    _reversePin.init();
+    _forwardPin.deactivate();
+    _reversePin.deactivate();
+}
+
+void AstroRelayMotorActuator::setPower(float power)
+{
+    AstroActuator::setPower(power);
+    if (_power > 0.0f && !isFPEqual(_power, 0.0f)) {
+        _reversePin.deactivate();
+        _forwardPin.activate();
+    } else if (_power < 0.0f && !isFPEqual(_power, 0.0f)) {
+        _forwardPin.deactivate();
+        _reversePin.activate();
+    } else {
+        _forwardPin.deactivate();
+        _reversePin.deactivate();
+    }
+}
+
 AstroAnalogActuator::AstroAnalogActuator(AstroAnalogPin outputPin, Astro_ActuatorType actuatorType, aposi_t positionIndex)
     : AstroActuator(actuatorType, positionIndex), _outputPin(outputPin)
 {

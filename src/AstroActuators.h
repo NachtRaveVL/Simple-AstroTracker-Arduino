@@ -39,7 +39,7 @@ protected:
     bool _needsUpdate;                                      // Stale flag for handle updates
     AstroActivationHandle *_handles[ASTRO_ACTIVATION_HANDLE_SLOTS]; // Activation handle slots
 
-    void resolveActivations(millis_t time);
+    void resolveActivations();
 };
 
 // Callback Actuator
@@ -74,6 +74,25 @@ public:
 
 protected:
     AstroDigitalPin _outputPin;                              // Output pin
+};
+
+// Relay Motor Actuator
+// Drives a forward/reverse motor through two binary outputs, matching the signed power
+// convention used by covers and other bidirectional equipment.
+class AstroRelayMotorActuator : public AstroActuator {
+public:
+    AstroRelayMotorActuator(AstroDigitalPin forwardPin = AstroDigitalPin(),
+                            AstroDigitalPin reversePin = AstroDigitalPin(),
+                            Astro_ActuatorType actuatorType = Astro_ActuatorType_Generic,
+                            aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
+
+    virtual void setPower(float power) override;
+    inline const AstroDigitalPin &getForwardPin() const { return _forwardPin; }
+    inline const AstroDigitalPin &getReversePin() const { return _reversePin; }
+
+protected:
+    AstroDigitalPin _forwardPin;                             // Forward/open output pin
+    AstroDigitalPin _reversePin;                             // Reverse/close output pin
 };
 
 // Analog Actuator

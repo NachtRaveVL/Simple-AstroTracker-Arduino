@@ -56,6 +56,16 @@ SharedPtr<AstroDigitalActuator> AstroFactory::addDigitalActuator(Astro_ActuatorT
     return isValidIndex(positionIndex) ? astroRegister(SharedPtr<AstroDigitalActuator>(new AstroDigitalActuator(outputPin, actuatorType, positionIndex))) : nullptr;
 }
 
+SharedPtr<AstroRelayMotorActuator> AstroFactory::addRelayMotorActuator(Astro_ActuatorType actuatorType,
+                                                                       AstroDigitalPin forwardPin,
+                                                                       AstroDigitalPin reversePin)
+{
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(actuatorType));
+    return isValidIndex(positionIndex)
+        ? astroRegister(SharedPtr<AstroRelayMotorActuator>(new AstroRelayMotorActuator(forwardPin, reversePin, actuatorType, positionIndex)))
+        : nullptr;
+}
+
 SharedPtr<AstroAnalogActuator> AstroFactory::addAnalogActuator(Astro_ActuatorType actuatorType, AstroAnalogPin outputPin)
 {
     aposi_t positionIndex = astroFirstOpen(AstroIdentity(actuatorType));
@@ -84,9 +94,11 @@ SharedPtr<AstroAnalogActuator> AstroFactory::addDewHeaterPWM(pintype_t outputPin
     return addAnalogActuator(Astro_ActuatorType_DewHeater, AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes));
 }
 
-SharedPtr<AstroDigitalActuator> AstroFactory::addCoverRelay(pintype_t outputPin, bool activeLow)
+SharedPtr<AstroRelayMotorActuator> AstroFactory::addCoverMotorRelay(pintype_t forwardPin, pintype_t reversePin, bool activeLow)
 {
-    return addDigitalActuator(Astro_ActuatorType_Cover, AstroDigitalPin(outputPin, Astro_PinMode_Digital_Output, activeLow));
+    return addRelayMotorActuator(Astro_ActuatorType_Cover,
+                                 AstroDigitalPin(forwardPin, Astro_PinMode_Digital_Output, activeLow),
+                                 AstroDigitalPin(reversePin, Astro_PinMode_Digital_Output, activeLow));
 }
 
 SharedPtr<AstroAnalogActuator> AstroFactory::addCameraCoolerPWM(pintype_t outputPin, uint8_t outputBitRes)
@@ -172,6 +184,18 @@ SharedPtr<AstroServoAxisDriver> AstroFactory::addServoAxisDriver(AstroAnalogPin 
 SharedPtr<AstroServoAxisDriver> AstroFactory::addMountAxisServo(pintype_t outputPin, double minDegrees, double maxDegrees, uint8_t outputBitRes)
 {
     return addServoAxisDriver(AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes), minDegrees, maxDegrees);
+}
+
+SharedPtr<AstroStepDirAxisDriver> AstroFactory::addMountAxisStepper(pintype_t stepPin, pintype_t directionPin,
+                                                                    pintype_t enablePin, double stepsPerDegree,
+                                                                    double maxStepsPerSecond, bool reverseDirection,
+                                                                    bool enableActiveLow)
+{
+    return SharedPtr<AstroStepDirAxisDriver>(new AstroStepDirAxisDriver(
+        AstroDigitalPin(stepPin, Astro_PinMode_Digital_Output, false),
+        AstroDigitalPin(directionPin, Astro_PinMode_Digital_Output, reverseDirection),
+        AstroDigitalPin(enablePin, Astro_PinMode_Digital_Output, enableActiveLow),
+        stepsPerDegree, maxStepsPerSecond));
 }
 
 SharedPtr<AstroThresholdTrigger> AstroFactory::addThresholdTrigger(SharedPtr<AstroSensor> sensor, double threshold,

@@ -67,6 +67,9 @@ target_link_libraries(test_serialization PRIVATE astruino_host)
 add_executable(test_hardening host/test_hardening.cpp)
 target_link_libraries(test_hardening PRIVATE astruino_host)
 
+add_executable(test_hardware host/test_hardware.cpp)
+target_link_libraries(test_hardware PRIVATE astruino_host)
+
 enable_testing()
 add_test(NAME astronomy COMMAND test_astronomy)
 add_test(NAME catalog COMMAND test_catalog)
@@ -75,6 +78,7 @@ add_test(NAME enums COMMAND test_enums)
 add_test(NAME infrastructure COMMAND test_infrastructure)
 add_test(NAME serialization COMMAND test_serialization)
 add_test(NAME hardening COMMAND test_hardening)
+add_test(NAME hardware COMMAND test_hardware)
 
 if(Python3_Interpreter_FOUND)
     add_test(NAME enum_trie_generated COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_enum_trie.py --check)
