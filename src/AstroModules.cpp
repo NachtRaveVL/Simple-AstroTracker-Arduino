@@ -1,6 +1,6 @@
 /*  Astruino: Simple automation controller for DIY astronomical tracking systems.
     Copyright (C) 2026 NachtRaveVL
-    Astruino Modules
+    Astruino Controller Modules
 */
 
 #include "Astruino.h"

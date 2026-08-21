@@ -110,7 +110,7 @@ AstroActuatorAttachment::AstroActuatorAttachment(AstroObjInterface *parent)
 { ; }
 
 AstroActuatorAttachment::AstroActuatorAttachment(const AstroActuatorAttachment &attachment)
-    : AstroAttachment(attachment), _actHandle(attachment._actHandle), _actSetup(attachment._actSetup)
+    : AstroAttachment(attachment), _actHandle(), _actSetup(attachment._actSetup)
 { ; }
 
 void AstroActuatorAttachment::updateIfNeeded(bool poll)

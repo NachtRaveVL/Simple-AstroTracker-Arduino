@@ -12,7 +12,7 @@
 struct AstroObjectData;
 
 // Shortcut to get shared pointer for object with built-in cast.
-template<class T = AstroObjInterface> inline SharedPtr<T> getSharedPtr(const AstroObjInterface *object) { return object ? reinterpret_pointer_cast<T>(object->getSharedPtr()) : nullptr; }
+template<class T = AstroObjInterface> inline SharedPtr<T> getSharedPtr(const AstroObjInterface *object) { return object ? astroReinterpretPointerCast<T>(object->getSharedPtr()) : nullptr; }
 
 // Object Identity
 // Compact object identity used to generate stable object keys and names.

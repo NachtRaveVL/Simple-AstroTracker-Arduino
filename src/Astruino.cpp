@@ -119,9 +119,7 @@ void Astruino::update()
 {
     if (!_initialized || _suspended) { return; }
 
-    for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
-        if (iter->second) { iter->second->update(); }
-    }
+    updateObjects();
     scheduler.update();
 }
 
@@ -156,6 +154,8 @@ void Astruino::allocateRTC()
                 break;
         }
         _rtcBegan = false;
+        ASTRO_SOFT_ASSERT(_rtc, "Allocation failure");
+        ASTRO_HARD_ASSERT(_rtcSetup.i2c.address == 0, "RTClib only supports the default I2C RTC address");
     }
 #endif
 }

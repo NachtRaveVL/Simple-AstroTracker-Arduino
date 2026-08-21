@@ -45,7 +45,7 @@ public:
     template<class U> inline void unresolveIf(U object) { if (operator==(object)) { unresolve(); } }
 
     template<class U> inline void setObject(U object) { operator=(object); }
-    template<class U = AstroObjInterface> inline SharedPtr<U> getObject() { return reinterpret_pointer_cast<U>(resolveObject()); }
+    template<class U = AstroObjInterface> inline SharedPtr<U> getObject() { return astroReinterpretPointerCast<U>(resolveObject()); }
     template<class U = AstroObjInterface> inline U *get() { return getObject<U>().get(); }
 
     AstroIdentity getId() const;
