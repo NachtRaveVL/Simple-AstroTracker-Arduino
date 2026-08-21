@@ -210,14 +210,16 @@ typedef Adafruit_GPS GPSClass;
 // Main controller interface for DIY astronomical tracking systems. Networking, GPS,
 // displays, and external storage remain optional so a small offline system can use the
 // same controller lifecycle as a more fully equipped build.
-class Astruino : public AstroFactory {
+class Astruino : public AstroFactory, public AstroObjectRegistration {
 public:
     AstroScheduler scheduler;                              // Scheduler public instance
     AstroLogger logger;                                    // Logger public instance
     AstroPublisher publisher;                              // Publisher public instance
 
     // Controller constructor. Typically called during class instantiation before setup().
-    Astruino(Astro_MountType mountType = Astro_MountType_Equatorial);
+    Astruino(Astro_MountType mountType = Astro_MountType_Equatorial,
+             Astro_RTCType rtcType = Astro_RTCType_None,
+             AstroDeviceSetup rtcSetup = AstroDeviceSetup());
     ~Astruino();
 
     // Initializes a default system and applies controller-level settings.
@@ -231,8 +233,11 @@ public:
     Astro_SystemMode getSystemMode() const;
     void setMeasurementMode(Astro_MeasurementMode measurementMode);
     Astro_MeasurementMode getMeasurementMode() const;
-    void setTimeZoneOffset(int16_t timeZoneOffset);
-    int16_t getTimeZoneOffset() const;
+    void setTimeZoneOffset(int8_t hoursOffset);
+    time_t getTimeZoneOffset() const;
+#ifdef ARDUINO
+    void setRTCTime(DateTime time);
+#endif
     void setPollingInterval(uint16_t pollingInterval);
     uint16_t getPollingInterval() const;
 
@@ -240,38 +245,37 @@ public:
     void setObserver(const AstroObserver &observer);
     inline const AstroObserver &getObserver() const { return _systemData.observer; }
 
+    // Removes object from system, returning success.
+    bool unregisterObject(SharedPtr<AstroObject> object);
+
     // Launches the controller into operational mode.
     void launch();
     // Suspends operational updates without discarding configured state.
     void suspend();
-    // Updates the running system from configured providers and latest sensor/safety state.
+    // Updates the running system.
     void update();
-    // Updates the system from explicit values, useful for custom run loops and testing.
-    void update(int64_t unixTime, double elapsedSeconds, double sunAltitudeDegrees,
-                bool safeToObserve, const AstroThermalReadings &thermalReadings);
-
-    // Optional time provider. When unset, update() uses the platform/system clock.
-    inline void setTimeProvider(AstroTimeProvider *timeProvider) { _timeProvider = timeProvider; }
-    inline AstroTimeProvider *getTimeProvider() const { return _timeProvider; }
-    // Updates the latest safety state used by the normal update() loop.
-    inline void setSafeToObserve(bool safeToObserve) { _safeToObserve = safeToObserve; }
-    inline bool getSafeToObserve() const { return _safeToObserve; }
-    // Updates the latest environmental readings used by the normal update() loop.
-    inline void setThermalReadings(const AstroThermalReadings &readings) { _thermalReadings = readings; }
-    inline const AstroThermalReadings &getThermalReadings() const { return _thermalReadings; }
 
     inline bool isInitialized() const { return _initialized; }
     inline bool isSuspended() const { return _suspended; }
 
-    inline AstroMount &getMount() { return _mount; }
-    inline AstroCover &getCover() { return _cover; }
-    inline AstroCameraTrigger &getCamera() { return _camera; }
+    inline AstroMount &getMount() { return *_mount; }
+    inline AstroCover &getCover() { return *_cover; }
+    inline AstroCameraTrigger &getCamera() { return *_camera; }
     inline AstroThermalBalancer &getThermalBalancer() { return _thermal; }
     inline AstroScheduler &getScheduler() { return scheduler; }
     inline AstroLogger &getLogger() { return logger; }
     inline AstroPublisher &getPublisher() { return publisher; }
     inline AstroSystemData &getSystemData() { return _systemData; }
     inline const AstroSystemData &getSystemData() const { return _systemData; }
+
+#ifdef ARDUINO
+    // RTC device setup configuration.
+    inline const AstroDeviceSetup &getRTCSetup() const { return _rtcSetup; }
+    // Real time clock instance (lazily instantiated, nullptr return -> failure/no device).
+    AstroRTCInterface *getRTC(bool begin = true);
+    // Whenever the system booted with the RTC battery failure flag set.
+    inline bool getRTCBatteryFailure() const { return _rtcBattFail; }
+#endif
 
     // Returns the currently active Astruino controller instance, if any.
     static inline Astruino *getActiveInstance() { return _activeInstance; }
@@ -280,18 +284,26 @@ protected:
     static Astruino *_activeInstance;                       // Active controller instance
 
     AstroSystemData _systemData;                            // Serialized controller setup data
-    AstroMount _mount;                                      // Primary telescope/tracker mount
-    AstroCover _cover;                                      // Observatory/enclosure cover
-    AstroCameraTrigger _camera;                             // Default observation trigger device
+    SharedPtr<AstroMount> _mount;                           // Primary telescope/tracker mount
+    SharedPtr<AstroCover> _cover;                           // Observatory/enclosure cover
+    SharedPtr<AstroCameraTrigger> _camera;                  // Default observation trigger device
     AstroThermalBalancer _thermal;                          // Environmental/thermal balancer
-    AstroTimeProvider *_timeProvider;                       // Optional UTC time provider, not owned
-    AstroThermalReadings _thermalReadings;                  // Latest environment/equipment readings
-    bool _safeToObserve;                                    // Latest weather/safety permission state
-    millis_t _lastUpdate;                                   // Last normal update timestamp, in milliseconds
+    const Astro_RTCType _rtcType;                           // RTC device type
+    const AstroDeviceSetup _rtcSetup;                       // RTC device setup
+#ifdef ARDUINO
+    AstroRTCInterface *_rtc;                                // Real time clock instance (owned, lazy)
+#endif
+    bool _rtcBegan;                                         // Status of RTC begin() call
+    bool _rtcBattFail;                                      // Status of RTC battery failure flag
     bool _initialized;                                      // Initialization state flag
     bool _suspended;                                        // Operational suspension flag
 
+    void allocateRTC();
+    void deallocateRTC();
+
     void applySystemData();
+
+    friend SharedPtr<AstroObjInterface> AstroDLinkObject::resolveObject();
 };
 
 // Returns the currently active controller instance.

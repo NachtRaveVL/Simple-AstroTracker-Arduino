@@ -17,7 +17,7 @@ struct AstroSystemData {
     char systemName[ASTRO_NAME_MAXSIZE];                    // System display name
     Astro_SystemMode systemMode;                            // System operating mode
     Astro_MeasurementMode measurementMode;                  // Preferred measurement units mode
-    int16_t timeZoneOffset;                                 // Timezone offset *100, allowing :30/:45 offsets
+    int16_t timeZoneOffset;                                 // Timezone offset from UTC, in whole hours
     uint16_t pollingInterval;                               // Sensor polling interval, in milliseconds
     AstroObserver observer;                                 // Fixed observer/location data
 

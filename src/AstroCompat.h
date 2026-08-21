@@ -12,12 +12,16 @@
 
 #ifdef ARDUINO
 #include <Arduino.h>
+#include <ArxContainer.h>
+#include <ArxSmartPtr.h>
 typedef String AstroString;
 #else
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <map>
+#include <memory>
 #include <string>
 
 typedef std::string AstroString;
@@ -51,6 +55,19 @@ typedef int16_t pintype_t;
 typedef int8_t aposi_t;
 typedef uint16_t akey_t;
 typedef uint32_t aframe_t;
+
+#ifdef ARDUINO
+using namespace arx::stdx;
+template<typename T> using SharedPtr = arx::stdx::shared_ptr<T>;
+template<typename K, typename V, size_t N> using AstroMap = arx::map<K,V,N>;
+#else
+using namespace std;
+template<typename T> using SharedPtr = std::shared_ptr<T>;
+template<typename K, typename V, size_t N> using AstroMap = std::map<K,V>;
+#if __cplusplus < 201703L
+template<class T, class U> inline SharedPtr<T> reinterpret_pointer_cast(const SharedPtr<U> &ptr) { return ptr ? SharedPtr<T>(ptr, reinterpret_cast<T *>(ptr.get())) : SharedPtr<T>(); }
+#endif
+#endif
 
 static const pintype_t apin_none = -1;
 static const pintype_t apin_virtual = 100;

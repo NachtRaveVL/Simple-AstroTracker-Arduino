@@ -6,8 +6,11 @@
 #ifndef AstroModules_H
 #define AstroModules_H
 
+class AstroObject;
+
 #include "AstroCoordinates.h"
 #include "AstroInlines.hh"
+#include "AstroObject.h"
 
 // Module Base
 // Base lifecycle for optional hardware or service modules.
@@ -25,12 +28,31 @@ protected:
     bool _initialized;                                      // Module initialization state
 };
 
-// Time Provider Interface
-// Supplies UTC time without coupling tracking logic to RTC, GPS, NTP, or user code.
-class AstroTimeProvider {
+// Object Registration Storage
+// Stores objects in the main system store, which is used for SharedPtr<> lookups and
+// stable attachment resolution in the same manner as the sibling controller libraries.
+class AstroObjectRegistration {
 public:
-    virtual ~AstroTimeProvider() { ; }
-    virtual bool getUnixTime(int64_t *unixTimeOut) = 0;
+    // Adds object to system, returning success.
+    bool registerObject(SharedPtr<AstroObject> object);
+    // Removes object from system, returning success.
+    bool unregisterObject(SharedPtr<AstroObject> object);
+
+    // Searches for object by id key (nullptr return = no object by that id, position index may use ASTRO_POS_SEARCH* defines).
+    SharedPtr<AstroObject> objectById(AstroIdentity id) const;
+
+    // Finds first position either open or taken, given the identity type.
+    aposi_t firstPosition(AstroIdentity id, bool taken) const;
+    inline aposi_t firstPositionTaken(AstroIdentity id) const { return firstPosition(id, true); }
+    inline aposi_t firstPositionOpen(AstroIdentity id) const { return firstPosition(id, false); }
+
+    // Updates registered system objects.
+    void updateObjects();
+
+protected:
+    AstroMap<akey_t, SharedPtr<AstroObject>, ASTRO_SYS_OBJECTS_MAXSIZE> _objects; // Shared object collection, keyed by AstroIdentity
+
+    SharedPtr<AstroObject> objectById_Col(const AstroIdentity &id) const;
 };
 
 // Location Provider Interface
@@ -41,20 +63,6 @@ public:
     virtual bool getObserver(AstroObserver *observerOut) = 0;
 };
 
-
-// Manual Time Provider
-// Stores a user supplied UTC time for systems that do not have an RTC, GPS, or network clock.
-class AstroManualTimeProvider : public AstroTimeProvider {
-public:
-    AstroManualTimeProvider(int64_t unixTime = 0);
-
-    virtual bool getUnixTime(int64_t *unixTimeOut) override;
-    void setUnixTime(int64_t unixTime);
-    inline int64_t getUnixTime() const { return _unixTime; }
-
-protected:
-    int64_t _unixTime;                                      // Stored UTC timestamp
-};
 
 // Fixed Location Provider
 // Stores a known observer location for fully offline or permanently installed systems.
@@ -68,20 +76,6 @@ public:
 
 protected:
     AstroObserver _observer;                                // Stored observer/location data
-};
-
-// Callback Time Provider
-// Supplies UTC time through user code.
-class AstroCallbackTimeProvider : public AstroTimeProvider {
-public:
-    typedef bool (*TimeCallback)(void *context, int64_t *unixTimeOut);
-
-    AstroCallbackTimeProvider(TimeCallback callback = nullptr, void *context = nullptr);
-    virtual bool getUnixTime(int64_t *unixTimeOut) override;
-
-protected:
-    TimeCallback _callback;                                // Time provider callback
-    void *_context;                                         // Callback user context
 };
 
 // Callback Location Provider

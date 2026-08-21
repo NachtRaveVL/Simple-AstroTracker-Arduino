@@ -6,8 +6,7 @@
 #ifndef AstroCover_H
 #define AstroCover_H
 
-#include "AstroActuators.h"
-#include "AstroSensors.h"
+#include "AstroAttachments.h"
 
 // Equipment Cover
 // Generic open/close mechanism for telescope caps, roof panels, dome shutters, or similar enclosures.
@@ -22,13 +21,14 @@ public:
     void open();
     void close();
     void stop();
-    void update(double elapsedSeconds);
+    virtual void update() override;
+    virtual void unresolveAny(AstroObject *object) override;
     void setTravelRate(float fractionPerSecond);
     void setTravelTimeout(double seconds);
     void setPosition(float position);
-    void setActuator(AstroActuator *actuator);
-    void setOpenSensor(AstroSensor *sensor);
-    void setClosedSensor(AstroSensor *sensor);
+    template<class U> inline void setActuator(U actuator) { _actuator.setObject(actuator); }
+    template<class U> inline void setOpenSensor(U sensor) { _openSensor.setObject(sensor); _openLimitActive = false; }
+    template<class U> inline void setClosedSensor(U sensor) { _closedSensor.setObject(sensor); _closedLimitActive = false; }
     void clearFault();
 
     bool isOpen() const;
@@ -46,11 +46,12 @@ protected:
     bool _openLimitActive;                                   // Last open-limit sensor state
     bool _closedLimitActive;                                 // Last closed-limit sensor state
     bool _faulted;                                           // Cover fault state flag
-    AstroActuator *_actuator;                                // Attached actuator, not owned
-    AstroSensor *_openSensor;                                // Optional open-limit sensor, not owned
-    AstroSensor *_closedSensor;                              // Optional closed-limit sensor, not owned
+    AstroActuatorAttachment _actuator;                       // Attached actuator
+    AstroSensorAttachment _openSensor;                       // Optional open-limit sensor attachment
+    AstroSensorAttachment _closedSensor;                     // Optional closed-limit sensor attachment
+    millis_t _lastUpdate;                                    // Last update time, in milliseconds
 
-    bool pollLimitSensor(AstroSensor *sensor, bool *activeOut);
+    bool pollLimitSensor(AstroSensorAttachment &sensor, bool *activeOut);
     void applyActuatorPower(float power);
 };
 

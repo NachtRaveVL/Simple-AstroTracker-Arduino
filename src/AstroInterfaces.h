@@ -13,11 +13,13 @@ class AstroMount;
 class AstroRail;
 class AstroAxisDriver;
 class AstroTrigger;
+class AstroCameraTrigger;
 class AstroObservationDevice;
 class AstroCover;
 class AstroFocuser;
+class AstroRTCInterface;
 
-template<class TObject> class AstroAttachment;
+class AstroAttachment;
 class AstroActuatorAttachment;
 class AstroSensorAttachment;
 class AstroAxisDriverAttachment;
@@ -40,14 +42,28 @@ public:
     // Releases references to a system object before it is removed from object storage.
     virtual void unresolveAny(AstroObject *object) = 0;
 
-    // Returns the object's hashed key and human-readable key string.
+    // Returns the object's identity, hashed key, and human-readable key string.
+    virtual AstroIdentity getId() const = 0;
     virtual akey_t getKey() const = 0;
     virtual AstroString getKeyString() const = 0;
+    virtual SharedPtr<AstroObjInterface> getSharedPtr() const = 0;
+    virtual SharedPtr<AstroObjInterface> getSharedPtrFor(const AstroObjInterface *object) const = 0;
 
     // Returns true for main system objects and false for embedded sub-objects.
     virtual bool isObject() const = 0;
     inline bool isSubObject() const { return !isObject(); }
 };
+
+#ifdef ARDUINO
+// RTC Module Interface
+class AstroRTCInterface {
+public:
+    virtual bool begin(TwoWire *wireInstance) = 0;
+    virtual void adjust(const DateTime &dt) = 0;
+    virtual bool lostPower(void) = 0;
+    virtual DateTime now() = 0;
+};
+#endif
 
 
 // Digital Input Pin Interface
@@ -279,121 +295,136 @@ public:
 // Parent Actuator Attachment Interface
 class AstroParentActuatorAttachmentInterface {
 public:
-    virtual AstroActuatorAttachment &getParentActuatorAttachment() = 0;
-    inline void setParentActuator(AstroActuator *actuator);
-    inline AstroActuator *getParentActuator();
+    virtual AstroAttachment &getParentActuatorAttachment() = 0;
+
+    template<class U> inline void setParentActuator(U actuator);
+    template<class U = AstroActuator> inline SharedPtr<U> getParentActuator();
 };
 
 // Parent Sensor Attachment Interface
 class AstroParentSensorAttachmentInterface {
 public:
-    virtual AstroSensorAttachment &getParentSensorAttachment() = 0;
-    inline void setParentSensor(AstroSensor *sensor);
-    inline AstroSensor *getParentSensor();
+    virtual AstroAttachment &getParentSensorAttachment() = 0;
+
+    template<class U> inline void setParentSensor(U sensor);
+    template<class U = AstroSensor> inline SharedPtr<U> getParentSensor();
 };
 
 // Parent Mount Attachment Interface
 class AstroParentMountAttachmentInterface {
 public:
-    virtual AstroAttachment<AstroMount> &getParentMountAttachment() = 0;
-    inline void setParentMount(AstroMount *mount);
-    inline AstroMount *getParentMount();
+    virtual AstroAttachment &getParentMountAttachment() = 0;
+
+    template<class U> inline void setParentMount(U mount);
+    template<class U = AstroMount> inline SharedPtr<U> getParentMount();
 };
 
 // Parent Cover Attachment Interface
 class AstroParentCoverAttachmentInterface {
 public:
-    virtual AstroAttachment<AstroCover> &getParentCoverAttachment() = 0;
-    inline void setParentCover(AstroCover *cover);
-    inline AstroCover *getParentCover();
+    virtual AstroAttachment &getParentCoverAttachment() = 0;
+
+    template<class U> inline void setParentCover(U cover);
+    template<class U = AstroCover> inline SharedPtr<U> getParentCover();
 };
 
 // Parent Rail Attachment Interface
 class AstroParentRailAttachmentInterface {
 public:
-    virtual AstroAttachment<AstroRail> &getParentRailAttachment() = 0;
-    inline void setParentRail(AstroRail *rail);
-    inline AstroRail *getParentRail();
+    virtual AstroAttachment &getParentRailAttachment() = 0;
+
+    template<class U> inline void setParentRail(U rail);
+    template<class U = AstroRail> inline SharedPtr<U> getParentRail();
 };
 
 // Sensor Attachment Interface
 class AstroSensorAttachmentInterface {
 public:
     virtual AstroSensorAttachment &getSensorAttachment() = 0;
-    inline void setSensor(AstroSensor *sensor);
-    inline AstroSensor *getSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+
+    template<class U> inline void setSensor(U sensor);
+    template<class U = AstroSensor> inline SharedPtr<U> getSensor(bool poll = false);
 };
 
 // Temperature Sensor Attachment Interface
 class AstroTemperatureSensorAttachmentInterface {
 public:
     virtual AstroSensorAttachment &getTemperatureSensorAttachment() = 0;
-    inline void setTemperatureSensor(AstroSensor *sensor);
-    inline AstroSensor *getTemperatureSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+
+    template<class U> inline void setTemperatureSensor(U sensor);
+    template<class U = AstroSensor> inline SharedPtr<U> getTemperatureSensor(bool poll = false);
 };
 
 // Humidity Sensor Attachment Interface
 class AstroHumiditySensorAttachmentInterface {
 public:
     virtual AstroSensorAttachment &getHumiditySensorAttachment() = 0;
-    inline void setHumiditySensor(AstroSensor *sensor);
-    inline AstroSensor *getHumiditySensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+
+    template<class U> inline void setHumiditySensor(U sensor);
+    template<class U = AstroSensor> inline SharedPtr<U> getHumiditySensor(bool poll = false);
 };
 
 // Wind Speed Sensor Attachment Interface
 class AstroWindSpeedSensorAttachmentInterface {
 public:
     virtual AstroSensorAttachment &getWindSpeedSensorAttachment() = 0;
-    inline void setWindSpeedSensor(AstroSensor *sensor);
-    inline AstroSensor *getWindSpeedSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+
+    template<class U> inline void setWindSpeedSensor(U sensor);
+    template<class U = AstroSensor> inline SharedPtr<U> getWindSpeedSensor(bool poll = false);
 };
 
 // Rain Sensor Attachment Interface
 class AstroRainSensorAttachmentInterface {
 public:
     virtual AstroSensorAttachment &getRainSensorAttachment() = 0;
-    inline void setRainSensor(AstroSensor *sensor);
-    inline AstroSensor *getRainSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+
+    template<class U> inline void setRainSensor(U sensor);
+    template<class U = AstroSensor> inline SharedPtr<U> getRainSensor(bool poll = false);
 };
 
 // Light Sensor Attachment Interface
 class AstroLightSensorAttachmentInterface {
 public:
     virtual AstroSensorAttachment &getLightSensorAttachment() = 0;
-    inline void setLightSensor(AstroSensor *sensor);
-    inline AstroSensor *getLightSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+
+    template<class U> inline void setLightSensor(U sensor);
+    template<class U = AstroSensor> inline SharedPtr<U> getLightSensor(bool poll = false);
 };
 
 // Position Sensor Attachment Interface
 class AstroPositionSensorAttachmentInterface {
 public:
     virtual AstroSensorAttachment &getPositionSensorAttachment() = 0;
-    inline void setPositionSensor(AstroSensor *sensor);
-    inline AstroSensor *getPositionSensor(bool poll = false, int64_t timestamp = 0, aframe_t frame = 1);
+
+    template<class U> inline void setPositionSensor(U sensor);
+    template<class U = AstroSensor> inline SharedPtr<U> getPositionSensor(bool poll = false);
 };
 
 // Axis Driver Attachment Interface
 class AstroAxisDriverAttachmentInterface {
 public:
     virtual AstroAxisDriverAttachment &getAxisDriverAttachment() = 0;
-    inline void setAxisDriver(AstroAxisDriver *driver);
-    inline AstroAxisDriver *getAxisDriver();
+
+    inline void setAxisDriver(SharedPtr<AstroAxisDriver> driver);
+    inline SharedPtr<AstroAxisDriver> getAxisDriver();
 };
 
 // Trigger Attachment Interface
 class AstroTriggerAttachmentInterface {
 public:
     virtual AstroTriggerAttachment &getTriggerAttachment() = 0;
-    inline void setTrigger(AstroTrigger *trigger);
-    inline AstroTrigger *getTrigger();
+
+    inline void setTrigger(SharedPtr<AstroTrigger> trigger);
+    inline SharedPtr<AstroTrigger> getTrigger(bool poll = false);
 };
 
 // Observation Device Attachment Interface
 class AstroObservationDeviceAttachmentInterface {
 public:
     virtual AstroObservationDeviceAttachment &getObservationDeviceAttachment() = 0;
-    inline void setObservationDevice(AstroObservationDevice *device);
-    inline AstroObservationDevice *getObservationDevice();
+
+    template<class U> inline void setObservationDevice(SharedPtr<U> device);
+    template<class U = AstroCameraTrigger> inline SharedPtr<U> getObservationDevice();
 };
 
 #endif // /ifndef AstroInterfaces_H

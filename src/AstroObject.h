@@ -11,6 +11,9 @@
 
 struct AstroObjectData;
 
+// Shortcut to get shared pointer for object with built-in cast.
+template<class T = AstroObjInterface> inline SharedPtr<T> getSharedPtr(const AstroObjInterface *object) { return object ? reinterpret_pointer_cast<T>(object->getSharedPtr()) : nullptr; }
+
 // Object Identity
 // Compact object identity used to generate stable object keys and names.
 struct AstroIdentity {
@@ -95,12 +98,15 @@ public:
     virtual bool removeLinkage(AstroObject *object);
     bool hasLinkage(AstroObject *object) const;
 
+    inline void unresolve() { unresolveAny(this); }
     virtual void unresolveAny(AstroObject *object) override;
     virtual akey_t getKey() const override;
     virtual AstroString getKeyString() const override;
     virtual bool isObject() const override;
 
-    inline AstroIdentity getId() const { return _id; }
+    virtual AstroIdentity getId() const override { return _id; }
+    virtual SharedPtr<AstroObjInterface> getSharedPtr() const override;
+    virtual SharedPtr<AstroObjInterface> getSharedPtrFor(const AstroObjInterface *object) const override;
     inline uint8_t getRevision() const { return _revision < 0 ? (uint8_t)-_revision : (uint8_t)_revision; }
     inline bool isModified() const { return _revision < 0; }
     inline void bumpRevisionIfNeeded() { if (!isModified()) { _revision = -(int8_t)(getRevision() + 1); } }
@@ -129,9 +135,17 @@ public:
     inline AstroObjInterface *getParent() const { return _parent; }
 
     virtual void unresolveAny(AstroObject *object) override { (void)object; }
+    virtual AstroIdentity getId() const override;
     virtual akey_t getKey() const override;
     virtual AstroString getKeyString() const override;
+    virtual SharedPtr<AstroObjInterface> getSharedPtr() const override;
+    virtual SharedPtr<AstroObjInterface> getSharedPtrFor(const AstroObjInterface *object) const override;
     virtual bool isObject() const override { return false; }
+
+    inline uint8_t getRevision() const { return _parent && _parent->isObject() ? static_cast<AstroObject *>(_parent)->getRevision() : 0; }
+    inline bool isModified() const { return _parent && _parent->isObject() ? static_cast<AstroObject *>(_parent)->isModified() : false; }
+    inline void bumpRevisionIfNeeded() { if (_parent && _parent->isObject()) { static_cast<AstroObject *>(_parent)->bumpRevisionIfNeeded(); } }
+    inline void unsetModified() { ; }
 
 protected:
     AstroObjInterface *_parent;                              // Parent, not owned

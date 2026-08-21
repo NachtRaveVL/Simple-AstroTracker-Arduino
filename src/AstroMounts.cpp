@@ -9,16 +9,16 @@ AstroMount::AstroMount(Astro_MountType mountType, aposi_t positionIndex)
     : AstroObject(AstroIdentity(mountType, positionIndex)), _mountType(mountType), _observer(), _targetId(Astro_Target_M42),
       _primaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS), _secondaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS),
       _parkPrimary(0.0), _parkSecondary(0.0), _guidePrimary(0.0), _guideSecondary(0.0),
-      _tracking(false), _parking(false), _parked(true), _limitHit(false), _primaryDriver(nullptr), _secondaryDriver(nullptr),
-      _axisTargetCallback(nullptr), _axisTargetContext(nullptr), _axisPositionCallback(nullptr), _axisPositionContext(nullptr)
+      _tracking(false), _parking(false), _parked(true), _limitHit(false), _primaryDriver(this, 0), _secondaryDriver(this, 1),
+      _lastUpdate(0)
 { ; }
 
 AstroMount::AstroMount(const AstroObjectData *dataIn)
     : AstroObject(dataIn), _mountType(dataIn ? (Astro_MountType)dataIn->objType : Astro_MountType_Unknown), _observer(), _targetId(Astro_Target_M42),
       _primaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS), _secondaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS),
       _parkPrimary(0.0), _parkSecondary(0.0), _guidePrimary(0.0), _guideSecondary(0.0),
-      _tracking(false), _parking(false), _parked(true), _limitHit(false), _primaryDriver(nullptr), _secondaryDriver(nullptr),
-      _axisTargetCallback(nullptr), _axisTargetContext(nullptr), _axisPositionCallback(nullptr), _axisPositionContext(nullptr)
+      _tracking(false), _parking(false), _parked(true), _limitHit(false), _primaryDriver(this, 0), _secondaryDriver(this, 1),
+      _lastUpdate(0)
 { ; }
 
 void AstroMount::setObserver(const AstroObserver &observer)
@@ -77,27 +77,15 @@ void AstroMount::setParkPosition(double primaryDegrees, double secondaryDegrees)
     _parkSecondary = secondaryDegrees;
 }
 
-void AstroMount::setAxisDriver(uint8_t axisIndex, AstroAxisDriver *driver)
+void AstroMount::setAxisDriver(uint8_t axisIndex, SharedPtr<AstroAxisDriver> driver)
 {
-    if (axisIndex == 0) { _primaryDriver = driver; }
-    else if (axisIndex == 1) { _secondaryDriver = driver; }
+    if (axisIndex == 0) { _primaryDriver.setObject(driver); }
+    else if (axisIndex == 1) { _secondaryDriver.setObject(driver); }
 }
 
-AstroAxisDriver *AstroMount::getAxisDriver(uint8_t axisIndex) const
+SharedPtr<AstroAxisDriver> AstroMount::getAxisDriver(uint8_t axisIndex) const
 {
-    return axisIndex == 0 ? _primaryDriver : axisIndex == 1 ? _secondaryDriver : nullptr;
-}
-
-void AstroMount::setAxisTargetCallback(AxisTargetCallback callback, void *context)
-{
-    _axisTargetCallback = callback;
-    _axisTargetContext = context;
-}
-
-void AstroMount::setAxisPositionCallback(AxisPositionCallback callback, void *context)
-{
-    _axisPositionCallback = callback;
-    _axisPositionContext = context;
+    return axisIndex == 0 ? _primaryDriver.getObject() : axisIndex == 1 ? _secondaryDriver.getObject() : nullptr;
 }
 
 void AstroMount::park()
@@ -193,28 +181,20 @@ bool AstroMount::isAtParkPosition(double toleranceDegrees) const
 bool AstroMount::updateAxisPosition(uint8_t axisIndex)
 {
     AstroAxisState *axis = axisIndex == 0 ? &_primaryAxis : axisIndex == 1 ? &_secondaryAxis : nullptr;
-    if (!axis) { return false; }
+    SharedPtr<AstroAxisDriver> driver = getAxisDriver(axisIndex);
+    if (!axis || !driver) { return false; }
 
     double positionDegrees = 0.0;
-    bool updated = false;
-    if (_axisPositionCallback && _axisPositionCallback(_axisPositionContext, axisIndex, &positionDegrees)) {
-        setAxisPosition(axisIndex, positionDegrees);
-        updated = true;
-    } else if (!_axisPositionCallback) {
-        AstroAxisDriver *driver = getAxisDriver(axisIndex);
-        if (driver && driver->getPositionDegrees(&positionDegrees)) {
-            setAxisPosition(axisIndex, positionDegrees);
-            updated = true;
-        }
-    }
+    if (!driver->getPositionDegrees(&positionDegrees)) { return false; }
 
-    if (updated && axis->limitsEnabled && !axis->withinLimits(axis->positionDegrees)) {
+    setAxisPosition(axisIndex, positionDegrees);
+    if (axis->limitsEnabled && !axis->withinLimits(axis->positionDegrees)) {
         _limitHit = true;
         _tracking = false;
         _parking = false;
         _parked = false;
     }
-    return updated;
+    return true;
 }
 
 void AstroMount::moveAxis(AstroAxisState *axis, double elapsedSeconds, bool wrappedAxis)
@@ -233,43 +213,23 @@ void AstroMount::moveAxis(AstroAxisState *axis, double elapsedSeconds, bool wrap
     }
 }
 
-void AstroMount::update(int64_t unixTime, double elapsedSeconds)
+void AstroMount::update()
 {
-    // An explicitly configured position callback is authoritative. If it stops
-    // reporting, do not replace missing real feedback with simulated motion.
-    bool primaryFeedback = false;
-    bool secondaryFeedback = _mountType == Astro_MountType_SingleAxis;
-    if (_axisPositionCallback) {
-        primaryFeedback = updateAxisPosition(0);
-        if (_mountType != Astro_MountType_SingleAxis) { secondaryFeedback = updateAxisPosition(1); }
-        if (!primaryFeedback || !secondaryFeedback || _limitHit) {
-            _tracking = false;
-            _parking = false;
-            _parked = false;
-            return;
-        }
-    }
+    const millis_t now = astroNZMillis();
+    const double elapsedSeconds = _lastUpdate ? (double)(now - _lastUpdate) / 1000.0 : 0.0;
+    _lastUpdate = now;
 
-    if (_tracking) { updateTarget(unixTime, elapsedSeconds); }
+    if (_tracking) { updateTarget((int64_t)unixNow(), elapsedSeconds); }
     if (_limitHit) { return; }
 
-    if (_primaryDriver) { _primaryDriver->setTargetDegrees(_primaryAxis.targetDegrees); }
-    if (_secondaryDriver && _mountType != Astro_MountType_SingleAxis) {
-        _secondaryDriver->setTargetDegrees(_secondaryAxis.targetDegrees);
+    if (_primaryDriver.isSet()) { _primaryDriver.setTargetDegrees(_primaryAxis.targetDegrees); }
+    if (_secondaryDriver.isSet() && _mountType != Astro_MountType_SingleAxis) {
+        _secondaryDriver.setTargetDegrees(_secondaryAxis.targetDegrees);
     }
 
-    if (_axisTargetCallback) {
-        _axisTargetCallback(_axisTargetContext, 0, _primaryAxis.targetDegrees);
-        if (_mountType != Astro_MountType_SingleAxis) {
-            _axisTargetCallback(_axisTargetContext, 1, _secondaryAxis.targetDegrees);
-        }
-    }
-
-    if (!_axisPositionCallback) {
-        primaryFeedback = updateAxisPosition(0);
-        secondaryFeedback = _mountType == Astro_MountType_SingleAxis ? true : updateAxisPosition(1);
-        if (_limitHit) { return; }
-    }
+    bool primaryFeedback = updateAxisPosition(0);
+    bool secondaryFeedback = _mountType == Astro_MountType_SingleAxis ? true : updateAxisPosition(1);
+    if (_limitHit) { return; }
 
     if (!primaryFeedback) { moveAxis(&_primaryAxis, elapsedSeconds, _mountType == Astro_MountType_AltAz); }
     if (!secondaryFeedback && _mountType != Astro_MountType_SingleAxis) { moveAxis(&_secondaryAxis, elapsedSeconds); }

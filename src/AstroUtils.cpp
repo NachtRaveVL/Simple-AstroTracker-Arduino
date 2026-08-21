@@ -16,6 +16,43 @@
 
 extern AstroLogger *getLogger();
 
+#ifdef ARDUINO
+
+bool AstroRTCWrapper<RTC_DS1307>::begin(TwoWire *wireInstance) { return _rtc.begin(wireInstance); }
+void AstroRTCWrapper<RTC_DS1307>::adjust(const DateTime &dt) { _rtc.adjust(dt); }
+bool AstroRTCWrapper<RTC_DS1307>::lostPower(void) { return false; }
+DateTime AstroRTCWrapper<RTC_DS1307>::now() { return _rtc.now(); }
+
+#endif
+
+time_t unixNow()
+{
+#ifdef ARDUINO
+    return now();
+#else
+    return time(nullptr);
+#endif
+}
+
+#ifdef ARDUINO
+
+time_t unixTime(DateTime localTimeIn)
+{
+    return localTimeIn.unixtime() - (getController() ? getController()->getTimeZoneOffset() : 0);
+}
+
+DateTime localTime(time_t unixTimeIn)
+{
+    return DateTime((uint32_t)(unixTimeIn + (getController() ? getController()->getTimeZoneOffset() : 0)));
+}
+
+DateTime localNow()
+{
+    return localTime(unixNow());
+}
+
+#endif
+
 static AstroString astroAssertLocation(const char *file, const char *function, int line)
 {
     char buffer[160];

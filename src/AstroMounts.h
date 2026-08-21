@@ -38,9 +38,6 @@ class AstroMount : public AstroObject, public AstroMountObjectInterface {
 public:
     using AstroObject::update;
 
-    typedef void (*AxisTargetCallback)(void *context, uint8_t axisIndex, double targetDegrees);
-    typedef bool (*AxisPositionCallback)(void *context, uint8_t axisIndex, double *positionDegreesOut);
-
     AstroMount(Astro_MountType mountType = Astro_MountType_Equatorial,
                aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
     AstroMount(const AstroObjectData *dataIn);
@@ -57,10 +54,8 @@ public:
     void clearAxisLimits(uint8_t axisIndex);
     void setParkPosition(double primaryDegrees, double secondaryDegrees);
     inline void setStowPosition(double primaryDegrees, double secondaryDegrees) { setParkPosition(primaryDegrees, secondaryDegrees); }
-    void setAxisDriver(uint8_t axisIndex, AstroAxisDriver *driver);
-    AstroAxisDriver *getAxisDriver(uint8_t axisIndex) const;
-    void setAxisTargetCallback(AxisTargetCallback callback, void *context = nullptr);
-    void setAxisPositionCallback(AxisPositionCallback callback, void *context = nullptr);
+    void setAxisDriver(uint8_t axisIndex, SharedPtr<AstroAxisDriver> driver);
+    SharedPtr<AstroAxisDriver> getAxisDriver(uint8_t axisIndex) const;
 
     virtual void park() override;
     virtual void unpark() override;
@@ -73,7 +68,7 @@ public:
                     double rateMultiple = ASTRO_MOUNT_GUIDE_RATE);
     void clearGuideOffset(uint8_t axisIndex = 0xff);
 
-    void update(int64_t unixTime, double elapsedSeconds);
+    virtual void update() override;
 
     virtual bool isAligned(double toleranceDegrees = ASTRO_SCH_ALIGN_TOL_DEG) const override;
     virtual bool isParked() const override { return _parked; }
@@ -98,12 +93,9 @@ protected:
     bool _parking;                                           // Park movement active flag
     bool _parked;                                            // Parked state flag
     bool _limitHit;                                          // Software limit fault flag
-    AstroAxisDriver *_primaryDriver;                         // Primary axis driver, not owned
-    AstroAxisDriver *_secondaryDriver;                       // Secondary axis driver, not owned
-    AxisTargetCallback _axisTargetCallback;                  // Axis target callback
-    void *_axisTargetContext;                                // Axis target callback context, not owned
-    AxisPositionCallback _axisPositionCallback;              // Axis position feedback callback
-    void *_axisPositionContext;                              // Axis position callback context, not owned
+    AstroAxisDriverAttachment _primaryDriver;                // Primary axis driver attachment
+    AstroAxisDriverAttachment _secondaryDriver;              // Secondary axis driver attachment
+    millis_t _lastUpdate;                                    // Last update time, in milliseconds
 
     void updateTarget(int64_t unixTime, double elapsedSeconds);
     bool applyAxisTarget(uint8_t axisIndex, double targetDegrees);

@@ -6,8 +6,7 @@
 #ifndef AstroThermal_H
 #define AstroThermal_H
 
-#include "AstroDefines.h"
-#include "AstroActuators.h"
+#include "AstroAttachments.h"
 
 // Thermal Readings
 // Current environmental and equipment temperatures used by thermal balancing.
@@ -36,10 +35,11 @@ struct AstroThermalOutputs {
 };
 
 // Thermal Balancer
-// Balances dew protection, equipment heating, and optional camera cooling from sensor readings.
-class AstroThermalBalancer {
+// Balances dew protection, equipment heating, and optional camera cooling from attached
+// sensors. Actuator requests remain resident through attachment activation handles.
+class AstroThermalBalancer : public AstroSubObject {
 public:
-    AstroThermalBalancer();
+    AstroThermalBalancer(AstroObjInterface *parent = nullptr);
 
     void setMode(Astro_ThermalMode mode);
     void setDewMargin(double dewMarginC);
@@ -47,14 +47,31 @@ public:
     void setCameraTarget(double targetC);
     void setCameraCoolingRamp(double degreesPerMinute);
     void setElectronicsMinimum(double minimumC);
-    void setDewHeater(AstroActuator *actuator);
-    void setElectronicsHeater(AstroActuator *actuator);
-    void setCameraCooler(AstroActuator *actuator);
-    void setCameraFan(AstroActuator *actuator);
 
-    AstroThermalOutputs update(const AstroThermalReadings &readings, double elapsedSeconds);
-    bool cameraStable(const AstroThermalReadings &readings, double toleranceC = 1.0) const;
-    bool cameraSafeToStow(const AstroThermalReadings &readings) const;
+    template<class U> inline void setAmbientTemperatureSensor(U sensor) { _ambientTemperature.setObject(sensor); }
+    template<class U> inline void setHumiditySensor(U sensor) { _humidity.setObject(sensor); }
+    template<class U> inline void setOpticsTemperatureSensor(U sensor) { _opticsTemperature.setObject(sensor); }
+    template<class U> inline void setCameraSensorTemperatureSensor(U sensor) { _cameraSensorTemperature.setObject(sensor); }
+    template<class U> inline void setCameraBodyTemperatureSensor(U sensor) { _cameraBodyTemperature.setObject(sensor); }
+
+    template<class U> inline void setDewHeater(U actuator) { _dewHeater.setObject(actuator); }
+    template<class U> inline void setElectronicsHeater(U actuator) { _electronicsHeater.setObject(actuator); }
+    template<class U> inline void setCameraCooler(U actuator) { _cameraCooler.setObject(actuator); }
+    template<class U> inline void setCameraFan(U actuator) { _cameraFan.setObject(actuator); }
+
+    void update();
+    virtual void unresolveAny(AstroObject *object) override;
+    bool cameraStable(double toleranceC = 1.0) const;
+    bool cameraSafeToStow() const;
+
+    inline const AstroThermalReadings &getReadings() const { return _readings; }
+    inline const AstroThermalOutputs &getOutputs() const { return _outputs; }
+
+    inline AstroSensorAttachment &getAmbientTemperatureSensorAttachment() { return _ambientTemperature; }
+    inline AstroSensorAttachment &getHumiditySensorAttachment() { return _humidity; }
+    inline AstroSensorAttachment &getOpticsTemperatureSensorAttachment() { return _opticsTemperature; }
+    inline AstroSensorAttachment &getCameraSensorTemperatureAttachment() { return _cameraSensorTemperature; }
+    inline AstroSensorAttachment &getCameraBodyTemperatureAttachment() { return _cameraBodyTemperature; }
 
     static double calculateDewPoint(double temperatureC, double humidityPercent);
 
@@ -66,10 +83,25 @@ protected:
     double _cameraCommandTargetC;                            // Camera command target c
     double _cameraCoolingRampCPerMinute;                     // Camera cooling ramp cper minute
     double _electronicsMinimumC;                             // Electronics minimum c
-    AstroActuator *_dewHeater;                               // Dew heater, not owned
-    AstroActuator *_electronicsHeater;                       // Electronics heater, not owned
-    AstroActuator *_cameraCooler;                            // Camera cooler, not owned
-    AstroActuator *_cameraFan;                               // Camera fan, not owned
+    millis_t _lastUpdate;                                    // Last update time, in milliseconds
+
+    AstroSensorAttachment _ambientTemperature;               // Ambient temperature sensor attachment
+    AstroSensorAttachment _humidity;                         // Humidity sensor attachment
+    AstroSensorAttachment _opticsTemperature;                // Optics temperature sensor attachment
+    AstroSensorAttachment _cameraSensorTemperature;          // Camera sensor temperature attachment
+    AstroSensorAttachment _cameraBodyTemperature;            // Camera body temperature attachment
+
+    AstroActuatorAttachment _dewHeater;                      // Dew heater actuator attachment
+    AstroActuatorAttachment _electronicsHeater;              // Electronics heater actuator attachment
+    AstroActuatorAttachment _cameraCooler;                   // Camera cooler actuator attachment
+    AstroActuatorAttachment _cameraFan;                      // Camera fan actuator attachment
+
+    AstroThermalReadings _readings;                          // Latest attached readings
+    AstroThermalOutputs _outputs;                            // Latest calculated outputs
+
+    bool updateReadings();
+    static float clampPower(double value);
+    static void applyOutput(AstroActuatorAttachment &attachment, float power);
 };
 
 #endif // /ifndef AstroThermal_H

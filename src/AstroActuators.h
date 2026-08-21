@@ -24,18 +24,22 @@ public:
 
     bool addActivationHandle(AstroActivationHandle *handle);
     bool removeActivationHandle(AstroActivationHandle *handle);
-    void resolveActivations();
 
     inline Astro_ActuatorType getActuatorType() const { return _actuatorType; }
     virtual float getPower() const override { return _power; }
-    inline void setEnableMode(Astro_EnableMode mode) { _enableMode = mode; }
+    inline void setEnableMode(Astro_EnableMode mode) { if (_enableMode != mode) { _enableMode = mode; setNeedsUpdate(); } }
     inline Astro_EnableMode getEnableMode() const { return _enableMode; }
+    inline void setNeedsUpdate() { _needsUpdate = true; }
+    inline bool needsUpdate() const { return _needsUpdate; }
 
 protected:
     Astro_ActuatorType _actuatorType;                        // Actuator type
     Astro_EnableMode _enableMode;                            // Activation combination mode
     float _power;                                            // Current normalized output power
+    bool _needsUpdate;                                      // Stale flag for handle updates
     AstroActivationHandle *_handles[ASTRO_ACTIVATION_HANDLE_SLOTS]; // Activation handle slots
+
+    void resolveActivations(millis_t time);
 };
 
 // Callback Actuator

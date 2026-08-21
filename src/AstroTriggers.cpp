@@ -3,13 +3,30 @@
     Astruino Triggers
 */
 
-#include "AstroTriggers.h"
+#include "Astruino.h"
 
-AstroTrigger::AstroTrigger(uint32_t stableTimeMs)
-    : _state(false), _pendingState(false), _pendingSince(0), _stableTimeMs(stableTimeMs)
-{ ; }
+AstroTrigger::AstroTrigger(AstroIdentity sensorId, uint8_t measurementRow, uint32_t stableTimeMs)
+    : AstroSubObject(nullptr), _sensor(this, measurementRow), _state(false), _pendingState(false),
+      _pendingSince(0), _stableTimeMs(stableTimeMs)
+{
+    _sensor.initObject(sensorId);
+}
 
-bool AstroTrigger::update(bool requestedState, millis_t now)
+AstroTrigger::AstroTrigger(SharedPtr<AstroSensor> sensor, uint8_t measurementRow, uint32_t stableTimeMs)
+    : AstroSubObject(nullptr), _sensor(this, measurementRow), _state(false), _pendingState(false),
+      _pendingSince(0), _stableTimeMs(stableTimeMs)
+{
+    _sensor.initObject(sensor);
+}
+
+void AstroTrigger::update()
+{
+    _sensor.updateIfNeeded(true);
+    const AstroSingleMeasurement &measurement = _sensor.getMeasurement();
+    if (measurement.isSet()) { updateState(evaluateMeasurement(measurement)); }
+}
+
+bool AstroTrigger::updateState(bool requestedState, millis_t now)
 {
     if (requestedState == _state) {
         _pendingState = _state;
@@ -34,36 +51,47 @@ void AstroTrigger::reset(bool state, millis_t now)
     _pendingSince = now;
 }
 
-AstroThresholdTrigger::AstroThresholdTrigger(double threshold, bool triggerBelow,
-                                             double tolerance, uint32_t stableTimeMs)
-    : AstroTrigger(stableTimeMs), _threshold(threshold),
-      _tolerance(tolerance < 0.0 ? -tolerance : tolerance), _triggerBelow(triggerBelow)
+AstroThresholdTrigger::AstroThresholdTrigger(AstroIdentity sensorId, double threshold, bool triggerBelow,
+                                             uint8_t measurementRow, double tolerance, uint32_t stableTimeMs)
+    : AstroTrigger(sensorId, measurementRow, stableTimeMs), _threshold(threshold),
+      _tolerance(fabs(tolerance)), _triggerBelow(triggerBelow)
 { ; }
 
-bool AstroThresholdTrigger::update(double value, millis_t now)
+AstroThresholdTrigger::AstroThresholdTrigger(SharedPtr<AstroSensor> sensor, double threshold, bool triggerBelow,
+                                             uint8_t measurementRow, double tolerance, uint32_t stableTimeMs)
+    : AstroTrigger(sensor, measurementRow, stableTimeMs), _threshold(threshold),
+      _tolerance(fabs(tolerance)), _triggerBelow(triggerBelow)
+{ ; }
+
+bool AstroThresholdTrigger::evaluateMeasurement(const AstroSingleMeasurement &measurement) const
 {
-    bool requested;
     if (_triggerBelow) {
-        requested = _state ? value < (_threshold + _tolerance) : value < (_threshold - _tolerance);
-    } else {
-        requested = _state ? value > (_threshold - _tolerance) : value > (_threshold + _tolerance);
+        return _state ? measurement.value < (_threshold + _tolerance)
+                      : measurement.value < (_threshold - _tolerance);
     }
-    return AstroTrigger::update(requested, now);
+    return _state ? measurement.value > (_threshold - _tolerance)
+                  : measurement.value > (_threshold + _tolerance);
 }
 
-AstroRangeTrigger::AstroRangeTrigger(double low, double high, bool triggerOutside,
-                                     double tolerance, uint32_t stableTimeMs)
-    : AstroTrigger(stableTimeMs), _low(low), _high(high),
-      _tolerance(tolerance < 0.0 ? -tolerance : tolerance), _triggerOutside(triggerOutside)
+AstroRangeTrigger::AstroRangeTrigger(AstroIdentity sensorId, double low, double high, bool triggerOutside,
+                                     uint8_t measurementRow, double tolerance, uint32_t stableTimeMs)
+    : AstroTrigger(sensorId, measurementRow, stableTimeMs), _low(low), _high(high),
+      _tolerance(fabs(tolerance)), _triggerOutside(triggerOutside)
 { ; }
 
-bool AstroRangeTrigger::update(double value, millis_t now)
+AstroRangeTrigger::AstroRangeTrigger(SharedPtr<AstroSensor> sensor, double low, double high, bool triggerOutside,
+                                     uint8_t measurementRow, double tolerance, uint32_t stableTimeMs)
+    : AstroTrigger(sensor, measurementRow, stableTimeMs), _low(low), _high(high),
+      _tolerance(fabs(tolerance)), _triggerOutside(triggerOutside)
+{ ; }
+
+bool AstroRangeTrigger::evaluateMeasurement(const AstroSingleMeasurement &measurement) const
 {
     bool inside;
     if (_state == _triggerOutside) {
-        inside = value >= (_low + _tolerance) && value <= (_high - _tolerance);
+        inside = measurement.value >= (_low + _tolerance) && measurement.value <= (_high - _tolerance);
     } else {
-        inside = value >= (_low - _tolerance) && value <= (_high + _tolerance);
+        inside = measurement.value >= (_low - _tolerance) && measurement.value <= (_high + _tolerance);
     }
-    return AstroTrigger::update(_triggerOutside ? !inside : inside, now);
+    return _triggerOutside ? !inside : inside;
 }

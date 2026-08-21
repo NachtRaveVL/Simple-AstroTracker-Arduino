@@ -11,6 +11,7 @@
 #include "AstroLogger.h"
 #include "AstroMounts.h"
 #include "AstroThermal.h"
+#include "AstroTriggers.h"
 
 // Scheduler Configuration
 // Runtime scheduling thresholds used to control deploy, observing, and stow sequences.
@@ -38,25 +39,27 @@ class AstroScheduler {
 public:
     AstroScheduler();
 
-    void setMount(AstroMount *mount);
-    void setCover(AstroCover *cover);
-    void setObservationDevice(AstroObservationDevice *device);
+    void setMount(SharedPtr<AstroMount> mount);
+    void setCover(SharedPtr<AstroCover> cover);
+    void setObservationDevice(SharedPtr<AstroCameraTrigger> device);
     void setThermalBalancer(AstroThermalBalancer *thermal);
+    void setSafetyTrigger(SharedPtr<AstroTrigger> trigger);
     void setLogger(AstroLogger *logger);
     void setTarget(Astro_TargetId targetId);
     void setConfig(const AstroSchedulerConfig &config);
 
-    void update(int64_t unixTime, double elapsedSeconds, double sunAltitudeDegrees,
-                bool safeToObserve, const AstroThermalReadings &thermalReadings);
+    void update();
+    void unresolveAny(AstroObject *object);
 
     inline Astro_SchedulerStage getStage() const { return _stage; }
     inline bool inNighttimeMode() const { return _stage >= Astro_SchedulerStage_Deploying && _stage <= Astro_SchedulerStage_Observing; }
 
 protected:
-    AstroMount *_mount;                                    // Managed mount, not owned
-    AstroCover *_cover;                                    // Managed cover, not owned
-    AstroObservationDevice *_device;                       // Observation device, not owned
+    SharedPtr<AstroMount> _mount;                          // Managed mount
+    SharedPtr<AstroCover> _cover;                          // Managed cover
+    SharedPtr<AstroCameraTrigger> _device;                  // Observation device
     AstroThermalBalancer *_thermal;                        // Thermal balancer, not owned
+    AstroTriggerAttachment _safetyTrigger;                  // Observing safety trigger attachment
     AstroLogger *_logger;                                  // System logger, not owned
     Astro_TargetId _targetId;                              // Active observation target
     AstroSchedulerConfig _config;                          // Active scheduler configuration

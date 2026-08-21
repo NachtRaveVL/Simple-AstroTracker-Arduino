@@ -3,7 +3,7 @@
     Astruino Object
 */
 
-#include "AstroObject.h"
+#include "Astruino.h"
 #include "AstroUtils.h"
 #include "AstroStrings.h"
 #include <stdio.h>
@@ -211,8 +211,21 @@ bool AstroObject::hasLinkage(AstroObject *object) const
 
 void AstroObject::unresolveAny(AstroObject *object)
 {
-    if (!_links || !object) { return; }
-    while (removeLinkage(object)) { ; }
+    if (this == object && _links) {
+        AstroObject *lastObject = nullptr;
+        for (size_t linksIndex = 0; linksIndex < _linksSize && _links[linksIndex].object; ++linksIndex) {
+            AstroObject *linkedObject = _links[linksIndex].object;
+            if (linkedObject != object) {
+                linkedObject->unresolveAny(object); // may clobber indexing
+
+                if (linksIndex && _links[linksIndex].object != linkedObject) {
+                    while (linksIndex && _links[linksIndex].object != lastObject) { --linksIndex; }
+                    linkedObject = lastObject;
+                }
+            }
+            lastObject = linkedObject;
+        }
+    }
 }
 
 akey_t AstroObject::getKey() const
@@ -228,6 +241,16 @@ AstroString AstroObject::getKeyString() const
 bool AstroObject::isObject() const
 {
     return true;
+}
+
+SharedPtr<AstroObjInterface> AstroObject::getSharedPtr() const
+{
+    return getController() ? getController()->objectById(_id) : nullptr;
+}
+
+SharedPtr<AstroObjInterface> AstroObject::getSharedPtrFor(const AstroObjInterface *object) const
+{
+    return object == this ? getSharedPtr() : nullptr;
 }
 
 AstroObjectData *AstroObject::allocateData() const
@@ -251,9 +274,24 @@ akey_t AstroSubObject::getKey() const
     return (akey_t)((address ^ (address >> 16)) & 0xffff);
 }
 
+AstroIdentity AstroSubObject::getId() const
+{
+    return AstroIdentity(getKey());
+}
+
 AstroString AstroSubObject::getKeyString() const
 {
     char buffer[2 * sizeof(void *) + 3];
     snprintf(buffer, sizeof(buffer), "%p", (const void *)this);
     return AstroString(buffer);
+}
+
+SharedPtr<AstroObjInterface> AstroSubObject::getSharedPtr() const
+{
+    return _parent ? _parent->getSharedPtrFor(this) : nullptr;
+}
+
+SharedPtr<AstroObjInterface> AstroSubObject::getSharedPtrFor(const AstroObjInterface *object) const
+{
+    return object->isObject() ? object->getSharedPtr() : _parent ? _parent->getSharedPtrFor(object) : nullptr;
 }

@@ -8,6 +8,7 @@
 #include "AstroStrings.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 AstroSystemData::AstroSystemData()
     : systemName{0}, systemMode(Astro_SystemMode_Tracking),
@@ -78,6 +79,7 @@ bool AstroSystemData::fromJSON(const char *jsonIn)
     snprintf(systemName, sizeof(systemName), "%s", systemNameIn);
     systemMode = (Astro_SystemMode)systemModeIn;
     measurementMode = (Astro_MeasurementMode)measurementModeIn;
+    if (timeZoneIn < INT8_MIN || timeZoneIn > INT8_MAX) { return false; }
     timeZoneOffset = (int16_t)timeZoneIn;
     pollingInterval = (uint16_t)pollingIn;
     observer = AstroObserver(latitudeIn, longitudeIn, elevationIn);

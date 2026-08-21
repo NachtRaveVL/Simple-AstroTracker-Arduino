@@ -6,19 +6,65 @@
 #ifndef AstroAttachments_HPP
 #define AstroAttachments_HPP
 
-// Attachment implementations intentionally stay small. They are non-owning references,
-// leaving object lifetime with the controller/sketch just as the sibling attachment layer does.
-
-template<class TObject>
-inline bool operator==(const AstroAttachment<TObject> &lhs, const AstroAttachment<TObject> &rhs)
+inline AstroDLinkObject &AstroDLinkObject::operator=(AstroIdentity rhs)
 {
-    return lhs.getObject() == rhs.getObject() && lhs.getParentSubIndex() == rhs.getParentSubIndex();
+    _key = rhs.key;
+    _obj = nullptr;
+    _keyString = rhs.keyString;
+    return *this;
 }
 
-template<class TObject>
-inline bool operator!=(const AstroAttachment<TObject> &lhs, const AstroAttachment<TObject> &rhs)
+inline AstroDLinkObject &AstroDLinkObject::operator=(const char *rhs)
 {
-    return !(lhs == rhs);
+    _key = rhs ? astroStringHash(rhs) : akey_none;
+    _obj = nullptr;
+    _keyString = rhs ? AstroString(rhs) : AstroString();
+    return *this;
+}
+
+inline AstroDLinkObject &AstroDLinkObject::operator=(const AstroObjInterface *rhs)
+{
+    _key = rhs ? rhs->getKey() : akey_none;
+    _obj = rhs ? rhs->getSharedPtr() : nullptr;
+    _keyString = rhs && !_obj ? rhs->getKeyString() : AstroString();
+    return *this;
+}
+
+inline AstroDLinkObject &AstroDLinkObject::operator=(const AstroAttachment *rhs)
+{
+    _key = rhs ? rhs->getKey() : akey_none;
+    _obj = rhs && rhs->isResolved() ? const_cast<AstroAttachment *>(rhs)->getObject<AstroObjInterface>() : nullptr;
+    _keyString = rhs && !rhs->isResolved() ? rhs->getKeyString() : AstroString();
+    return *this;
+}
+
+template<class U>
+inline AstroDLinkObject &AstroDLinkObject::operator=(SharedPtr<U> rhs)
+{
+    _key = rhs ? rhs->getKey() : akey_none;
+    _obj = rhs ? static_pointer_cast<AstroObjInterface>(rhs) : nullptr;
+    _keyString = AstroString();
+    return *this;
+}
+
+template<class U>
+void AstroAttachment::setObject(U object, bool modify)
+{
+    if (!(_obj == object)) {
+        if (_obj.isResolved()) { detachObject(); }
+        _obj = object;
+        if (_obj.isResolved()) { attachObject(); }
+        if (modify) { bumpRevisionIfNeeded(); }
+    }
+}
+
+template<class U>
+SharedPtr<U> AstroAttachment::getObject()
+{
+    if (_obj) { return _obj.getObject<U>(); }
+    if (!_obj.isSet()) { return nullptr; }
+    if (_obj.needsResolved() && _obj.resolveObject()) { attachObject(); }
+    return _obj.getObject<U>();
 }
 
 #endif // /ifndef AstroAttachments_HPP

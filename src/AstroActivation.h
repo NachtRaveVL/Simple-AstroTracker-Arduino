@@ -44,20 +44,20 @@ struct AstroActivation {
 // Actuator Activation Handle
 // Keeps an actuator request alive while tracking elapsed and remaining activation time.
 struct AstroActivationHandle {
-    AstroActuator *actuator;                                 // Actuator, not owned
+    SharedPtr<AstroActuator> actuator;                      // Actuator owner, set only when activation requested
     AstroActivation activation;                              // Activation
     millis_t checkTime;                                      // Last activation update time, in milliseconds
     millis_t elapsed;                                        // Accumulated activation time, in milliseconds
 
-    AstroActivationHandle(AstroActuator *actuatorIn = nullptr,
+    AstroActivationHandle(SharedPtr<AstroActuator> actuatorIn = nullptr,
                           Astro_DirectionMode direction = Astro_DirectionMode_Undefined,
                           float intensity = 0.0f,
-                          millis_t duration = 0,
+                          millis_t duration = -1,
                           bool force = false);               // Force
     AstroActivationHandle(const AstroActivationHandle &handle);
     ~AstroActivationHandle();
 
-    AstroActivationHandle &operator=(AstroActuator *actuatorIn);
+    AstroActivationHandle &operator=(SharedPtr<AstroActuator> actuatorIn);
     AstroActivationHandle &operator=(const AstroActivation &activationIn);
     AstroActivationHandle &operator=(const AstroActivationHandle &handle);
 

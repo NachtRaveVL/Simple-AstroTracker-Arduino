@@ -3,7 +3,7 @@
     Astruino Scheduler
 */
 
-#include "AstroScheduler.h"
+#include "Astruino.h"
 #include "AstroUtils.h"
 #include <stdio.h>
 
@@ -13,18 +13,60 @@ AstroSchedulerConfig::AstroSchedulerConfig()
 { ; }
 
 AstroScheduler::AstroScheduler()
-    : _mount(nullptr), _cover(nullptr), _device(nullptr), _thermal(nullptr), _logger(nullptr),
+    : _mount(nullptr), _cover(nullptr), _device(nullptr), _thermal(nullptr), _safetyTrigger(nullptr), _logger(nullptr),
       _targetId(Astro_Target_M42), _config(), _stage(Astro_SchedulerStage_DayStowed),
       _stageStart(0), _settleStart(0), _lastEnvReport(0)
 { ; }
 
-void AstroScheduler::setMount(AstroMount *mount) { _mount = mount; }
-void AstroScheduler::setCover(AstroCover *cover) { _cover = cover; }
-void AstroScheduler::setObservationDevice(AstroObservationDevice *device) { _device = device; }
-void AstroScheduler::setThermalBalancer(AstroThermalBalancer *thermal) { _thermal = thermal; }
-void AstroScheduler::setLogger(AstroLogger *logger) { _logger = logger; }
-void AstroScheduler::setTarget(Astro_TargetId targetId) { _targetId = targetId; if (_mount) { _mount->setTarget(targetId); } }
-void AstroScheduler::setConfig(const AstroSchedulerConfig &config) { _config = config; }
+void AstroScheduler::setMount(SharedPtr<AstroMount> mount)
+{
+    _mount = mount;
+}
+
+void AstroScheduler::setCover(SharedPtr<AstroCover> cover)
+{
+    _cover = cover;
+}
+
+void AstroScheduler::setObservationDevice(SharedPtr<AstroCameraTrigger> device)
+{
+    _device = device;
+}
+
+void AstroScheduler::setThermalBalancer(AstroThermalBalancer *thermal)
+{
+    _thermal = thermal;
+}
+
+void AstroScheduler::setSafetyTrigger(SharedPtr<AstroTrigger> trigger)
+{
+    _safetyTrigger.setObject(trigger);
+}
+
+void AstroScheduler::setLogger(AstroLogger *logger)
+{
+    _logger = logger;
+}
+
+void AstroScheduler::setTarget(Astro_TargetId targetId)
+{
+    _targetId = targetId;
+    if (_mount) { _mount->setTarget(targetId); }
+}
+
+void AstroScheduler::setConfig(const AstroSchedulerConfig &config)
+{
+    _config = config;
+}
+
+void AstroScheduler::unresolveAny(AstroObject *object)
+{
+    if (!object) { return; }
+    if (_mount && _mount.get() == object) { _mount = nullptr; }
+    if (_cover && _cover.get() == object) { _cover = nullptr; }
+    if (_device && _device.get() == object) { _device = nullptr; }
+    if (_safetyTrigger.get()) { _safetyTrigger.get()->unresolveAny(object); }
+}
 
 void AstroScheduler::enterStage(Astro_SchedulerStage stage, int64_t unixTime)
 {
@@ -48,15 +90,22 @@ void AstroScheduler::reportEnvironment(int64_t unixTime, const AstroThermalReadi
     _lastEnvReport = unixTime;
 }
 
-void AstroScheduler::update(int64_t unixTime, double elapsedSeconds, double sunAltitudeDegrees,
-                            bool safeToObserve, const AstroThermalReadings &thermalReadings)
+void AstroScheduler::update()
 {
-    AstroThermalOutputs outputs;
-    if (_thermal) { outputs = _thermal->update(thermalReadings, elapsedSeconds); }
-    reportEnvironment(unixTime, thermalReadings, outputs);
+    const int64_t unixTime = (int64_t)unixNow();
+    if (unixTime <= 0) { return; }
 
-    if (_cover) { _cover->update(elapsedSeconds); }
-    if (_mount) { _mount->update(unixTime, elapsedSeconds); }
+    AstroEquatorialCoordinates sunCoordinates;
+    double sunAltitudeDegrees = 90.0;
+    if (getController() && astroResolveSolarSystemTarget(Astro_Target_Sun, unixTime, &sunCoordinates)) {
+        sunAltitudeDegrees = astroEquatorialToHorizontal(sunCoordinates, getController()->getObserver(), unixTime).altitudeDegrees;
+    }
+
+    const bool safeToObserve = !_safetyTrigger.isSet() || !_safetyTrigger.isTriggered(true);
+    if (_thermal) { _thermal->update(); }
+    const AstroThermalReadings thermalReadings = _thermal ? _thermal->getReadings() : AstroThermalReadings();
+    const AstroThermalOutputs thermalOutputs = _thermal ? _thermal->getOutputs() : AstroThermalOutputs();
+    reportEnvironment(unixTime, thermalReadings, thermalOutputs);
 
     if ((_cover && _cover->isFaulted()) || (_mount && _mount->isLimitHit())) {
         if (_device) { _device->stopObservation(); }
@@ -93,7 +142,7 @@ void AstroScheduler::update(int64_t unixTime, double elapsedSeconds, double sunA
 
         case Astro_SchedulerStage_Cooling: {
             if (_thermal) { _thermal->setMode(Astro_ThermalMode_NightObserving); }
-            if (!_thermal || _thermal->cameraStable(thermalReadings, ASTRO_SCH_CAMERA_STABLE_DEG)) {
+            if (!_thermal || _thermal->cameraStable(ASTRO_SCH_CAMERA_STABLE_DEG)) {
                 if (_mount) {
                     _mount->unpark();
                     _mount->setTarget(_targetId);
@@ -131,7 +180,7 @@ void AstroScheduler::update(int64_t unixTime, double elapsedSeconds, double sunA
 
         case Astro_SchedulerStage_Warming: {
             if (_mount) { _mount->park(); }
-            if (!_thermal || _thermal->cameraSafeToStow(thermalReadings)) {
+            if (!_thermal || _thermal->cameraSafeToStow()) {
                 enterStage(Astro_SchedulerStage_Stowing, unixTime);
             }
         } break;

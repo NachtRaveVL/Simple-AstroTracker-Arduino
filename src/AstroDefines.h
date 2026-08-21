@@ -37,6 +37,12 @@
 #ifndef ASTRO_PUBLISH_MAX_COLUMNS
 #define ASTRO_PUBLISH_MAX_COLUMNS 32                    // Maximum sensor columns collected by Publisher
 #endif
+#ifndef ASTRO_SYS_OBJECTS_MAXSIZE
+#define ASTRO_SYS_OBJECTS_MAXSIZE 16                     // Maximum array size for system objects (max # of objects in system)
+#endif
+#ifndef ASTRO_POS_MAXSIZE
+#define ASTRO_POS_MAXSIZE 32                                // Position indices maximum size (max # of objects of same type)
+#endif
 #ifndef ASTRO_ACTIVATION_HANDLE_SLOTS
 #define ASTRO_ACTIVATION_HANDLE_SLOTS 8                 // Maximum simultaneous activation requests per actuator
 #endif
@@ -68,8 +74,9 @@
 #define ASTRO_THERMAL_CAMERA_RAMP_CPM   2.0                 // Default camera cooling/warming ramp, in degrees C per minute
 #define ASTRO_THERMAL_ELECTRONICS_MIN_C -5.0                // Default minimum electronics/body temperature, in degrees C
 
-#define ASTRO_POS_SEARCH_FROMBEG ((aposi_t)-1)           // Search for first available object position
-#define ASTRO_POS_SEARCH_FROMEND ((aposi_t)-2)           // Search for last available object position
+#define ASTRO_POS_SEARCH_FROMBEG ((aposi_t)-1)           // Search from beginning to end, 0 up to MAXSIZE-1
+#define ASTRO_POS_SEARCH_FROMEND ((aposi_t)ASTRO_POS_MAXSIZE) // Search from end to beginning, MAXSIZE-1 down to 0
+
 
 // System Run Mode
 // Specifies how mount target positions are determined and controlled.
@@ -154,6 +161,16 @@ enum Astro_RailType : int8_t {
     Astro_RailType_DC24V,                                    // 24V DC rail
     Astro_RailType_Count,                                    // Placeholder
     Astro_RailType_Undefined = -1                           // Placeholder
+};
+
+// RTC Device Type
+// Supported real-time clocks, matching the sibling controller libraries.
+enum Astro_RTCType : int8_t {
+    Astro_RTCType_DS1307 = 13,                               // DS1307 (no battFail)
+    Astro_RTCType_DS3231 = 32,                               // DS3231
+    Astro_RTCType_PCF8523 = 85,                              // PCF8523
+    Astro_RTCType_PCF8563 = 86,                              // PCF8563
+    Astro_RTCType_None = -1                                  // No RTC
 };
 
 // Pin Mode

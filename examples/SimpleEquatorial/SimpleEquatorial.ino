@@ -15,11 +15,11 @@
 Astruino astroController(Astro_MountType_Equatorial);
 
 static double axisTargets[2] = {0.0, 0.0};
-static millis_t lastUpdate = 0;
+static uint8_t axisIndices[2] = {0, 1};
 
-void setAxisTarget(void *context, uint8_t axisIndex, double targetDegrees)
+void setAxisTarget(void *context, double targetDegrees)
 {
-    (void)context;
+    uint8_t axisIndex = context ? *(uint8_t *)context : 0;
     if (axisIndex >= 2) { return; }
     axisTargets[axisIndex] = targetDegrees;
 
@@ -35,29 +35,29 @@ void setup()
     AstroObserver observer(SETUP_LATITUDE, SETUP_LONGITUDE, SETUP_ELEVATION);
     astroController.init();
     astroController.setObserver(observer);
-    astroController.launch();
+    setTime((time_t)SETUP_START_UNIX);
+
+    auto primaryDriver = astroController.addCallbackAxisDriver(setAxisTarget, nullptr, &axisIndices[0]);
+    auto secondaryDriver = astroController.addCallbackAxisDriver(setAxisTarget, nullptr, &axisIndices[1]);
 
     auto &mount = astroController.getMount();
+    mount.setAxisDriver(0, primaryDriver);
+    mount.setAxisDriver(1, secondaryDriver);
     mount.setTarget(Astro_Target_M42);
     mount.setAxisRates(6.0, 6.0);
     mount.setStowPosition(0.0, 0.0);
-    mount.setAxisTargetCallback(setAxisTarget);
     mount.track();
 
-    lastUpdate = millis();
+    astroController.launch();
     Serial.println(F("Astruino equatorial tracker started"));
 }
 
 void loop()
 {
-    millis_t now = millis();
-    double elapsedSeconds = (now - lastUpdate) / 1000.0;
-    lastUpdate = now;
-
-    int64_t unixTime = SETUP_START_UNIX + (now / 1000);
-    astroController.getMount().update(unixTime, elapsedSeconds);
+    astroController.update();
 
     static millis_t lastReport = 0;
+    millis_t now = millis();
     if (now - lastReport >= 5000) {
         lastReport = now;
 

@@ -3,7 +3,7 @@
     Astruino Modules
 */
 
-#include "AstroModules.h"
+#include "Astruino.h"
 
 AstroModule::AstroModule()
     : _initialized(false)
@@ -18,22 +18,106 @@ bool AstroModule::begin()
 void AstroModule::update()
 { ; }
 
-
-AstroManualTimeProvider::AstroManualTimeProvider(int64_t unixTime)
-    : _unixTime(unixTime)
-{ ; }
-
-bool AstroManualTimeProvider::getUnixTime(int64_t *unixTimeOut)
+bool AstroObjectRegistration::registerObject(SharedPtr<AstroObject> object)
 {
-    if (!unixTimeOut || _unixTime <= 0) { return false; }
-    *unixTimeOut = _unixTime;
+    if (!object || object->getKey() == akey_none || _objects.find(object->getKey()) != _objects.end()) { return false; }
+    _objects[object->getKey()] = object;
     return true;
 }
 
-void AstroManualTimeProvider::setUnixTime(int64_t unixTime)
+bool AstroObjectRegistration::unregisterObject(SharedPtr<AstroObject> object)
 {
-    _unixTime = unixTime;
+    if (!object) { return false; }
+    auto iter = _objects.find(object->getKey());
+    if (iter == _objects.end() || iter->second.get() != object.get()) { return false; }
+
+    object->unresolve();
+    _objects.erase(iter);
+    return true;
 }
+
+SharedPtr<AstroObject> AstroObjectRegistration::objectById(AstroIdentity id) const
+{
+    if (id.posIndex == ASTRO_POS_SEARCH_FROMBEG) {
+        while (++id.posIndex < ASTRO_POS_MAXSIZE) {
+            auto iter = _objects.find(id.regenKey());
+            if (iter != _objects.end()) {
+                if (id.keyString == iter->second->getKeyString()) {
+                    return iter->second;
+                } else {
+                    return objectById_Col(id);
+                }
+            }
+        }
+    } else if (id.posIndex == ASTRO_POS_SEARCH_FROMEND) {
+        while (--id.posIndex >= 0) {
+            auto iter = _objects.find(id.regenKey());
+            if (iter != _objects.end()) {
+                if (id.keyString == iter->second->getKeyString()) {
+                    return iter->second;
+                } else {
+                    return objectById_Col(id);
+                }
+            }
+        }
+    } else {
+        auto iter = _objects.find(id.key);
+        if (iter != _objects.end()) {
+            if (id.keyString == iter->second->getKeyString()) {
+                return iter->second;
+            } else {
+                return objectById_Col(id);
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+SharedPtr<AstroObject> AstroObjectRegistration::objectById_Col(const AstroIdentity &id) const
+{
+    ASTRO_SOFT_ASSERT(false, "Hashing collision"); // exhaustive search must be performed, publishing may miss values
+
+    for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
+        if (id.keyString == iter->second->getKeyString()) {
+            return iter->second;
+        }
+    }
+
+    return nullptr;
+}
+
+aposi_t AstroObjectRegistration::firstPosition(AstroIdentity id, bool taken) const
+{
+    if (id.posIndex != ASTRO_POS_SEARCH_FROMEND) {
+        id.posIndex = ASTRO_POS_SEARCH_FROMBEG;
+        while (++id.posIndex < ASTRO_POS_MAXSIZE) {
+            auto iter = _objects.find(id.regenKey());
+            if (taken == (iter != _objects.end())) {
+                return id.posIndex;
+            }
+        }
+    } else {
+        id.posIndex = ASTRO_POS_SEARCH_FROMEND;
+        while (--id.posIndex >= 0) {
+            auto iter = _objects.find(id.regenKey());
+            if (taken == (iter != _objects.end())) {
+                return id.posIndex;
+            }
+        }
+    }
+
+    return -1;
+}
+
+
+void AstroObjectRegistration::updateObjects()
+{
+    for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
+        if (iter->second) { iter->second->update(); }
+    }
+}
+
 
 AstroFixedLocationProvider::AstroFixedLocationProvider(const AstroObserver &observer)
     : _observer(observer)
@@ -49,15 +133,6 @@ bool AstroFixedLocationProvider::getObserver(AstroObserver *observerOut)
 void AstroFixedLocationProvider::setObserver(const AstroObserver &observer)
 {
     _observer = observer;
-}
-
-AstroCallbackTimeProvider::AstroCallbackTimeProvider(TimeCallback callback, void *context)
-    : _callback(callback), _context(context)
-{ ; }
-
-bool AstroCallbackTimeProvider::getUnixTime(int64_t *unixTimeOut)
-{
-    return _callback && unixTimeOut ? _callback(_context, unixTimeOut) : false;
 }
 
 AstroCallbackLocationProvider::AstroCallbackLocationProvider(LocationCallback callback, void *context)

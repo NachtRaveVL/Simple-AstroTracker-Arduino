@@ -8,6 +8,41 @@
 
 #include "AstroDefines.h"
 
+#ifdef ARDUINO
+// Simple wrapper class for dealing with RTC modules.
+// This class is mainly used to abstract which RTC module is used.
+template<typename RTCType>
+class AstroRTCWrapper : public AstroRTCInterface {
+public:
+    virtual bool begin(TwoWire *wireInstance) override { return _rtc.begin(wireInstance); }
+    virtual void adjust(const DateTime &dt) override { _rtc.adjust(dt); }
+    virtual bool lostPower(void) override { return _rtc.lostPower(); }
+    virtual DateTime now() override { return _rtc.now(); }
+protected:
+    RTCType _rtc;
+};
+
+// Specialization for older DS1307 that doesn't have lost power tracking.
+template<>
+class AstroRTCWrapper<RTC_DS1307> : public AstroRTCInterface {
+public:
+    virtual bool begin(TwoWire *wireInstance) override;
+    virtual void adjust(const DateTime &dt) override;
+    virtual bool lostPower(void) override;
+    virtual DateTime now() override;
+protected:
+    RTC_DS1307 _rtc;
+};
+#endif
+
+// UTC/local time helpers. Timezone offsets follow the sibling-library convention.
+extern time_t unixNow();
+#ifdef ARDUINO
+extern DateTime localNow();
+extern time_t unixTime(DateTime localTime);
+extern DateTime localTime(time_t unixTime);
+#endif
+
 // Debug assertion helpers used by ASTRO_SOFT_ASSERT / ASTRO_HARD_ASSERT when enabled.
 extern void astroSoftAssert(bool condition, const AstroString &message, const char *file, const char *function, int line);
 extern void astroHardAssert(bool condition, const AstroString &message, const char *file, const char *function, int line);

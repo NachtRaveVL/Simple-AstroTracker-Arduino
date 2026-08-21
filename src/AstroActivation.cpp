@@ -6,7 +6,7 @@
 #include "AstroActivation.h"
 #include "AstroActuators.h"
 
-AstroActivationHandle::AstroActivationHandle(AstroActuator *actuatorIn, Astro_DirectionMode direction,
+AstroActivationHandle::AstroActivationHandle(SharedPtr<AstroActuator> actuatorIn, Astro_DirectionMode direction,
                                              float intensity, millis_t duration, bool force)
     : actuator(nullptr),
       activation(direction, intensity, duration, force ? Astro_ActivationFlags_Forced : Astro_ActivationFlags_None),
@@ -26,13 +26,20 @@ AstroActivationHandle::~AstroActivationHandle()
     if (actuator) { unset(); }
 }
 
-AstroActivationHandle &AstroActivationHandle::operator=(AstroActuator *actuatorIn)
+AstroActivationHandle &AstroActivationHandle::operator=(SharedPtr<AstroActuator> actuatorIn)
 {
     if (actuator != actuatorIn && isValid()) {
-        if (actuator) { unset(); }
+        if (actuator) { unset(); } else { checkTime = 0; }
+
         actuator = actuatorIn;
-        if (actuator && actuator->addActivationHandle(this)) { checkTime = astroNZMillis(); }
-        else if (actuator) { actuator = nullptr; }
+
+        if (actuator) {
+            if (actuator->addActivationHandle(this)) {
+                actuator->setNeedsUpdate();
+            } else {
+                actuator = nullptr;
+            }
+        }
     }
     return *this;
 }
@@ -40,14 +47,12 @@ AstroActivationHandle &AstroActivationHandle::operator=(AstroActuator *actuatorI
 AstroActivationHandle &AstroActivationHandle::operator=(const AstroActivation &activationIn)
 {
     activation = activationIn;
-    if (actuator && !checkTime) { checkTime = astroNZMillis(); }
     return *this;
 }
 
 AstroActivationHandle &AstroActivationHandle::operator=(const AstroActivationHandle &handle)
 {
     activation = handle.activation;
-    elapsed = 0;
     return operator=(handle.actuator);
 }
 
@@ -55,30 +60,31 @@ void AstroActivationHandle::unset()
 {
     if (isActive()) { elapseTo(); }
     checkTime = 0;
+
     if (actuator) {
-        AstroActuator *oldActuator = actuator;
+        SharedPtr<AstroActuator> oldActuator = actuator;
         actuator = nullptr;
         oldActuator->removeActivationHandle(this);
-        oldActuator->resolveActivations();
+        oldActuator->setNeedsUpdate();
     }
 }
 
 void AstroActivationHandle::elapseBy(millis_t delta)
 {
-    if (!delta || !isValid() || !isActive()) { return; }
-    if (!isUntimed()) {
-        if (delta < activation.duration) {
-            activation.duration -= delta;
-            checkTime += delta;
-        } else {
-            delta = activation.duration;
-            activation.duration = 0;
-            checkTime = 0;
+    if (delta && isValid() && isActive()) {
+        if (!isUntimed()) {
+            if (delta <= activation.duration) {
+                activation.duration -= delta;
+                checkTime += delta;
+            } else {
+                delta = activation.duration;
+                activation.duration = 0;
+                checkTime = 0;
+                actuator->setNeedsUpdate();
+            }
         }
-    } else {
-        checkTime += delta;
+        elapsed += delta;
     }
-    elapsed += delta;
 }
 
 void AstroActivationHandle::elapseTo(millis_t time)

@@ -40,16 +40,6 @@ inline Astro_MeasurementMode Astruino::getMeasurementMode() const
     return _systemData.measurementMode;
 }
 
-inline void Astruino::setTimeZoneOffset(int16_t timeZoneOffset)
-{
-    _systemData.timeZoneOffset = timeZoneOffset;
-}
-
-inline int16_t Astruino::getTimeZoneOffset() const
-{
-    return _systemData.timeZoneOffset;
-}
-
 inline void Astruino::setPollingInterval(uint16_t pollingInterval)
 {
     _systemData.pollingInterval = pollingInterval;

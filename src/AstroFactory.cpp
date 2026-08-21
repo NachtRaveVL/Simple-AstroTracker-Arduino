@@ -3,173 +3,187 @@
     Astruino Factory
 */
 
-#include "AstroFactory.h"
+#include "Astruino.h"
 
-AstroActuator *AstroFactory::newActuator(Astro_ActuatorType actuatorType, aposi_t positionIndex)
+static aposi_t astroFirstOpen(AstroIdentity id)
+{
+    return getController() ? getController()->firstPositionOpen(id) : ASTRO_POS_SEARCH_FROMBEG;
+}
+
+template<class T>
+static SharedPtr<T> astroRegister(SharedPtr<T> object)
+{
+    return object && getController() && getController()->registerObject(object) ? object : nullptr;
+}
+
+SharedPtr<AstroActuator> AstroFactory::addActuator(Astro_ActuatorType actuatorType)
 {
     if (actuatorType < Astro_ActuatorType_MountAxis || actuatorType >= Astro_ActuatorType_Count) { return nullptr; }
-    return new AstroActuator(actuatorType, positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(actuatorType));
+    return isValidIndex(positionIndex) ? astroRegister(SharedPtr<AstroActuator>(new AstroActuator(actuatorType, positionIndex))) : nullptr;
 }
 
-AstroValueSensor *AstroFactory::newSensor(Astro_SensorType sensorType, Astro_UnitsType units, aposi_t positionIndex)
+SharedPtr<AstroCallbackActuator> AstroFactory::addCallbackActuator(AstroCallbackActuator::WriteCallback callback,
+                                                                      Astro_ActuatorType actuatorType,
+                                                                      void *context)
+{
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(actuatorType));
+    return callback && isValidIndex(positionIndex)
+        ? astroRegister(SharedPtr<AstroCallbackActuator>(new AstroCallbackActuator(callback, context, actuatorType, positionIndex)))
+        : nullptr;
+}
+
+SharedPtr<AstroValueSensor> AstroFactory::addSensor(Astro_SensorType sensorType, Astro_UnitsType units)
 {
     if (sensorType < Astro_SensorType_Temperature || sensorType >= Astro_SensorType_Count) { return nullptr; }
-    return new AstroValueSensor(sensorType, units, positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(sensorType));
+    return isValidIndex(positionIndex) ? astroRegister(SharedPtr<AstroValueSensor>(new AstroValueSensor(sensorType, units, positionIndex))) : nullptr;
 }
 
-AstroDigitalActuator *AstroFactory::newDigitalActuator(Astro_ActuatorType actuatorType, AstroDigitalPin outputPin,
-                                                       aposi_t positionIndex)
+SharedPtr<AstroCallbackSensor> AstroFactory::addCallbackSensor(AstroCallbackSensor::ReadCallback callback,
+                                                                  Astro_SensorType sensorType, Astro_UnitsType units,
+                                                                  void *context)
 {
-    if (actuatorType < Astro_ActuatorType_MountAxis || actuatorType >= Astro_ActuatorType_Count) { return nullptr; }
-    return new AstroDigitalActuator(outputPin, actuatorType, positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(sensorType));
+    return callback && isValidIndex(positionIndex)
+        ? astroRegister(SharedPtr<AstroCallbackSensor>(new AstroCallbackSensor(callback, context, sensorType, units, positionIndex)))
+        : nullptr;
 }
 
-AstroAnalogActuator *AstroFactory::newAnalogActuator(Astro_ActuatorType actuatorType, AstroAnalogPin outputPin,
-                                                     aposi_t positionIndex)
+SharedPtr<AstroDigitalActuator> AstroFactory::addDigitalActuator(Astro_ActuatorType actuatorType, AstroDigitalPin outputPin)
 {
-    if (actuatorType < Astro_ActuatorType_MountAxis || actuatorType >= Astro_ActuatorType_Count) { return nullptr; }
-    return new AstroAnalogActuator(outputPin, actuatorType, positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(actuatorType));
+    return isValidIndex(positionIndex) ? astroRegister(SharedPtr<AstroDigitalActuator>(new AstroDigitalActuator(outputPin, actuatorType, positionIndex))) : nullptr;
 }
 
-AstroDigitalSensor *AstroFactory::newDigitalSensor(Astro_SensorType sensorType, AstroDigitalPin inputPin,
-                                                   aposi_t positionIndex)
+SharedPtr<AstroAnalogActuator> AstroFactory::addAnalogActuator(Astro_ActuatorType actuatorType, AstroAnalogPin outputPin)
 {
-    if (sensorType < Astro_SensorType_Temperature || sensorType >= Astro_SensorType_Count) { return nullptr; }
-    return new AstroDigitalSensor(inputPin, sensorType, positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(actuatorType));
+    return isValidIndex(positionIndex) ? astroRegister(SharedPtr<AstroAnalogActuator>(new AstroAnalogActuator(outputPin, actuatorType, positionIndex))) : nullptr;
 }
 
-AstroAnalogSensor *AstroFactory::newAnalogSensor(Astro_SensorType sensorType, AstroAnalogPin inputPin,
-                                                 Astro_UnitsType units, aposi_t positionIndex)
+SharedPtr<AstroDigitalSensor> AstroFactory::addDigitalSensor(Astro_SensorType sensorType, AstroDigitalPin inputPin)
 {
-    if (sensorType < Astro_SensorType_Temperature || sensorType >= Astro_SensorType_Count) { return nullptr; }
-    return new AstroAnalogSensor(inputPin, sensorType, units, positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(sensorType));
+    return isValidIndex(positionIndex) ? astroRegister(SharedPtr<AstroDigitalSensor>(new AstroDigitalSensor(inputPin, sensorType, positionIndex))) : nullptr;
 }
 
-AstroDigitalActuator *AstroFactory::newDewHeaterRelay(pintype_t outputPin, bool activeLow, aposi_t positionIndex)
+SharedPtr<AstroAnalogSensor> AstroFactory::addAnalogSensor(Astro_SensorType sensorType, AstroAnalogPin inputPin, Astro_UnitsType units)
 {
-    return newDigitalActuator(Astro_ActuatorType_DewHeater,
-                              AstroDigitalPin(outputPin, Astro_PinMode_Digital_Output, activeLow),
-                              positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(sensorType));
+    return isValidIndex(positionIndex) ? astroRegister(SharedPtr<AstroAnalogSensor>(new AstroAnalogSensor(inputPin, sensorType, units, positionIndex))) : nullptr;
 }
 
-AstroAnalogActuator *AstroFactory::newDewHeaterPWM(pintype_t outputPin, uint8_t outputBitRes, aposi_t positionIndex)
+SharedPtr<AstroDigitalActuator> AstroFactory::addDewHeaterRelay(pintype_t outputPin, bool activeLow)
 {
-    return newAnalogActuator(Astro_ActuatorType_DewHeater,
-                             AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes),
-                             positionIndex);
+    return addDigitalActuator(Astro_ActuatorType_DewHeater, AstroDigitalPin(outputPin, Astro_PinMode_Digital_Output, activeLow));
 }
 
-AstroDigitalActuator *AstroFactory::newCoverRelay(pintype_t outputPin, bool activeLow, aposi_t positionIndex)
+SharedPtr<AstroAnalogActuator> AstroFactory::addDewHeaterPWM(pintype_t outputPin, uint8_t outputBitRes)
 {
-    return newDigitalActuator(Astro_ActuatorType_Cover,
-                              AstroDigitalPin(outputPin, Astro_PinMode_Digital_Output, activeLow),
-                              positionIndex);
+    return addAnalogActuator(Astro_ActuatorType_DewHeater, AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes));
 }
 
-AstroAnalogActuator *AstroFactory::newCameraCoolerPWM(pintype_t outputPin, uint8_t outputBitRes, aposi_t positionIndex)
+SharedPtr<AstroDigitalActuator> AstroFactory::addCoverRelay(pintype_t outputPin, bool activeLow)
 {
-    return newAnalogActuator(Astro_ActuatorType_CameraCooler,
-                             AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes),
-                             positionIndex);
+    return addDigitalActuator(Astro_ActuatorType_Cover, AstroDigitalPin(outputPin, Astro_PinMode_Digital_Output, activeLow));
 }
 
-AstroAnalogActuator *AstroFactory::newFanPWM(pintype_t outputPin, uint8_t outputBitRes, aposi_t positionIndex)
+SharedPtr<AstroAnalogActuator> AstroFactory::addCameraCoolerPWM(pintype_t outputPin, uint8_t outputBitRes)
 {
-    return newAnalogActuator(Astro_ActuatorType_Fan,
-                             AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes),
-                             positionIndex);
+    return addAnalogActuator(Astro_ActuatorType_CameraCooler, AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes));
 }
 
-AstroServoAxisDriver *AstroFactory::newMountAxisServo(pintype_t outputPin, double minDegrees, double maxDegrees, uint8_t outputBitRes)
+SharedPtr<AstroAnalogActuator> AstroFactory::addFanPWM(pintype_t outputPin, uint8_t outputBitRes)
 {
-    return newServoAxisDriver(AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes), minDegrees, maxDegrees);
+    return addAnalogActuator(Astro_ActuatorType_Fan, AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes));
 }
 
-AstroFocuser *AstroFactory::newFocuser(int32_t maximumPosition, aposi_t positionIndex)
+SharedPtr<AstroFocuser> AstroFactory::addFocuser(int32_t maximumPosition)
 {
-    return new AstroFocuser(maximumPosition, positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(Astro_ActuatorType_Focuser));
+    return isValidIndex(positionIndex) ? astroRegister(SharedPtr<AstroFocuser>(new AstroFocuser(maximumPosition, positionIndex))) : nullptr;
 }
 
-AstroDigitalSensor *AstroFactory::newLimitSwitch(pintype_t inputPin, bool activeLow, aposi_t positionIndex)
+SharedPtr<AstroDigitalSensor> AstroFactory::addLimitSwitch(pintype_t inputPin, bool activeLow)
 {
-    return newDigitalSensor(Astro_SensorType_LimitSwitch,
-                            AstroDigitalPin(inputPin, Astro_PinMode_Digital_Input_PullUp, activeLow),
-                            positionIndex);
+    return addDigitalSensor(Astro_SensorType_LimitSwitch, AstroDigitalPin(inputPin, Astro_PinMode_Digital_Input_PullUp, activeLow));
 }
 
-AstroDigitalSensor *AstroFactory::newRainIndicator(pintype_t inputPin, bool activeLow, aposi_t positionIndex)
+SharedPtr<AstroDigitalSensor> AstroFactory::addRainIndicator(pintype_t inputPin, bool activeLow)
 {
-    return newDigitalSensor(Astro_SensorType_Rain,
-                            AstroDigitalPin(inputPin, Astro_PinMode_Digital_Input_PullUp, activeLow),
-                            positionIndex);
+    return addDigitalSensor(Astro_SensorType_Rain, AstroDigitalPin(inputPin, Astro_PinMode_Digital_Input_PullUp, activeLow));
 }
 
-AstroAnalogSensor *AstroFactory::newLightSensor(pintype_t inputPin, uint8_t inputBitRes, aposi_t positionIndex)
+SharedPtr<AstroAnalogSensor> AstroFactory::addLightSensor(pintype_t inputPin, uint8_t inputBitRes)
 {
-    return newAnalogSensor(Astro_SensorType_Light, AstroAnalogPin(inputPin, Astro_PinMode_Analog_Input, inputBitRes),
-                           Astro_UnitsType_Raw_1, positionIndex);
+    return addAnalogSensor(Astro_SensorType_Light, AstroAnalogPin(inputPin, Astro_PinMode_Analog_Input, inputBitRes), Astro_UnitsType_Raw_1);
 }
 
-AstroAnalogSensor *AstroFactory::newTemperatureSensor(pintype_t inputPin, uint8_t inputBitRes, aposi_t positionIndex)
+SharedPtr<AstroAnalogSensor> AstroFactory::addTemperatureSensor(pintype_t inputPin, uint8_t inputBitRes)
 {
-    return newAnalogSensor(Astro_SensorType_Temperature, AstroAnalogPin(inputPin, Astro_PinMode_Analog_Input, inputBitRes),
-                           Astro_UnitsType_Raw_1, positionIndex);
+    return addAnalogSensor(Astro_SensorType_Temperature, AstroAnalogPin(inputPin, Astro_PinMode_Analog_Input, inputBitRes), Astro_UnitsType_Raw_1);
 }
 
-AstroAnalogSensor *AstroFactory::newPositionSensor(pintype_t inputPin, uint8_t inputBitRes, aposi_t positionIndex)
+SharedPtr<AstroAnalogSensor> AstroFactory::addPositionSensor(pintype_t inputPin, uint8_t inputBitRes)
 {
-    return newAnalogSensor(Astro_SensorType_Position, AstroAnalogPin(inputPin, Astro_PinMode_Analog_Input, inputBitRes),
-                           Astro_UnitsType_Raw_1, positionIndex);
+    return addAnalogSensor(Astro_SensorType_Position, AstroAnalogPin(inputPin, Astro_PinMode_Analog_Input, inputBitRes), Astro_UnitsType_Raw_1);
 }
 
-AstroMount *AstroFactory::newMount(Astro_MountType mountType, aposi_t positionIndex)
+SharedPtr<AstroMount> AstroFactory::addMount(Astro_MountType mountType)
 {
-    if (mountType < Astro_MountType_Equatorial || mountType >= Astro_MountType_Count) { return nullptr; }
-    return new AstroMount(mountType, positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(mountType));
+    return isValidIndex(positionIndex) ? astroRegister(SharedPtr<AstroMount>(new AstroMount(mountType, positionIndex))) : nullptr;
 }
 
-AstroRail *AstroFactory::newRail(Astro_RailType railType, aposi_t positionIndex)
+SharedPtr<AstroRail> AstroFactory::addRail(Astro_RailType railType)
 {
-    if (railType < Astro_RailType_DC3V3 || railType >= Astro_RailType_Count) { return nullptr; }
-
-    const double voltage = railType == Astro_RailType_DC3V3 ? 3.3 :
-                           railType == Astro_RailType_DC5V ? 5.0 :
-                           railType == Astro_RailType_DC12V ? 12.0 : 24.0;
-    return new AstroRail(railType, voltage, 0.0, positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(railType));
+    if (!isValidIndex(positionIndex)) { return nullptr; }
+    const double voltage = railType == Astro_RailType_DC3V3 ? 3.3 : railType == Astro_RailType_DC5V ? 5.0 :
+                           railType == Astro_RailType_DC12V ? 12.0 : railType == Astro_RailType_DC24V ? 24.0 : 0.0;
+    return voltage > 0.0 ? astroRegister(SharedPtr<AstroRail>(new AstroRail(railType, voltage, 0.0, positionIndex))) : nullptr;
 }
 
-AstroCover *AstroFactory::newCover(aposi_t positionIndex)
+SharedPtr<AstroCover> AstroFactory::addCover()
 {
-    return new AstroCover(positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(AstroIdentity::Cover, 0));
+    return isValidIndex(positionIndex) ? astroRegister(SharedPtr<AstroCover>(new AstroCover(positionIndex))) : nullptr;
 }
 
-AstroCameraTrigger *AstroFactory::newCameraTrigger(aposi_t positionIndex)
+SharedPtr<AstroCameraTrigger> AstroFactory::addCameraTrigger()
 {
-    return new AstroCameraTrigger(nullptr, nullptr, positionIndex);
+    aposi_t positionIndex = astroFirstOpen(AstroIdentity(AstroIdentity::ObservationDevice, 0));
+    return isValidIndex(positionIndex) ? astroRegister(SharedPtr<AstroCameraTrigger>(new AstroCameraTrigger(nullptr, nullptr, positionIndex))) : nullptr;
 }
 
-AstroCallbackAxisDriver *AstroFactory::newCallbackAxisDriver(AstroCallbackAxisDriver::TargetCallback targetCallback,
-                                                             AstroCallbackAxisDriver::StopCallback stopCallback,
-                                                             void *context)
+SharedPtr<AstroCallbackAxisDriver> AstroFactory::addCallbackAxisDriver(AstroCallbackAxisDriver::TargetCallback targetCallback,
+                                                                       AstroCallbackAxisDriver::StopCallback stopCallback,
+                                                                       void *context)
 {
-    return new AstroCallbackAxisDriver(targetCallback, stopCallback, context);
+    return SharedPtr<AstroCallbackAxisDriver>(new AstroCallbackAxisDriver(targetCallback, stopCallback, context));
 }
 
-AstroServoAxisDriver *AstroFactory::newServoAxisDriver(AstroAnalogPin outputPin, double minDegrees, double maxDegrees)
+SharedPtr<AstroServoAxisDriver> AstroFactory::addServoAxisDriver(AstroAnalogPin outputPin, double minDegrees, double maxDegrees)
 {
-    return new AstroServoAxisDriver(outputPin, minDegrees, maxDegrees);
+    return SharedPtr<AstroServoAxisDriver>(new AstroServoAxisDriver(outputPin, minDegrees, maxDegrees));
 }
 
-AstroThresholdTrigger *AstroFactory::newThresholdTrigger(double threshold, bool triggerBelow,
-                                                         double tolerance, uint32_t stableTimeMs)
+SharedPtr<AstroServoAxisDriver> AstroFactory::addMountAxisServo(pintype_t outputPin, double minDegrees, double maxDegrees, uint8_t outputBitRes)
 {
-    return new AstroThresholdTrigger(threshold, triggerBelow, tolerance, stableTimeMs);
+    return addServoAxisDriver(AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes), minDegrees, maxDegrees);
 }
 
-AstroRangeTrigger *AstroFactory::newRangeTrigger(double low, double high, bool triggerOutside,
-                                                 double tolerance, uint32_t stableTimeMs)
+SharedPtr<AstroThresholdTrigger> AstroFactory::addThresholdTrigger(SharedPtr<AstroSensor> sensor, double threshold,
+                                                                   bool triggerBelow, double tolerance, uint32_t stableTimeMs)
 {
-    return new AstroRangeTrigger(low, high, triggerOutside, tolerance, stableTimeMs);
+    return sensor ? SharedPtr<AstroThresholdTrigger>(new AstroThresholdTrigger(sensor, threshold, triggerBelow, 0, tolerance, stableTimeMs)) : nullptr;
+}
+
+SharedPtr<AstroRangeTrigger> AstroFactory::addRangeTrigger(SharedPtr<AstroSensor> sensor, double low, double high,
+                                                           bool triggerOutside, double tolerance, uint32_t stableTimeMs)
+{
+    return sensor ? SharedPtr<AstroRangeTrigger>(new AstroRangeTrigger(sensor, low, high, triggerOutside, 0, tolerance, stableTimeMs)) : nullptr;
 }
 
 AstroObject *AstroFactory::newObjectFromData(const AstroObjectData *dataIn)
