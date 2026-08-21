@@ -47,146 +47,56 @@ bool AstroActuator::removeActivationHandle(AstroActivationHandle *handle)
     return false;
 }
 
-void AstroActuator::resolveActivations(millis_t time)
+void AstroActuator::resolveActivations()
 {
     float resolved = 0.0f;
+    float total = 0.0f;
     int count = 0;
 
-    switch (_enableMode) {
-        case Astro_EnableMode_Highest:
-            resolved = -__FLT_MAX__;
-            for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
-                if (_handles[i]->isValid() && !_handles[i]->isDone()) {
-                    float drive = _handles[i]->getDriveIntensity();
-                    if (drive > resolved) { resolved = drive; }
-                    ++count;
-                }
-            }
-            break;
+    if (_enableMode == Astro_EnableMode_Multiply) { resolved = 1.0f; }
 
-        case Astro_EnableMode_Lowest:
-            resolved = __FLT_MAX__;
-            for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
-                if (_handles[i]->isValid() && !_handles[i]->isDone()) {
-                    float drive = _handles[i]->getDriveIntensity();
-                    if (drive < resolved) { resolved = drive; }
-                    ++count;
-                }
-            }
-            break;
+    for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
+        AstroActivationHandle *handle = _handles[i];
+        if (!handle->isValid() || handle->isDone()) { continue; }
+        float drive = handle->getDriveIntensity();
 
-        case Astro_EnableMode_Average:
-            for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
-                if (_handles[i]->isValid() && !_handles[i]->isDone()) {
-                    resolved += _handles[i]->getDriveIntensity();
-                    ++count;
-                }
-            }
-            if (count) { resolved /= count; }
-            break;
-
-        case Astro_EnableMode_Multiply:
-            for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
-                if (_handles[i]->isValid() && !_handles[i]->isDone()) {
-                    resolved = count ? resolved * _handles[i]->getDriveIntensity()
-                                     : _handles[i]->getDriveIntensity();
-                    ++count;
-                }
-            }
-            break;
-
-        case Astro_EnableMode_InOrder:
-            for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
-                if (_handles[i]->isValid() && !_handles[i]->isDone()) {
-                    resolved = _handles[i]->getDriveIntensity();
-                    ++count;
-                    break;
-                }
-            }
-            break;
-
-        case Astro_EnableMode_RevOrder:
-            for (int i = ASTRO_ACTIVATION_HANDLE_SLOTS - 1; i >= 0; --i) {
-                if (_handles[i] && _handles[i]->isValid() && !_handles[i]->isDone()) {
-                    resolved = _handles[i]->getDriveIntensity();
-                    ++count;
-                    break;
-                }
-            }
-            break;
-
-        default:
-            break;
+        switch (_enableMode) {
+            case Astro_EnableMode_Highest:
+                if (fabsf(drive) > fabsf(resolved)) { resolved = drive; }
+                break;
+            case Astro_EnableMode_Lowest:
+                if (!count || fabsf(drive) < fabsf(resolved)) { resolved = drive; }
+                break;
+            case Astro_EnableMode_Average:
+                total += drive;
+                resolved = total / (float)(count + 1);
+                break;
+            case Astro_EnableMode_Multiply:
+                resolved *= drive;
+                break;
+            case Astro_EnableMode_InOrder:
+                if (!count) { resolved = drive; }
+                break;
+            case Astro_EnableMode_RevOrder:
+                resolved = drive;
+                break;
+            default:
+                break;
+        }
+        ++count;
     }
 
     if (!count) { resolved = 0.0f; }
-
-    switch (_enableMode) {
-        case Astro_EnableMode_InOrder: {
-            bool selected = false;
-            for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
-                AstroActivationHandle *handle = _handles[i];
-                if (!selected && handle->isValid() && !handle->isDone()) {
-                    selected = true;
-                    if (!handle->checkTime) { handle->checkTime = time; }
-                } else if (handle->checkTime) {
-                    handle->checkTime = 0;
-                }
-            }
-        } break;
-
-        case Astro_EnableMode_RevOrder: {
-            bool selected = false;
-            for (int i = ASTRO_ACTIVATION_HANDLE_SLOTS - 1; i >= 0; --i) {
-                AstroActivationHandle *handle = _handles[i];
-                if (!handle) { continue; }
-                if (!selected && handle->isValid() && !handle->isDone()) {
-                    selected = true;
-                    if (!handle->checkTime) { handle->checkTime = time; }
-                } else if (handle->checkTime) {
-                    handle->checkTime = 0;
-                }
-            }
-        } break;
-
-        default:
-            for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
-                if (_handles[i]->isValid() && !_handles[i]->isDone() && !_handles[i]->checkTime) {
-                    _handles[i]->checkTime = time;
-                }
-            }
-            break;
-    }
-
     setPower(resolved);
 }
 
 void AstroActuator::update()
 {
-    AstroObject::update();
-
-    millis_t time = astroNZMillis();
-    bool wasActive = !isFPEqual(_power, 0.0f);
-
-    for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ) {
-        AstroActivationHandle *handle = _handles[i];
-        if (wasActive && handle->isActive()) { handle->elapseTo(time); }
-
-        if (handle->actuator.get() != this || !handle->isValid() || handle->isDone()) {
-            if (handle->actuator.get() == this) { handle->actuator = nullptr; }
-            removeActivationHandle(handle);
-            continue;
-        }
-        ++i;
+    millis_t now = astroMillis();
+    for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
+        _handles[i]->elapseTo(now);
     }
-
-    bool canEnable = _handles[0] != nullptr;
-    if (!canEnable && (wasActive || _needsUpdate)) {
-        setPower(0.0f);
-    } else if (canEnable && (!wasActive || _needsUpdate)) {
-        resolveActivations(time);
-    }
-    _needsUpdate = false;
+    resolveActivations();
 }
 
 void AstroCallbackActuator::setPower(float power)

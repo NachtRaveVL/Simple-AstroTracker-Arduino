@@ -29,17 +29,10 @@ AstroActivationHandle::~AstroActivationHandle()
 AstroActivationHandle &AstroActivationHandle::operator=(SharedPtr<AstroActuator> actuatorIn)
 {
     if (actuator != actuatorIn && isValid()) {
-        if (actuator) { unset(); } else { checkTime = 0; }
-
+        if (actuator) { unset(); }
         actuator = actuatorIn;
-
-        if (actuator) {
-            if (actuator->addActivationHandle(this)) {
-                actuator->setNeedsUpdate();
-            } else {
-                actuator = nullptr;
-            }
-        }
+        if (actuator && actuator->addActivationHandle(this)) { checkTime = astroNZMillis(); }
+        else if (actuator) { actuator = nullptr; }
     }
     return *this;
 }
@@ -47,12 +40,14 @@ AstroActivationHandle &AstroActivationHandle::operator=(SharedPtr<AstroActuator>
 AstroActivationHandle &AstroActivationHandle::operator=(const AstroActivation &activationIn)
 {
     activation = activationIn;
+    if (actuator && !checkTime) { checkTime = astroNZMillis(); }
     return *this;
 }
 
 AstroActivationHandle &AstroActivationHandle::operator=(const AstroActivationHandle &handle)
 {
     activation = handle.activation;
+    elapsed = 0;
     return operator=(handle.actuator);
 }
 
@@ -60,31 +55,30 @@ void AstroActivationHandle::unset()
 {
     if (isActive()) { elapseTo(); }
     checkTime = 0;
-
     if (actuator) {
         SharedPtr<AstroActuator> oldActuator = actuator;
         actuator = nullptr;
         oldActuator->removeActivationHandle(this);
-        oldActuator->setNeedsUpdate();
+        oldActuator->resolveActivations();
     }
 }
 
 void AstroActivationHandle::elapseBy(millis_t delta)
 {
-    if (delta && isValid() && isActive()) {
-        if (!isUntimed()) {
-            if (delta <= activation.duration) {
-                activation.duration -= delta;
-                checkTime += delta;
-            } else {
-                delta = activation.duration;
-                activation.duration = 0;
-                checkTime = 0;
-                actuator->setNeedsUpdate();
-            }
+    if (!delta || !isValid() || !isActive()) { return; }
+    if (!isUntimed()) {
+        if (delta < activation.duration) {
+            activation.duration -= delta;
+            checkTime += delta;
+        } else {
+            delta = activation.duration;
+            activation.duration = 0;
+            checkTime = 0;
         }
-        elapsed += delta;
+    } else {
+        checkTime += delta;
     }
+    elapsed += delta;
 }
 
 void AstroActivationHandle::elapseTo(millis_t time)

@@ -110,20 +110,13 @@ AstroActuatorAttachment::AstroActuatorAttachment(AstroObjInterface *parent)
 { ; }
 
 AstroActuatorAttachment::AstroActuatorAttachment(const AstroActuatorAttachment &attachment)
-    : AstroAttachment(attachment), _actHandle(), _actSetup(attachment._actSetup)
+    : AstroAttachment(attachment), _actHandle(attachment._actHandle), _actSetup(attachment._actSetup)
 { ; }
 
 void AstroActuatorAttachment::updateIfNeeded(bool poll)
 {
     (void)poll;
     if (_actHandle.isActive()) { _actHandle.elapseTo(); }
-}
-
-void AstroActuatorAttachment::setupActivation(const AstroActivation &activation)
-{
-    _actSetup = activation;
-    _actHandle.activation = activation;
-    if (isActivated() && resolve()) { get()->setNeedsUpdate(); }
 }
 
 void AstroActuatorAttachment::setupActivation(float value, millis_t duration, bool force)
@@ -139,6 +132,7 @@ void AstroActuatorAttachment::enableActivation()
     if (!_actHandle.actuator && _actSetup.isValid() && resolve()) {
         _actHandle.activation = _actSetup;
         _actHandle = getObject();
+        get()->resolveActivations();
     }
 }
 
