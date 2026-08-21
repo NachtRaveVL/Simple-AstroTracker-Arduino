@@ -6,6 +6,7 @@
 #ifndef AstroSensors_H
 #define AstroSensors_H
 
+#include "AstroDatas.h"
 #include "AstroMeasurements.h"
 #include "AstroObject.h"
 #include "AstroPins.h"
@@ -23,13 +24,20 @@ public:
     virtual bool readValue(double *valueOut) = 0;
     virtual bool poll(int64_t timestamp = 0, aframe_t frame = 1) override;
 
-    bool setCalibration(double rawMinimum, double rawMaximum,
-                        double valueMinimum, double valueMaximum,
-                        Astro_UnitsType units);
-    void clearCalibration();
-    bool getCalibration(double &rawMinimum, double &rawMaximum,
-                        double &valueMinimum, double &valueMaximum) const;
-    inline bool hasCalibration() const { return _calibrated; }
+    void setUserCalibrationData(AstroCalibrationData *userCalibrationData);
+    inline const AstroCalibrationData *getUserCalibrationData() const { return _calibrationData; }
+
+    // Transformation methods that convert from normalized reading intensity/driver value to calibration units.
+    inline double calibrationTransform(double value) const { return _calibrationData ? _calibrationData->transform(value) : value; }
+    inline void calibrationTransform(double *valueInOut, Astro_UnitsType *unitsOut = nullptr) const { if (valueInOut && _calibrationData) { _calibrationData->transform(valueInOut, unitsOut); } }
+    inline AstroSingleMeasurement calibrationTransform(AstroSingleMeasurement measurement) const { return _calibrationData ? _calibrationData->transform(measurement) : measurement; }
+    inline void calibrationTransform(AstroSingleMeasurement *measurementInOut) const { if (measurementInOut && _calibrationData) { _calibrationData->transform(measurementInOut); } }
+
+    // Transformation methods that convert from calibration units to normalized reading intensity/driver value.
+    inline double calibrationInvTransform(double value) const { return _calibrationData ? _calibrationData->inverseTransform(value) : value; }
+    inline void calibrationInvTransform(double *valueInOut, Astro_UnitsType *unitsOut = nullptr) const { if (valueInOut && _calibrationData) { _calibrationData->inverseTransform(valueInOut, unitsOut); } }
+    inline AstroSingleMeasurement calibrationInvTransform(AstroSingleMeasurement measurement) const { return _calibrationData ? _calibrationData->inverseTransform(measurement) : measurement; }
+    inline void calibrationInvTransform(AstroSingleMeasurement *measurementInOut) const { if (measurementInOut && _calibrationData) { _calibrationData->inverseTransform(measurementInOut); } }
 
     inline Astro_SensorType getSensorType() const { return _sensorType; }
     inline Astro_UnitsType getUnits() const { return _measurement.units; }
@@ -40,12 +48,8 @@ public:
 
 protected:
     Astro_SensorType _sensorType;                            // Sensor type
-    AstroSingleMeasurement _measurement;                     // Latest sensor measurement
-    double _rawMinimum;                                      // Raw calibration minimum
-    double _rawMaximum;                                      // Raw calibration maximum
-    double _valueMinimum;                                    // Calibrated output minimum
-    double _valueMaximum;                                    // Calibrated output maximum
-    bool _calibrated;                                        // Calibration configured flag
+    AstroSingleMeasurement _measurement;                    // Latest sensor measurement
+    const AstroCalibrationData *_calibrationData;           // Calibration data
 };
 
 // Value Sensor
@@ -68,7 +72,7 @@ public:
     inline double getValue() const { return _value; }
 
 protected:
-    double _value;                                           // Stored sensor value
+    double _value;                                          // Stored sensor value
 };
 
 // Callback Sensor
@@ -89,8 +93,8 @@ public:
     }
 
 protected:
-    ReadCallback _callback;                                  // Callback function
-    void *_context;                                          // Callback user context
+    ReadCallback _callback;                                 // Callback function
+    void *_context;                                         // Callback user context
 };
 
 // Digital Sensor
@@ -105,12 +109,12 @@ public:
     inline const AstroDigitalPin &getInputPin() const { return _inputPin; }
 
 protected:
-    AstroDigitalPin _inputPin;                               // Input pin
+    AstroDigitalPin _inputPin;                              // Input pin
 };
 
 // Analog Sensor
-// Reads a normalized scalar measurement from an analog input pin and optionally maps it
-// through a linear user calibration into engineering units.
+// Reads a normalized scalar measurement from an analog input pin. User calibration uses
+// AstroCalibrationData through the same sensor calibration path as the sibling libraries.
 class AstroAnalogSensor : public AstroSensor {
 public:
     AstroAnalogSensor(AstroAnalogPin inputPin = AstroAnalogPin(),
@@ -122,7 +126,7 @@ public:
     inline const AstroAnalogPin &getInputPin() const { return _inputPin; }
 
 protected:
-    AstroAnalogPin _inputPin;                                // Input pin
+    AstroAnalogPin _inputPin;                               // Input pin
 };
 
 #endif // /ifndef AstroSensors_H

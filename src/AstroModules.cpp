@@ -18,6 +18,60 @@ bool AstroModule::begin()
 void AstroModule::update()
 { ; }
 
+const AstroCalibrationData *AstroCalibrations::getUserCalibrationData(akey_t key) const
+{
+    auto iter = _calibrationData.find(key);
+    if (iter != _calibrationData.end()) {
+        return iter->second;
+    }
+    return nullptr;
+}
+
+bool AstroCalibrations::setUserCalibrationData(const AstroCalibrationData *calibrationData)
+{
+    ASTRO_SOFT_ASSERT(calibrationData, "Invalid calibration data");
+
+    if (calibrationData) {
+        akey_t key = astroStringHash(calibrationData->ownerName);
+        auto iter = _calibrationData.find(key);
+        bool retVal = false;
+
+        if (iter == _calibrationData.end()) {
+            auto calibData = new AstroCalibrationData();
+
+            ASTRO_SOFT_ASSERT(calibData, "Calibration allocation failure");
+            if (calibData) {
+                *calibData = *calibrationData;
+                _calibrationData[key] = calibData;
+                retVal = (_calibrationData.find(key) != _calibrationData.end());
+            }
+        } else {
+            *(iter->second) = *calibrationData;
+            retVal = true;
+        }
+
+        return retVal;
+    }
+    return false;
+}
+
+bool AstroCalibrations::dropUserCalibrationData(const AstroCalibrationData *calibrationData)
+{
+    ASTRO_HARD_ASSERT(calibrationData, "Invalid calibration data");
+    if (!calibrationData) { return false; }
+
+    akey_t key = astroStringHash(calibrationData->ownerName);
+    auto iter = _calibrationData.find(key);
+
+    if (iter != _calibrationData.end()) {
+        if (iter->second) { delete iter->second; }
+        _calibrationData.erase(iter);
+        return true;
+    }
+
+    return false;
+}
+
 bool AstroObjectRegistration::registerObject(SharedPtr<AstroObject> object)
 {
     if (!object || object->getKey() == akey_none || _objects.find(object->getKey()) != _objects.end()) { return false; }
@@ -110,14 +164,12 @@ aposi_t AstroObjectRegistration::firstPosition(AstroIdentity id, bool taken) con
     return -1;
 }
 
-
 void AstroObjectRegistration::updateObjects()
 {
     for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
         if (iter->second) { iter->second->update(); }
     }
 }
-
 
 AstroFixedLocationProvider::AstroFixedLocationProvider(const AstroObserver &observer)
     : _observer(observer)

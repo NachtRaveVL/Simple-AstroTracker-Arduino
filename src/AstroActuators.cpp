@@ -49,53 +49,145 @@ bool AstroActuator::removeActivationHandle(AstroActivationHandle *handle)
 
 void AstroActuator::resolveActivations()
 {
-    float resolved = 0.0f;
-    float total = 0.0f;
-    int count = 0;
+    millis_t time = nzMillis();
+    float drivingIntensity = 0.0f;
+    int handleCount = 0;
 
-    if (_enableMode == Astro_EnableMode_Multiply) { resolved = 1.0f; }
+    switch (_enableMode) {
+        case Astro_EnableMode_Highest: {
+            drivingIntensity = -__FLT_MAX__;
+            for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
+                if (_handles[index]->isValid() && !_handles[index]->isDone()) {
+                    float handleIntensity = _handles[index]->getDriveIntensity();
+                    if (handleIntensity > drivingIntensity) { drivingIntensity = handleIntensity; }
+                    ++handleCount;
+                }
+            }
+        } break;
 
-    for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
-        AstroActivationHandle *handle = _handles[i];
-        if (!handle->isValid() || handle->isDone()) { continue; }
-        float drive = handle->getDriveIntensity();
+        case Astro_EnableMode_Lowest: {
+            drivingIntensity = __FLT_MAX__;
+            for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
+                if (_handles[index]->isValid() && !_handles[index]->isDone()) {
+                    float handleIntensity = _handles[index]->getDriveIntensity();
+                    if (handleIntensity < drivingIntensity) { drivingIntensity = handleIntensity; }
+                    ++handleCount;
+                }
+            }
+        } break;
 
-        switch (_enableMode) {
-            case Astro_EnableMode_Highest:
-                if (fabsf(drive) > fabsf(resolved)) { resolved = drive; }
-                break;
-            case Astro_EnableMode_Lowest:
-                if (!count || fabsf(drive) < fabsf(resolved)) { resolved = drive; }
-                break;
-            case Astro_EnableMode_Average:
-                total += drive;
-                resolved = total / (float)(count + 1);
-                break;
-            case Astro_EnableMode_Multiply:
-                resolved *= drive;
-                break;
-            case Astro_EnableMode_InOrder:
-                if (!count) { resolved = drive; }
-                break;
-            case Astro_EnableMode_RevOrder:
-                resolved = drive;
-                break;
-            default:
-                break;
-        }
-        ++count;
+        case Astro_EnableMode_Average: {
+            for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
+                if (_handles[index]->isValid() && !_handles[index]->isDone()) {
+                    drivingIntensity += _handles[index]->getDriveIntensity();
+                    ++handleCount;
+                }
+            }
+            if (handleCount) { drivingIntensity /= handleCount; }
+        } break;
+
+        case Astro_EnableMode_Multiply: {
+            bool started = false;
+            for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
+                if (_handles[index]->isValid() && !_handles[index]->isDone()) {
+                    if (!started) {
+                        drivingIntensity = _handles[index]->getDriveIntensity();
+                        started = true;
+                    } else {
+                        drivingIntensity *= _handles[index]->getDriveIntensity();
+                    }
+                    ++handleCount;
+                }
+            }
+        } break;
+
+        case Astro_EnableMode_InOrder: {
+            for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
+                if (_handles[index]->isValid() && !_handles[index]->isDone()) {
+                    drivingIntensity = _handles[index]->getDriveIntensity();
+                    handleCount = 1;
+                    break;
+                }
+            }
+        } break;
+
+        case Astro_EnableMode_RevOrder: {
+            size_t count = 0;
+            while (count < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[count]) { ++count; }
+            while (count) {
+                AstroActivationHandle *handle = _handles[--count];
+                if (handle->isValid() && !handle->isDone()) {
+                    drivingIntensity = handle->getDriveIntensity();
+                    handleCount = 1;
+                    break;
+                }
+            }
+        } break;
+
+        default:
+            break;
     }
 
-    if (!count) { resolved = 0.0f; }
-    setPower(resolved);
+    switch (_enableMode) {
+        case Astro_EnableMode_InOrder: {
+            bool selected = false;
+            for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
+                AstroActivationHandle *handle = _handles[index];
+                if (!selected && handle->isValid() && !handle->isDone() &&
+                    isFPEqual(handle->getDriveIntensity(), drivingIntensity)) {
+                    selected = true;
+                    if (!handle->checkTime) { handle->checkTime = time; }
+                } else if (handle->checkTime) {
+                    handle->checkTime = 0;
+                }
+            }
+        } break;
+
+        case Astro_EnableMode_RevOrder: {
+            size_t count = 0;
+            while (count < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[count]) { ++count; }
+            bool selected = false;
+            while (count) {
+                AstroActivationHandle *handle = _handles[--count];
+                if (!selected && handle->isValid() && !handle->isDone() &&
+                    isFPEqual(handle->getDriveIntensity(), drivingIntensity)) {
+                    selected = true;
+                    if (!handle->checkTime) { handle->checkTime = time; }
+                } else if (handle->checkTime) {
+                    handle->checkTime = 0;
+                }
+            }
+        } break;
+
+        default: {
+            for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
+                AstroActivationHandle *handle = _handles[index];
+                if (handle->isValid() && !handle->isDone() && !handle->checkTime) {
+                    handle->checkTime = time;
+                }
+            }
+        } break;
+    }
+
+    setPower(handleCount ? drivingIntensity : 0.0f);
+    _needsUpdate = false;
 }
 
 void AstroActuator::update()
 {
-    millis_t now = millis();
-    for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
-        _handles[i]->elapseTo(now);
+    millis_t time = nzMillis();
+
+    for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index];) {
+        AstroActivationHandle *handle = _handles[index];
+        if (handle->isActive()) { handle->elapseTo(time); }
+        if (handle->actuator.get() != this || !handle->isValid() || handle->isDone()) {
+            if (handle->actuator.get() == this) { handle->actuator = nullptr; }
+            removeActivationHandle(handle);
+            continue;
+        }
+        ++index;
     }
+
     resolveActivations();
 }
 

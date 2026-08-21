@@ -7,6 +7,7 @@
 #define AstroModules_H
 
 class AstroObject;
+struct AstroCalibrationData;
 
 #include "AstroCoordinates.h"
 #include "AstroInlines.hh"
@@ -28,10 +29,30 @@ protected:
     bool _initialized;                                      // Module initialization state
 };
 
+// Calibrations Storage
+// Stores user calibration data, which calibrates sensor output into usable values.
+class AstroCalibrations {
+public:
+    // Adds/updates user calibration data to the store, returning success flag.
+    bool setUserCalibrationData(const AstroCalibrationData *calibrationData);
+
+    // Drops/removes user calibration data from the store, returning success flag.
+    bool dropUserCalibrationData(const AstroCalibrationData *calibrationData);
+
+    // Returns user calibration data instance in store.
+    const AstroCalibrationData *getUserCalibrationData(akey_t key) const;
+
+    // Returns if there are user calibrations in the store.
+    inline bool hasUserCalibrations() const { return _calibrationData.size(); };
+
+protected:
+    Map<akey_t, AstroCalibrationData *, ASTRO_SYS_OBJECTS_MAXSIZE> _calibrationData; // Loaded user calibration data
+};
+
 // Object Registration Storage
 // Stores objects in the main system store, which is used for SharedPtr<> lookups and
 // stable attachment resolution in the same manner as the sibling controller libraries.
-class AstroObjectRegistration {
+class AstroObjectRegistration : public AstroCalibrations {
 public:
     // Adds object to system, returning success.
     bool registerObject(SharedPtr<AstroObject> object);
