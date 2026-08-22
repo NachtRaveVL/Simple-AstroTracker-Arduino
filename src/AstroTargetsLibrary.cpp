@@ -3,7 +3,7 @@
     Astruino Targets Library
 */
 
-#include "Astruino.h"
+#include "Astruino.h"   
 
 AstroTargetsLibraryBook::AstroTargetsLibraryBook()
     : data(), count(1), userSet(false)
@@ -228,313 +228,585 @@ AstroTargetsLibraryBook *AstroTargetsLibrary::newBookFromType(Astro_TargetType t
     #ifndef ASTRO_DISABLE_BUILTIN_DATA
     {   AstroPROGMEMStream progmemStream(0, 0);
         switch (targetType) {
-            case Astro_TargetType_AloeVera: {
-                static const char flashStr_AloeVera[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"AloeVera\",\"targetName\":\"Aloe Vera\",\"totalGrowWeeks\":52,\"phaseDurationWeeks\":\"4,24,24\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"7,8.5\",\"tdsRange\":\"1.8,2.5\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"600,700\",\"flags\":\"invasive,perennial,toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_AloeVera);
-            } break;
-            case Astro_TargetType_Anise: {
-                static const char flashStr_Anise[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Anise\",\"targetName\":\"Anise\",\"totalGrowWeeks\":12,\"phaseDurationWeeks\":\"2,6,4\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.8,6.4\",\"tdsRange\":\"0.9,1.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Anise);
-            } break;
-            case Astro_TargetType_Artichoke: {
-                static const char flashStr_Artichoke[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Artichoke\",\"targetName\":\"Artichoke\",\"totalGrowWeeks\":30,\"phaseDurationWeeks\":\"10,12,8\",\"dailyLightHours\":\"16,16,14\",\"phRange\":\"6.5,7.5\",\"tdsRange\":\"0.8,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,23\",\"airTempRange\":\"16,26\",\"co2Levels\":\"650,800\",\"flags\":\"perennial\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Artichoke);
-            } break;
-            case Astro_TargetType_Arugula: {
-                static const char flashStr_Arugula[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Arugula\",\"targetName\":\"Arugula\",\"totalGrowWeeks\":5,\"phaseDurationWeeks\":\"1,3,1\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,7.5\",\"tdsRange\":\"0.8,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Arugula);
-            } break;
-            case Astro_TargetType_Asparagus: {
-                static const char flashStr_Asparagus[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Asparagus\",\"targetName\":\"Asparagus\",\"totalGrowWeeks\":52,\"phaseDurationWeeks\":\"4,24,24\",\"dailyLightHours\":\"16,16,14\",\"phRange\":\"6,6.8\",\"tdsRange\":\"1.4,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,23\",\"airTempRange\":\"16,26\",\"co2Levels\":\"650,800\",\"flags\":\"perennial,pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Asparagus);
-            } break;
-            case Astro_TargetType_Basil: {
-                static const char flashStr_Basil[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Basil\",\"targetName\":\"Basil\",\"totalGrowWeeks\":6,\"phaseDurationWeeks\":\"1,4,1\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6\",\"tdsRange\":\"1,1.6\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\",\"flags\":\"pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Basil);
-            } break;
-            case Astro_TargetType_Bean: {
-                static const char flashStr_Bean[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Bean\",\"targetName\":\"Bean (common)\",\"totalGrowWeeks\":8,\"phaseDurationWeeks\":\"1,4,3\",\"dailyLightHours\":\"16,16,14\",\"phRange\":\"6,6\",\"tdsRange\":\"2,4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"18,25\",\"co2Levels\":\"600,800\",\"flags\":\"pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Bean);
-            } break;
-            case Astro_TargetType_BeanBroad: {
-                static const char flashStr_BeanBroad[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"BeanBroad\",\"targetName\":\"Bean (broad)\",\"totalGrowWeeks\":14,\"phaseDurationWeeks\":\"2,6,6\",\"dailyLightHours\":\"16,16,14\",\"phRange\":\"6,6.5\",\"tdsRange\":\"2,4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"18,25\",\"co2Levels\":\"600,800\",\"flags\":\"pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_BeanBroad);
-            } break;
-            case Astro_TargetType_Beetroot: {
-                static const char flashStr_Beetroot[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Beetroot\",\"targetName\":\"Beetroot\",\"totalGrowWeeks\":9,\"phaseDurationWeeks\":\"1,6,2\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"6,6.5\",\"tdsRange\":\"1.8,2.5\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Beetroot);
-            } break;
-            case Astro_TargetType_BlackCurrant: {
-                static const char flashStr_BlackCurrant[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"BlackCurrant\",\"targetName\":\"Black Currant\",\"totalGrowWeeks\":52,\"phaseDurationWeeks\":\"4,24,24\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6.5\",\"tdsRange\":\"1.4,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,750\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_BlackCurrant);
-            } break;
-            case Astro_TargetType_Blueberry: {
-                static const char flashStr_Blueberry[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Blueberry\",\"targetName\":\"Blueberry\",\"totalGrowWeeks\":52,\"phaseDurationWeeks\":\"4,24,24\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"4,5\",\"tdsRange\":\"1.8,2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,750\",\"flags\":\"perennial\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Blueberry);
-            } break;
-            case Astro_TargetType_BokChoi: {
-                static const char flashStr_BokChoi[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"BokChoi\",\"targetName\":\"Bok-choi\",\"totalGrowWeeks\":6,\"phaseDurationWeeks\":\"1,4,1\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"7,7\",\"tdsRange\":\"1.5,2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_BokChoi);
-            } break;
-            case Astro_TargetType_Broccoli: {
-                static const char flashStr_Broccoli[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Broccoli\",\"targetName\":\"Broccoli\",\"totalGrowWeeks\":14,\"phaseDurationWeeks\":\"5,6,3\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,6.8\",\"tdsRange\":\"2.8,3.5\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Broccoli);
-            } break;
-            case Astro_TargetType_BrusselsSprout: {
-                static const char flashStr_BrusselsSprout[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"BrusselsSprout\",\"targetName\":\"Brussels Sprouts\",\"totalGrowWeeks\":19,\"phaseDurationWeeks\":\"5,7,7\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6.5,7.5\",\"tdsRange\":\"2.5,3\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_BrusselsSprout);
-            } break;
-            case Astro_TargetType_Cabbage: {
-                static const char flashStr_Cabbage[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Cabbage\",\"targetName\":\"Cabbage\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"5,7,4\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6.5,7\",\"tdsRange\":\"2.5,3\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Cabbage);
-            } break;
-            case Astro_TargetType_Cannabis: {
-                static const char flashStr_Cannabis[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Cannabis\",\"targetName\":\"Cannabis (generic)\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"2,6,8\",\"dailyLightHours\":\"18,18,12\",\"phRange\":\"5.5,6.1\",\"tdsRange\":\"1,2.5\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,23\",\"airTempRange\":\"20,28\",\"co2Levels\":\"800,1000\",\"flags\":\"large\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Cannabis);
-            } break;
-            case Astro_TargetType_Capsicum: {
-                static const char flashStr_Capsicum[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Capsicum\",\"targetName\":\"Capsicum\",\"totalGrowWeeks\":18,\"phaseDurationWeeks\":\"8,5,5\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"5.5,6\",\"tdsRange\":\"0.8,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Capsicum);
-            } break;
-            case Astro_TargetType_Carrots: {
-                static const char flashStr_Carrots[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Carrots\",\"targetName\":\"Carrots\",\"totalGrowWeeks\":10,\"phaseDurationWeeks\":\"1,6,3\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"6.3,6.3\",\"tdsRange\":\"1.6,2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Carrots);
-            } break;
-            case Astro_TargetType_Catnip: {
-                static const char flashStr_Catnip[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Catnip\",\"targetName\":\"Catnip\",\"totalGrowWeeks\":10,\"phaseDurationWeeks\":\"2,5,3\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6.5\",\"tdsRange\":\"1,1.6\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Catnip);
-            } break;
-            case Astro_TargetType_Cauliflower: {
-                static const char flashStr_Cauliflower[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Cauliflower\",\"targetName\":\"Cauliflower\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"5,8,3\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,7\",\"tdsRange\":\"0.5,2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Cauliflower);
-            } break;
-            case Astro_TargetType_Celery: {
-                static const char flashStr_Celery[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Celery\",\"targetName\":\"Celery\",\"totalGrowWeeks\":27,\"phaseDurationWeeks\":\"11,12,4\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6.5,6.5\",\"tdsRange\":\"1.8,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Celery);
-            } break;
-            case Astro_TargetType_Chamomile: {
-                static const char flashStr_Chamomile[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Chamomile\",\"targetName\":\"Chamomile\",\"totalGrowWeeks\":10,\"phaseDurationWeeks\":\"2,5,3\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6.5\",\"tdsRange\":\"1,1.6\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\",\"flags\":\"toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Chamomile);
-            } break;
-            case Astro_TargetType_Chicory: {
-                static const char flashStr_Chicory[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Chicory\",\"targetName\":\"Chicory\",\"totalGrowWeeks\":10,\"phaseDurationWeeks\":\"2,5,3\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6\",\"tdsRange\":\"2,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Chicory);
-            } break;
-            case Astro_TargetType_Chives: {
-                static const char flashStr_Chives[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Chives\",\"targetName\":\"Chives\",\"totalGrowWeeks\":10,\"phaseDurationWeeks\":\"2,5,3\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,6.5\",\"tdsRange\":\"1.8,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\",\"flags\":\"perennial,toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Chives);
-            } break;
-            case Astro_TargetType_Cilantro: {
-                static const char flashStr_Cilantro[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Cilantro\",\"targetName\":\"Cilantro\",\"totalGrowWeeks\":9,\"phaseDurationWeeks\":\"1,5,3\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6.5,6.7\",\"tdsRange\":\"1.3,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Cilantro);
-            } break;
-            case Astro_TargetType_Coriander: {
-                static const char flashStr_Coriander[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Coriander\",\"targetName\":\"Coriander\",\"totalGrowWeeks\":12,\"phaseDurationWeeks\":\"1,6,5\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.8,6.4\",\"tdsRange\":\"1.2,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Coriander);
-            } break;
-            case Astro_TargetType_CornSweet: {
-                static const char flashStr_CornSweet[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"CornSweet\",\"targetName\":\"Corn (sweet)\",\"totalGrowWeeks\":11,\"phaseDurationWeeks\":\"1,6,4\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"5.8,6.5\",\"tdsRange\":\"1.6,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,30\",\"co2Levels\":\"700,900\",\"flags\":\"large,toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_CornSweet);
-            } break;
-            case Astro_TargetType_Cucumber: {
-                static const char flashStr_Cucumber[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Cucumber\",\"targetName\":\"Cucumber\",\"totalGrowWeeks\":13,\"phaseDurationWeeks\":\"4,4,5\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"5,5.5\",\"tdsRange\":\"1.7,2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\",\"flags\":\"pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Cucumber);
-            } break;
-            case Astro_TargetType_Dill: {
-                static const char flashStr_Dill[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Dill\",\"targetName\":\"Dill\",\"totalGrowWeeks\":8,\"phaseDurationWeeks\":\"1,4,3\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6.4\",\"tdsRange\":\"1,1.6\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Dill);
-            } break;
-            case Astro_TargetType_Eggplant: {
-                static const char flashStr_Eggplant[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Eggplant\",\"targetName\":\"Eggplant\",\"totalGrowWeeks\":19,\"phaseDurationWeeks\":\"8,6,5\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"6,6\",\"tdsRange\":\"2.5,3.5\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\",\"flags\":\"pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Eggplant);
-            } break;
-            case Astro_TargetType_Endive: {
-                static const char flashStr_Endive[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Endive\",\"targetName\":\"Endive\",\"totalGrowWeeks\":13,\"phaseDurationWeeks\":\"2,8,3\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,5.5\",\"tdsRange\":\"2,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Endive);
-            } break;
-            case Astro_TargetType_Fennel: {
-                static const char flashStr_Fennel[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Fennel\",\"targetName\":\"Fennel\",\"totalGrowWeeks\":12,\"phaseDurationWeeks\":\"2,6,4\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6.4,6.8\",\"tdsRange\":\"1,1.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\",\"flags\":\"perennial\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Fennel);
-            } break;
-            case Astro_TargetType_Fodder: {
-                static const char flashStr_Fodder[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Fodder\",\"targetName\":\"Fodder\",\"totalGrowWeeks\":4,\"phaseDurationWeeks\":\"1,2,1\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"5.8,6.5\",\"tdsRange\":\"1.8,2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Fodder);
-            } break;
-            case Astro_TargetType_Flowers: {
-                static const char flashStr_Flowers[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Flowers\",\"targetName\":\"Flowers (generic)\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"2,6,8\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"5.5,6.5\",\"tdsRange\":\"1.5,2.5\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"700,900\",\"flags\":\"toxic,pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Flowers);
-            } break;
-            case Astro_TargetType_Garlic: {
-                static const char flashStr_Garlic[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Garlic\",\"targetName\":\"Garlic\",\"totalGrowWeeks\":24,\"phaseDurationWeeks\":\"3,10,11\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"6,6.5\",\"tdsRange\":\"1.4,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\",\"flags\":\"perennial,toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Garlic);
-            } break;
-            case Astro_TargetType_Ginger: {
-                static const char flashStr_Ginger[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Ginger\",\"targetName\":\"Ginger\",\"totalGrowWeeks\":40,\"phaseDurationWeeks\":\"4,24,12\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"5.8,6\",\"tdsRange\":\"1.5,2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"600,750\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Ginger);
-            } break;
-            case Astro_TargetType_Kale: {
-                static const char flashStr_Kale[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Kale\",\"targetName\":\"Kale\",\"totalGrowWeeks\":8,\"phaseDurationWeeks\":\"1,5,2\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6.5\",\"tdsRange\":\"1.25,1.5\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\",\"flags\":\"perennial\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Kale);
-            } break;
-            case Astro_TargetType_Lavender: {
-                static const char flashStr_Lavender[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Lavender\",\"targetName\":\"Lavender\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"2,6,8\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6.4,6.8\",\"tdsRange\":\"1,1.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\",\"flags\":\"perennial,toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Lavender);
-            } break;
-            case Astro_TargetType_Leek: {
-                static const char flashStr_Leek[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Leek\",\"targetName\":\"Leek\",\"totalGrowWeeks\":23,\"phaseDurationWeeks\":\"7,12,4\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"6.5,7\",\"tdsRange\":\"1.4,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\",\"flags\":\"toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Leek);
-            } break;
-            case Astro_TargetType_LemonBalm: {
-                static const char flashStr_LemonBalm[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"LemonBalm\",\"targetName\":\"Lemon Balm\",\"totalGrowWeeks\":12,\"phaseDurationWeeks\":\"2,6,4\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6.5\",\"tdsRange\":\"1,1.6\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\",\"flags\":\"perennial\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_LemonBalm);
-            } break;
-            case Astro_TargetType_Lettuce: {
-                static const char flashStr_Lettuce[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Lettuce\",\"targetName\":\"Lettuce\",\"totalGrowWeeks\":5,\"phaseDurationWeeks\":\"2,2,1\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,7\",\"tdsRange\":\"1.2,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Lettuce);
-            } break;
-            case Astro_TargetType_Marrow: {
-                static const char flashStr_Marrow[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Marrow\",\"targetName\":\"Marrow\",\"totalGrowWeeks\":12,\"phaseDurationWeeks\":\"2,6,4\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"6,6\",\"tdsRange\":\"1.8,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Marrow);
-            } break;
-            case Astro_TargetType_Melon: {
-                static const char flashStr_Melon[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Melon\",\"targetName\":\"Melon\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"4,6,6\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"5.5,6\",\"tdsRange\":\"2,2.5\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\",\"flags\":\"large\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Melon);
-            } break;
-            case Astro_TargetType_Mint: {
-                static const char flashStr_Mint[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Mint\",\"targetName\":\"Mint\",\"totalGrowWeeks\":10,\"phaseDurationWeeks\":\"2,5,3\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6\",\"tdsRange\":\"2,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\",\"flags\":\"invasive,perennial,toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Mint);
-            } break;
-            case Astro_TargetType_MustardCress: {
-                static const char flashStr_MustardCress[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"MustardCress\",\"targetName\":\"Mustard Cress\",\"totalGrowWeeks\":6,\"phaseDurationWeeks\":\"1,3,2\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,6.5\",\"tdsRange\":\"1.2,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_MustardCress);
-            } break;
-            case Astro_TargetType_Okra: {
-                static const char flashStr_Okra[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Okra\",\"targetName\":\"Okra\",\"totalGrowWeeks\":9,\"phaseDurationWeeks\":\"1,5,3\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"6.5,6.5\",\"tdsRange\":\"2,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Okra);
-            } break;
-            case Astro_TargetType_Onions: {
-                static const char flashStr_Onions[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Onions\",\"targetName\":\"Onions\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"2,6,8\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"6,6.7\",\"tdsRange\":\"1.4,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\",\"flags\":\"perennial,toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Onions);
-            } break;
-            case Astro_TargetType_Oregano: {
-                static const char flashStr_Oregano[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Oregano\",\"targetName\":\"Oregano\",\"totalGrowWeeks\":12,\"phaseDurationWeeks\":\"2,6,4\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,7\",\"tdsRange\":\"1.8,2.3\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\",\"flags\":\"perennial,toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Oregano);
-            } break;
-            case Astro_TargetType_PakChoi: {
-                static const char flashStr_PakChoi[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"PakChoi\",\"targetName\":\"Pak-choi\",\"totalGrowWeeks\":6,\"phaseDurationWeeks\":\"1,4,1\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"7,7\",\"tdsRange\":\"1.5,2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_PakChoi);
-            } break;
-            case Astro_TargetType_Parsley: {
-                static const char flashStr_Parsley[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Parsley\",\"targetName\":\"Parsley\",\"totalGrowWeeks\":10,\"phaseDurationWeeks\":\"3,5,2\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,6.5\",\"tdsRange\":\"1.8,2.2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\",\"flags\":\"perennial,toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Parsley);
-            } break;
-            case Astro_TargetType_Parsnip: {
-                static const char flashStr_Parsnip[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Parsnip\",\"targetName\":\"Parsnip\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"2,6,8\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"6,6.5\",\"tdsRange\":\"1.4,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Parsnip);
-            } break;
-            case Astro_TargetType_Pea: {
-                static const char flashStr_Pea[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Pea\",\"targetName\":\"Pea (common)\",\"totalGrowWeeks\":9,\"phaseDurationWeeks\":\"1,5,3\",\"dailyLightHours\":\"16,16,14\",\"phRange\":\"6,7\",\"tdsRange\":\"0.8,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"18,25\",\"co2Levels\":\"600,800\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Pea);
-            } break;
-            case Astro_TargetType_PeaSugar: {
-                static const char flashStr_PeaSugar[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"PeaSugar\",\"targetName\":\"Pea (sugar)\",\"totalGrowWeeks\":9,\"phaseDurationWeeks\":\"1,5,3\",\"dailyLightHours\":\"16,16,14\",\"phRange\":\"6,6.8\",\"tdsRange\":\"0.8,1.9\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"18,25\",\"co2Levels\":\"600,800\",\"flags\":\"toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_PeaSugar);
-            } break;
-            case Astro_TargetType_Pepino: {
-                static const char flashStr_Pepino[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Pepino\",\"targetName\":\"Pepino\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"2,6,8\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"6,6.5\",\"tdsRange\":\"2,2.5\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Pepino);
-            } break;
-            case Astro_TargetType_PeppersBell: {
-                static const char flashStr_PeppersBell[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"PeppersBell\",\"targetName\":\"Peppers (bell)\",\"totalGrowWeeks\":18,\"phaseDurationWeeks\":\"8,5,5\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"5.5,6\",\"tdsRange\":\"0.8,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\",\"flags\":\"pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_PeppersBell);
-            } break;
-            case Astro_TargetType_PeppersHot: {
-                static const char flashStr_PeppersHot[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"PeppersHot\",\"targetName\":\"Peppers (hot)\",\"totalGrowWeeks\":18,\"phaseDurationWeeks\":\"8,5,5\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"5.5,6\",\"tdsRange\":\"0.8,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\",\"flags\":\"pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_PeppersHot);
-            } break;
-            case Astro_TargetType_Potato: {
-                static const char flashStr_Potato[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Potato\",\"targetName\":\"Potato (common)\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"2,6,8\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"5,6\",\"tdsRange\":\"2,2.5\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\",\"flags\":\"perennial\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Potato);
-            } break;
-            case Astro_TargetType_PotatoSweet: {
-                static const char flashStr_PotatoSweet[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"PotatoSweet\",\"targetName\":\"Potato (sweet)\",\"totalGrowWeeks\":18,\"phaseDurationWeeks\":\"6,8,4\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"5,6\",\"tdsRange\":\"2,2.5\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"600,750\",\"flags\":\"perennial\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_PotatoSweet);
-            } break;
-            case Astro_TargetType_Pumpkin: {
-                static const char flashStr_Pumpkin[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Pumpkin\",\"targetName\":\"Pumpkin\",\"totalGrowWeeks\":19,\"phaseDurationWeeks\":\"4,8,7\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"5.5,7.5\",\"tdsRange\":\"1.8,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\",\"flags\":\"large,pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Pumpkin);
-            } break;
-            case Astro_TargetType_Radish: {
-                static const char flashStr_Radish[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Radish\",\"targetName\":\"Radish\",\"totalGrowWeeks\":5,\"phaseDurationWeeks\":\"1,2,2\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"6,7\",\"tdsRange\":\"1.6,2.2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Radish);
-            } break;
-            case Astro_TargetType_Rhubarb: {
-                static const char flashStr_Rhubarb[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Rhubarb\",\"targetName\":\"Rhubarb\",\"totalGrowWeeks\":52,\"phaseDurationWeeks\":\"4,24,24\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6\",\"tdsRange\":\"1.6,2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,750\",\"flags\":\"perennial,toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Rhubarb);
-            } break;
-            case Astro_TargetType_Rosemary: {
-                static const char flashStr_Rosemary[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Rosemary\",\"targetName\":\"Rosemary\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"2,6,8\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6\",\"tdsRange\":\"1,1.6\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\",\"flags\":\"perennial\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Rosemary);
-            } break;
-            case Astro_TargetType_Sage: {
-                static const char flashStr_Sage[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Sage\",\"targetName\":\"Sage\",\"totalGrowWeeks\":12,\"phaseDurationWeeks\":\"2,6,4\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6.5\",\"tdsRange\":\"1,1.6\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\",\"flags\":\"perennial\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Sage);
-            } break;
-            case Astro_TargetType_Silverbeet: {
-                static const char flashStr_Silverbeet[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Silverbeet\",\"targetName\":\"Silverbeet\",\"totalGrowWeeks\":8,\"phaseDurationWeeks\":\"1,5,2\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,7\",\"tdsRange\":\"1.8,2.3\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Silverbeet);
-            } break;
-            case Astro_TargetType_Spinach: {
-                static const char flashStr_Spinach[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Spinach\",\"targetName\":\"Spinach\",\"totalGrowWeeks\":6,\"phaseDurationWeeks\":\"1,4,1\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,7\",\"tdsRange\":\"1.8,2.3\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Spinach);
-            } break;
-            case Astro_TargetType_Squash: {
-                static const char flashStr_Squash[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Squash\",\"targetName\":\"Squash\",\"totalGrowWeeks\":13,\"phaseDurationWeeks\":\"1,7,5\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"5,6.5\",\"tdsRange\":\"1.8,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\",\"flags\":\"large,pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Squash);
-            } break;
-            case Astro_TargetType_Sunflower: {
-                static const char flashStr_Sunflower[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Sunflower\",\"targetName\":\"Sunflower\",\"totalGrowWeeks\":12,\"phaseDurationWeeks\":\"2,6,4\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"5.5,6.5\",\"tdsRange\":\"1.2,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"18,28\",\"co2Levels\":\"700,900\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Sunflower);
-            } break;
-            case Astro_TargetType_Strawberries: {
-                static const char flashStr_Strawberries[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Strawberries\",\"targetName\":\"Strawberries\",\"totalGrowWeeks\":10,\"phaseDurationWeeks\":\"2,4,4\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,6\",\"tdsRange\":\"1.8,2.2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,24\",\"co2Levels\":\"600,750\",\"flags\":\"perennial\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Strawberries);
-            } break;
-            case Astro_TargetType_SwissChard: {
-                static const char flashStr_SwissChard[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"SwissChard\",\"targetName\":\"Swiss Chard\",\"totalGrowWeeks\":8,\"phaseDurationWeeks\":\"1,5,2\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,6.5\",\"tdsRange\":\"1.8,2.3\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_SwissChard);
-            } break;
-            case Astro_TargetType_Taro: {
-                static const char flashStr_Taro[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Taro\",\"targetName\":\"Taro\",\"totalGrowWeeks\":40,\"phaseDurationWeeks\":\"4,24,12\",\"dailyLightHours\":\"16,14,12\",\"phRange\":\"5,5.5\",\"tdsRange\":\"2.5,3\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"600,750\",\"flags\":\"toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Taro);
-            } break;
-            case Astro_TargetType_Tarragon: {
-                static const char flashStr_Tarragon[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Tarragon\",\"targetName\":\"Tarragon\",\"totalGrowWeeks\":12,\"phaseDurationWeeks\":\"2,6,4\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5.5,6.5\",\"tdsRange\":\"1,1.8\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\",\"flags\":\"toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Tarragon);
-            } break;
-            case Astro_TargetType_Thyme: {
-                static const char flashStr_Thyme[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Thyme\",\"targetName\":\"Thyme\",\"totalGrowWeeks\":12,\"phaseDurationWeeks\":\"2,6,4\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"5,7\",\"tdsRange\":\"0.8,1.6\",\"nightlyFeedRate\":1,\"waterTempRange\":\"19,23\",\"airTempRange\":\"18,26\",\"co2Levels\":\"600,750\",\"flags\":\"perennial\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Thyme);
-            } break;
-            case Astro_TargetType_Tomato: {
-                static const char flashStr_Tomato[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Tomato\",\"targetName\":\"Tomato\",\"totalGrowWeeks\":16,\"phaseDurationWeeks\":\"5,5,6\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"6,6.5\",\"tdsRange\":\"2,4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\",\"flags\":\"toxic,pruning\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Tomato);
-            } break;
-            case Astro_TargetType_Turnip: {
-                static const char flashStr_Turnip[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Turnip\",\"targetName\":\"Turnip\",\"totalGrowWeeks\":7,\"phaseDurationWeeks\":\"1,4,2\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6,6.5\",\"tdsRange\":\"1.8,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Turnip);
-            } break;
-            case Astro_TargetType_Watercress: {
-                static const char flashStr_Watercress[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Watercress\",\"targetName\":\"Watercress\",\"totalGrowWeeks\":8,\"phaseDurationWeeks\":\"1,4,3\",\"dailyLightHours\":\"16,14,14\",\"phRange\":\"6.5,6.8\",\"tdsRange\":\"1.5,2\",\"nightlyFeedRate\":1,\"waterTempRange\":\"18,22\",\"airTempRange\":\"16,23\",\"co2Levels\":\"600,700\",\"flags\":\"perennial,toxic\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Watercress);
-            } break;
-            case Astro_TargetType_Watermelon: {
-                static const char flashStr_Watermelon[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Watermelon\",\"targetName\":\"Watermelon\",\"totalGrowWeeks\":17,\"phaseDurationWeeks\":\"4,6,7\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"5.8,5.8\",\"tdsRange\":\"1.5,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\",\"flags\":\"large\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Watermelon);
-            } break;
-            case Astro_TargetType_Zucchini: {
-                static const char flashStr_Zucchini[] PROGMEM = {"{\"type\":\"HCLD\",\"id\":\"Zucchini\",\"targetName\":\"Zucchini\",\"totalGrowWeeks\":11,\"phaseDurationWeeks\":\"4,3,4\",\"dailyLightHours\":\"18,16,14\",\"phRange\":\"6,6\",\"tdsRange\":\"1.8,2.4\",\"nightlyFeedRate\":1,\"waterTempRange\":\"20,24\",\"airTempRange\":\"20,28\",\"co2Levels\":\"700,900\",\"flags\":\"large\"}"};
-                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Zucchini);
+            case Astro_TargetType_Sun: {
+                static const char flashStr_Sun[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Sun\",\"catalogId\":\"Sun\",\"targetName\":\"Sun\",\"targetClass\":\"SolarSystem\",\"movingTarget\":true}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Sun);
+            } break;
+            case Astro_TargetType_Moon: {
+                static const char flashStr_Moon[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Moon\",\"catalogId\":\"Moon\",\"targetName\":\"Moon\",\"targetClass\":\"SolarSystem\",\"movingTarget\":true}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Moon);
+            } break;
+            case Astro_TargetType_Mercury: {
+                static const char flashStr_Mercury[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Mercury\",\"catalogId\":\"Mercury\",\"targetName\":\"Mercury\",\"targetClass\":\"SolarSystem\",\"movingTarget\":true}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Mercury);
+            } break;
+            case Astro_TargetType_Venus: {
+                static const char flashStr_Venus[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Venus\",\"catalogId\":\"Venus\",\"targetName\":\"Venus\",\"targetClass\":\"SolarSystem\",\"movingTarget\":true}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Venus);
+            } break;
+            case Astro_TargetType_Mars: {
+                static const char flashStr_Mars[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Mars\",\"catalogId\":\"Mars\",\"targetName\":\"Mars\",\"targetClass\":\"SolarSystem\",\"movingTarget\":true}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Mars);
+            } break;
+            case Astro_TargetType_Jupiter: {
+                static const char flashStr_Jupiter[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Jupiter\",\"catalogId\":\"Jupiter\",\"targetName\":\"Jupiter\",\"targetClass\":\"SolarSystem\",\"movingTarget\":true}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Jupiter);
+            } break;
+            case Astro_TargetType_Saturn: {
+                static const char flashStr_Saturn[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Saturn\",\"catalogId\":\"Saturn\",\"targetName\":\"Saturn\",\"targetClass\":\"SolarSystem\",\"movingTarget\":true}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Saturn);
+            } break;
+            case Astro_TargetType_Uranus: {
+                static const char flashStr_Uranus[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Uranus\",\"catalogId\":\"Uranus\",\"targetName\":\"Uranus\",\"targetClass\":\"SolarSystem\",\"movingTarget\":true}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Uranus);
+            } break;
+            case Astro_TargetType_Neptune: {
+                static const char flashStr_Neptune[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Neptune\",\"catalogId\":\"Neptune\",\"targetName\":\"Neptune\",\"targetClass\":\"SolarSystem\",\"movingTarget\":true}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Neptune);
+            } break;
+            case Astro_TargetType_M1: {
+                static const char flashStr_M1[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M1\",\"catalogId\":\"M1\",\"targetName\":\"Crab Nebula\",\"targetClass\":\"Nebula\",\"rightAscensionSeconds\":20071,\"declinationArcseconds\":79252}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M1);
+            } break;
+            case Astro_TargetType_M2: {
+                static const char flashStr_M2[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M2\",\"catalogId\":\"M2\",\"targetName\":\"Messier M2\",\"rightAscensionSeconds\":77607,\"declinationArcseconds\":-2964}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M2);
+            } break;
+            case Astro_TargetType_M3: {
+                static const char flashStr_M3[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M3\",\"catalogId\":\"M3\",\"targetName\":\"Messier M3\",\"rightAscensionSeconds\":49331,\"declinationArcseconds\":102158}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M3);
+            } break;
+            case Astro_TargetType_M4: {
+                static const char flashStr_M4[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M4\",\"catalogId\":\"M4\",\"targetName\":\"Messier M4\",\"rightAscensionSeconds\":59015,\"declinationArcseconds\":-95492}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M4);
+            } break;
+            case Astro_TargetType_M5: {
+                static const char flashStr_M5[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M5\",\"catalogId\":\"M5\",\"targetName\":\"Messier M5\",\"rightAscensionSeconds\":55113,\"declinationArcseconds\":7491}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M5);
+            } break;
+            case Astro_TargetType_M6: {
+                static const char flashStr_M6[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M6\",\"catalogId\":\"M6\",\"targetName\":\"Butterfly Cluster\",\"rightAscensionSeconds\":63600,\"declinationArcseconds\":-115980}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M6);
+            } break;
+            case Astro_TargetType_M7: {
+                static const char flashStr_M7[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M7\",\"catalogId\":\"M7\",\"targetName\":\"Ptolemy Cluster\",\"rightAscensionSeconds\":64431,\"declinationArcseconds\":-125254}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M7);
+            } break;
+            case Astro_TargetType_M8: {
+                static const char flashStr_M8[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M8\",\"catalogId\":\"M8\",\"targetName\":\"Lagoon Nebula\",\"targetClass\":\"Nebula\",\"rightAscensionSeconds\":65017,\"declinationArcseconds\":-87792}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M8);
+            } break;
+            case Astro_TargetType_M9: {
+                static const char flashStr_M9[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M9\",\"catalogId\":\"M9\",\"targetName\":\"Messier M9\",\"rightAscensionSeconds\":62351,\"declinationArcseconds\":-66658}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M9);
+            } break;
+            case Astro_TargetType_M10: {
+                static const char flashStr_M10[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M10\",\"catalogId\":\"M10\",\"targetName\":\"Messier M10\",\"rightAscensionSeconds\":61029,\"declinationArcseconds\":-14758}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M10);
+            } break;
+            case Astro_TargetType_M11: {
+                static const char flashStr_M11[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M11\",\"catalogId\":\"M11\",\"targetName\":\"Wild Duck Cluster\",\"rightAscensionSeconds\":67866,\"declinationArcseconds\":-22560}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M11);
+            } break;
+            case Astro_TargetType_M12: {
+                static const char flashStr_M12[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M12\",\"catalogId\":\"M12\",\"targetName\":\"Messier M12\",\"rightAscensionSeconds\":60434,\"declinationArcseconds\":-7015}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M12);
+            } break;
+            case Astro_TargetType_M13: {
+                static const char flashStr_M13[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M13\",\"catalogId\":\"M13\",\"targetName\":\"Hercules Cluster\",\"targetClass\":\"GlobularCluster\",\"rightAscensionSeconds\":60101,\"declinationArcseconds\":131255}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M13);
+            } break;
+            case Astro_TargetType_M14: {
+                static const char flashStr_M14[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M14\",\"catalogId\":\"M14\",\"targetName\":\"Messier M14\",\"rightAscensionSeconds\":63456,\"declinationArcseconds\":-11685}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M14);
+            } break;
+            case Astro_TargetType_M15: {
+                static const char flashStr_M15[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M15\",\"catalogId\":\"M15\",\"targetName\":\"Messier M15\",\"rightAscensionSeconds\":77398,\"declinationArcseconds\":43801}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M15);
+            } break;
+            case Astro_TargetType_M16: {
+                static const char flashStr_M16[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M16\",\"catalogId\":\"M16\",\"targetName\":\"Eagle Nebula\",\"targetClass\":\"OpenCluster\",\"rightAscensionSeconds\":65928,\"declinationArcseconds\":-49740}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M16);
+            } break;
+            case Astro_TargetType_M17: {
+                static const char flashStr_M17[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M17\",\"catalogId\":\"M17\",\"targetName\":\"Omega Nebula\",\"targetClass\":\"Nebula\",\"rightAscensionSeconds\":66026,\"declinationArcseconds\":-58236}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M17);
+            } break;
+            case Astro_TargetType_M18: {
+                static const char flashStr_M18[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M18\",\"catalogId\":\"M18\",\"targetName\":\"Messier M18\",\"rightAscensionSeconds\":65994,\"declinationArcseconds\":-61680}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M18);
+            } break;
+            case Astro_TargetType_M19: {
+                static const char flashStr_M19[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M19\",\"catalogId\":\"M19\",\"targetName\":\"Messier M19\",\"rightAscensionSeconds\":61357,\"declinationArcseconds\":-94565}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M19);
+            } break;
+            case Astro_TargetType_M20: {
+                static const char flashStr_M20[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M20\",\"catalogId\":\"M20\",\"targetName\":\"Trifid Nebula\",\"targetClass\":\"Nebula\",\"rightAscensionSeconds\":64943,\"declinationArcseconds\":-82908}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M20);
+            } break;
+            case Astro_TargetType_M21: {
+                static const char flashStr_M21[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M21\",\"catalogId\":\"M21\",\"targetName\":\"Messier M21\",\"rightAscensionSeconds\":65076,\"declinationArcseconds\":-81000}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M21);
+            } break;
+            case Astro_TargetType_M22: {
+                static const char flashStr_M22[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M22\",\"catalogId\":\"M22\",\"targetName\":\"Messier M22\",\"rightAscensionSeconds\":66983,\"declinationArcseconds\":-86057}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M22);
+            } break;
+            case Astro_TargetType_M23: {
+                static const char flashStr_M23[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M23\",\"catalogId\":\"M23\",\"targetName\":\"Messier M23\",\"rightAscensionSeconds\":64608,\"declinationArcseconds\":-68460}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M23);
+            } break;
+            case Astro_TargetType_M24: {
+                static const char flashStr_M24[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M24\",\"catalogId\":\"M24\",\"targetName\":\"Messier M24\",\"rightAscensionSeconds\":65820,\"declinationArcseconds\":-66780}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M24);
+            } break;
+            case Astro_TargetType_M25: {
+                static const char flashStr_M25[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M25\",\"catalogId\":\"M25\",\"targetName\":\"Messier M25\",\"rightAscensionSeconds\":66696,\"declinationArcseconds\":-69300}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M25);
+            } break;
+            case Astro_TargetType_M26: {
+                static const char flashStr_M26[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M26\",\"catalogId\":\"M26\",\"targetName\":\"Messier M26\",\"rightAscensionSeconds\":67512,\"declinationArcseconds\":-33840}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M26);
+            } break;
+            case Astro_TargetType_M27: {
+                static const char flashStr_M27[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M27\",\"catalogId\":\"M27\",\"targetName\":\"Dumbbell Nebula\",\"targetClass\":\"PlanetaryNebula\",\"rightAscensionSeconds\":71976,\"declinationArcseconds\":81796}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M27);
+            } break;
+            case Astro_TargetType_M28: {
+                static const char flashStr_M28[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M28\",\"catalogId\":\"M28\",\"targetName\":\"Messier M28\",\"rightAscensionSeconds\":66272,\"declinationArcseconds\":-89531}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M28);
+            } break;
+            case Astro_TargetType_M29: {
+                static const char flashStr_M29[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M29\",\"catalogId\":\"M29\",\"targetName\":\"Messier M29\",\"rightAscensionSeconds\":73436,\"declinationArcseconds\":138684}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M29);
+            } break;
+            case Astro_TargetType_M30: {
+                static const char flashStr_M30[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M30\",\"catalogId\":\"M30\",\"targetName\":\"Messier M30\",\"rightAscensionSeconds\":78022,\"declinationArcseconds\":-83447}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M30);
+            } break;
+            case Astro_TargetType_M31: {
+                static const char flashStr_M31[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M31\",\"catalogId\":\"M31\",\"targetName\":\"Andromeda Galaxy\",\"targetClass\":\"Galaxy\",\"rightAscensionSeconds\":2564,\"declinationArcseconds\":148569}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M31);
+            } break;
+            case Astro_TargetType_M32: {
+                static const char flashStr_M32[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M32\",\"catalogId\":\"M32\",\"targetName\":\"Messier M32\",\"rightAscensionSeconds\":2561,\"declinationArcseconds\":147115}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M32);
+            } break;
+            case Astro_TargetType_M33: {
+                static const char flashStr_M33[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M33\",\"catalogId\":\"M33\",\"targetName\":\"Triangulum Galaxy\",\"targetClass\":\"Galaxy\",\"rightAscensionSeconds\":5630,\"declinationArcseconds\":110377}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M33);
+            } break;
+            case Astro_TargetType_M34: {
+                static const char flashStr_M34[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M34\",\"catalogId\":\"M34\",\"targetName\":\"Messier M34\",\"rightAscensionSeconds\":9726,\"declinationArcseconds\":153960}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M34);
+            } break;
+            case Astro_TargetType_M35: {
+                static const char flashStr_M35[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M35\",\"catalogId\":\"M35\",\"targetName\":\"Messier M35\",\"rightAscensionSeconds\":22146,\"declinationArcseconds\":87660}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M35);
+            } break;
+            case Astro_TargetType_M36: {
+                static const char flashStr_M36[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M36\",\"catalogId\":\"M36\",\"targetName\":\"Messier M36\",\"rightAscensionSeconds\":20172,\"declinationArcseconds\":122884}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M36);
+            } break;
+            case Astro_TargetType_M37: {
+                static const char flashStr_M37[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M37\",\"catalogId\":\"M37\",\"targetName\":\"Messier M37\",\"rightAscensionSeconds\":21138,\"declinationArcseconds\":117182}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M37);
+            } break;
+            case Astro_TargetType_M38: {
+                static const char flashStr_M38[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M38\",\"catalogId\":\"M38\",\"targetName\":\"Messier M38\",\"rightAscensionSeconds\":19722,\"declinationArcseconds\":129078}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M38);
+            } break;
+            case Astro_TargetType_M39: {
+                static const char flashStr_M39[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M39\",\"catalogId\":\"M39\",\"targetName\":\"Messier M39\",\"rightAscensionSeconds\":77502,\"declinationArcseconds\":174360}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M39);
+            } break;
+            case Astro_TargetType_M40: {
+                static const char flashStr_M40[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M40\",\"catalogId\":\"M40\",\"targetName\":\"Messier M40\",\"rightAscensionSeconds\":44532,\"declinationArcseconds\":209099}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M40);
+            } break;
+            case Astro_TargetType_M41: {
+                static const char flashStr_M41[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M41\",\"catalogId\":\"M41\",\"targetName\":\"Messier M41\",\"rightAscensionSeconds\":24360,\"declinationArcseconds\":-74760}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M41);
+            } break;
+            case Astro_TargetType_M42: {
+                static const char flashStr_M42[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M42\",\"catalogId\":\"M42\",\"targetName\":\"Orion Nebula\",\"targetClass\":\"Nebula\",\"rightAscensionSeconds\":20117,\"declinationArcseconds\":-19408}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M42);
+            } break;
+            case Astro_TargetType_M43: {
+                static const char flashStr_M43[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M43\",\"catalogId\":\"M43\",\"targetName\":\"Messier M43\",\"rightAscensionSeconds\":20136,\"declinationArcseconds\":-18960}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M43);
+            } break;
+            case Astro_TargetType_M44: {
+                static const char flashStr_M44[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M44\",\"catalogId\":\"M44\",\"targetName\":\"Beehive Cluster\",\"targetClass\":\"OpenCluster\",\"rightAscensionSeconds\":31224,\"declinationArcseconds\":71940}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M44);
+            } break;
+            case Astro_TargetType_M45: {
+                static const char flashStr_M45[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M45\",\"catalogId\":\"M45\",\"targetName\":\"Pleiades\",\"targetClass\":\"OpenCluster\",\"rightAscensionSeconds\":13644,\"declinationArcseconds\":86820}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M45);
+            } break;
+            case Astro_TargetType_M46: {
+                static const char flashStr_M46[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M46\",\"catalogId\":\"M46\",\"targetName\":\"Messier M46\",\"rightAscensionSeconds\":27708,\"declinationArcseconds\":-53340}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M46);
+            } break;
+            case Astro_TargetType_M47: {
+                static const char flashStr_M47[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M47\",\"catalogId\":\"M47\",\"targetName\":\"Messier M47\",\"rightAscensionSeconds\":27396,\"declinationArcseconds\":-52200}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M47);
+            } break;
+            case Astro_TargetType_M48: {
+                static const char flashStr_M48[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M48\",\"catalogId\":\"M48\",\"targetName\":\"Messier M48\",\"rightAscensionSeconds\":29622,\"declinationArcseconds\":-20700}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M48);
+            } break;
+            case Astro_TargetType_M49: {
+                static const char flashStr_M49[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M49\",\"catalogId\":\"M49\",\"targetName\":\"Messier M49\",\"rightAscensionSeconds\":44986,\"declinationArcseconds\":28802}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M49);
+            } break;
+            case Astro_TargetType_M50: {
+                static const char flashStr_M50[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M50\",\"catalogId\":\"M50\",\"targetName\":\"Messier M50\",\"rightAscensionSeconds\":25392,\"declinationArcseconds\":-30000}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M50);
+            } break;
+            case Astro_TargetType_M51: {
+                static const char flashStr_M51[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M51\",\"catalogId\":\"M51\",\"targetName\":\"Whirlpool Galaxy\",\"targetClass\":\"Galaxy\",\"rightAscensionSeconds\":48592,\"declinationArcseconds\":169903}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M51);
+            } break;
+            case Astro_TargetType_M52: {
+                static const char flashStr_M52[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M52\",\"catalogId\":\"M52\",\"targetName\":\"Messier M52\",\"rightAscensionSeconds\":84252,\"declinationArcseconds\":221700}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M52);
+            } break;
+            case Astro_TargetType_M53: {
+                static const char flashStr_M53[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M53\",\"catalogId\":\"M53\",\"targetName\":\"Messier M53\",\"rightAscensionSeconds\":47575,\"declinationArcseconds\":65405}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M53);
+            } break;
+            case Astro_TargetType_M54: {
+                static const char flashStr_M54[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M54\",\"catalogId\":\"M54\",\"targetName\":\"Messier M54\",\"rightAscensionSeconds\":68103,\"declinationArcseconds\":-109727}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M54);
+            } break;
+            case Astro_TargetType_M55: {
+                static const char flashStr_M55[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M55\",\"catalogId\":\"M55\",\"targetName\":\"Messier M55\",\"rightAscensionSeconds\":70799,\"declinationArcseconds\":-111473}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M55);
+            } break;
+            case Astro_TargetType_M56: {
+                static const char flashStr_M56[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M56\",\"catalogId\":\"M56\",\"targetName\":\"Messier M56\",\"rightAscensionSeconds\":69395,\"declinationArcseconds\":108660}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M56);
+            } break;
+            case Astro_TargetType_M57: {
+                static const char flashStr_M57[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M57\",\"catalogId\":\"M57\",\"targetName\":\"Ring Nebula\",\"targetClass\":\"PlanetaryNebula\",\"rightAscensionSeconds\":68015,\"declinationArcseconds\":118905}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M57);
+            } break;
+            case Astro_TargetType_M58: {
+                static const char flashStr_M58[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M58\",\"catalogId\":\"M58\",\"targetName\":\"Messier M58\",\"rightAscensionSeconds\":45463,\"declinationArcseconds\":42545}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M58);
+            } break;
+            case Astro_TargetType_M59: {
+                static const char flashStr_M59[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M59\",\"catalogId\":\"M59\",\"targetName\":\"Messier M59\",\"rightAscensionSeconds\":45722,\"declinationArcseconds\":41929}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M59);
+            } break;
+            case Astro_TargetType_M60: {
+                static const char flashStr_M60[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M60\",\"catalogId\":\"M60\",\"targetName\":\"Messier M60\",\"rightAscensionSeconds\":45819,\"declinationArcseconds\":41589}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M60);
+            } break;
+            case Astro_TargetType_M61: {
+                static const char flashStr_M61[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M61\",\"catalogId\":\"M61\",\"targetName\":\"Messier M61\",\"rightAscensionSeconds\":44514,\"declinationArcseconds\":16105}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M61);
+            } break;
+            case Astro_TargetType_M62: {
+                static const char flashStr_M62[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M62\",\"catalogId\":\"M62\",\"targetName\":\"Messier M62\",\"rightAscensionSeconds\":61272,\"declinationArcseconds\":-108404}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M62);
+            } break;
+            case Astro_TargetType_M63: {
+                static const char flashStr_M63[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M63\",\"catalogId\":\"M63\",\"targetName\":\"Sunflower Galaxy\",\"targetClass\":\"Galaxy\",\"rightAscensionSeconds\":47749,\"declinationArcseconds\":151305}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M63);
+            } break;
+            case Astro_TargetType_M64: {
+                static const char flashStr_M64[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M64\",\"catalogId\":\"M64\",\"targetName\":\"Black Eye Galaxy\",\"targetClass\":\"Galaxy\",\"rightAscensionSeconds\":46603,\"declinationArcseconds\":78058}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M64);
+            } break;
+            case Astro_TargetType_M65: {
+                static const char flashStr_M65[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M65\",\"catalogId\":\"M65\",\"targetName\":\"Messier M65\",\"rightAscensionSeconds\":40735,\"declinationArcseconds\":47132}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M65);
+            } break;
+            case Astro_TargetType_M66: {
+                static const char flashStr_M66[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M66\",\"catalogId\":\"M66\",\"targetName\":\"Messier M66\",\"rightAscensionSeconds\":40815,\"declinationArcseconds\":46770}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M66);
+            } break;
+            case Astro_TargetType_M67: {
+                static const char flashStr_M67[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M67\",\"catalogId\":\"M67\",\"targetName\":\"Messier M67\",\"rightAscensionSeconds\":31878,\"declinationArcseconds\":42540}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M67);
+            } break;
+            case Astro_TargetType_M68: {
+                static const char flashStr_M68[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M68\",\"catalogId\":\"M68\",\"targetName\":\"Messier M68\",\"rightAscensionSeconds\":45567,\"declinationArcseconds\":-96279}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M68);
+            } break;
+            case Astro_TargetType_M69: {
+                static const char flashStr_M69[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M69\",\"catalogId\":\"M69\",\"targetName\":\"Messier M69\",\"rightAscensionSeconds\":66683,\"declinationArcseconds\":-116453}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M69);
+            } break;
+            case Astro_TargetType_M70: {
+                static const char flashStr_M70[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M70\",\"catalogId\":\"M70\",\"targetName\":\"Messier M70\",\"rightAscensionSeconds\":67392,\"declinationArcseconds\":-116252}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M70);
+            } break;
+            case Astro_TargetType_M71: {
+                static const char flashStr_M71[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M71\",\"catalogId\":\"M71\",\"targetName\":\"Messier M71\",\"rightAscensionSeconds\":71626,\"declinationArcseconds\":67605}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M71);
+            } break;
+            case Astro_TargetType_M72: {
+                static const char flashStr_M72[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M72\",\"catalogId\":\"M72\",\"targetName\":\"Messier M72\",\"rightAscensionSeconds\":75207,\"declinationArcseconds\":-45134}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M72);
+            } break;
+            case Astro_TargetType_M73: {
+                static const char flashStr_M73[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M73\",\"catalogId\":\"M73\",\"targetName\":\"Messier M73\",\"rightAscensionSeconds\":75534,\"declinationArcseconds\":-45480}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M73);
+            } break;
+            case Astro_TargetType_M74: {
+                static const char flashStr_M74[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M74\",\"catalogId\":\"M74\",\"targetName\":\"Messier M74\",\"rightAscensionSeconds\":5801,\"declinationArcseconds\":56821}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M74);
+            } break;
+            case Astro_TargetType_M75: {
+                static const char flashStr_M75[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M75\",\"catalogId\":\"M75\",\"targetName\":\"Messier M75\",\"rightAscensionSeconds\":72364,\"declinationArcseconds\":-78916}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M75);
+            } break;
+            case Astro_TargetType_M76: {
+                static const char flashStr_M76[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M76\",\"catalogId\":\"M76\",\"targetName\":\"Little Dumbbell Nebula\",\"targetClass\":\"PlanetaryNebula\",\"rightAscensionSeconds\":6144,\"declinationArcseconds\":185671}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M76);
+            } break;
+            case Astro_TargetType_M77: {
+                static const char flashStr_M77[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M77\",\"catalogId\":\"M77\",\"targetName\":\"Messier M77\",\"rightAscensionSeconds\":9760,\"declinationArcseconds\":-48}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M77);
+            } break;
+            case Astro_TargetType_M78: {
+                static const char flashStr_M78[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M78\",\"catalogId\":\"M78\",\"targetName\":\"Messier M78\",\"rightAscensionSeconds\":20806,\"declinationArcseconds\":50}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M78);
+            } break;
+            case Astro_TargetType_M79: {
+                static const char flashStr_M79[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M79\",\"catalogId\":\"M79\",\"targetName\":\"Messier M79\",\"rightAscensionSeconds\":19450,\"declinationArcseconds\":-88287}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M79);
+            } break;
+            case Astro_TargetType_M80: {
+                static const char flashStr_M80[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M80\",\"catalogId\":\"M80\",\"targetName\":\"Messier M80\",\"rightAscensionSeconds\":58622,\"declinationArcseconds\":-82720}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M80);
+            } break;
+            case Astro_TargetType_M81: {
+                static const char flashStr_M81[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M81\",\"catalogId\":\"M81\",\"targetName\":\"Bode Galaxy\",\"targetClass\":\"Galaxy\",\"rightAscensionSeconds\":35733,\"declinationArcseconds\":248635}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M81);
+            } break;
+            case Astro_TargetType_M82: {
+                static const char flashStr_M82[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M82\",\"catalogId\":\"M82\",\"targetName\":\"Cigar Galaxy\",\"targetClass\":\"Galaxy\",\"rightAscensionSeconds\":35752,\"declinationArcseconds\":250847}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M82);
+            } break;
+            case Astro_TargetType_M83: {
+                static const char flashStr_M83[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M83\",\"catalogId\":\"M83\",\"targetName\":\"Southern Pinwheel Galaxy\",\"targetClass\":\"Galaxy\",\"rightAscensionSeconds\":49020,\"declinationArcseconds\":-107517}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M83);
+            } break;
+            case Astro_TargetType_M84: {
+                static const char flashStr_M84[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M84\",\"catalogId\":\"M84\",\"targetName\":\"Messier M84\",\"rightAscensionSeconds\":44703,\"declinationArcseconds\":46393}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M84);
+            } break;
+            case Astro_TargetType_M85: {
+                static const char flashStr_M85[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M85\",\"catalogId\":\"M85\",\"targetName\":\"Messier M85\",\"rightAscensionSeconds\":44724,\"declinationArcseconds\":65488}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M85);
+            } break;
+            case Astro_TargetType_M86: {
+                static const char flashStr_M86[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M86\",\"catalogId\":\"M86\",\"targetName\":\"Messier M86\",\"rightAscensionSeconds\":44771,\"declinationArcseconds\":46606}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M86);
+            } break;
+            case Astro_TargetType_M87: {
+                static const char flashStr_M87[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M87\",\"catalogId\":\"M87\",\"targetName\":\"Messier M87\",\"rightAscensionSeconds\":45049,\"declinationArcseconds\":44608}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M87);
+            } break;
+            case Astro_TargetType_M88: {
+                static const char flashStr_M88[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M88\",\"catalogId\":\"M88\",\"targetName\":\"Messier M88\",\"rightAscensionSeconds\":45119,\"declinationArcseconds\":51914}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M88);
+            } break;
+            case Astro_TargetType_M89: {
+                static const char flashStr_M89[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M89\",\"catalogId\":\"M89\",\"targetName\":\"Messier M89\",\"rightAscensionSeconds\":45339,\"declinationArcseconds\":45203}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M89);
+            } break;
+            case Astro_TargetType_M90: {
+                static const char flashStr_M90[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M90\",\"catalogId\":\"M90\",\"targetName\":\"Messier M90\",\"rightAscensionSeconds\":45409,\"declinationArcseconds\":47386}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M90);
+            } break;
+            case Astro_TargetType_M91: {
+                static const char flashStr_M91[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M91\",\"catalogId\":\"M91\",\"targetName\":\"Messier M91\",\"rightAscensionSeconds\":45326,\"declinationArcseconds\":52187}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M91);
+            } break;
+            case Astro_TargetType_M92: {
+                static const char flashStr_M92[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M92\",\"catalogId\":\"M92\",\"targetName\":\"Messier M92\",\"rightAscensionSeconds\":62227,\"declinationArcseconds\":155289}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M92);
+            } break;
+            case Astro_TargetType_M93: {
+                static const char flashStr_M93[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M93\",\"catalogId\":\"M93\",\"targetName\":\"Messier M93\",\"rightAscensionSeconds\":27876,\"declinationArcseconds\":-85920}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M93);
+            } break;
+            case Astro_TargetType_M94: {
+                static const char flashStr_M94[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M94\",\"catalogId\":\"M94\",\"targetName\":\"Messier M94\",\"rightAscensionSeconds\":46253,\"declinationArcseconds\":148034}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M94);
+            } break;
+            case Astro_TargetType_M95: {
+                static const char flashStr_M95[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M95\",\"catalogId\":\"M95\",\"targetName\":\"Messier M95\",\"rightAscensionSeconds\":38637,\"declinationArcseconds\":42134}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M95);
+            } break;
+            case Astro_TargetType_M96: {
+                static const char flashStr_M96[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M96\",\"catalogId\":\"M96\",\"targetName\":\"Messier M96\",\"rightAscensionSeconds\":38805,\"declinationArcseconds\":42552}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M96);
+            } break;
+            case Astro_TargetType_M97: {
+                static const char flashStr_M97[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M97\",\"catalogId\":\"M97\",\"targetName\":\"Owl Nebula\",\"targetClass\":\"PlanetaryNebula\",\"rightAscensionSeconds\":40487,\"declinationArcseconds\":198068}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M97);
+            } break;
+            case Astro_TargetType_M98: {
+                static const char flashStr_M98[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M98\",\"catalogId\":\"M98\",\"targetName\":\"Messier M98\",\"rightAscensionSeconds\":44028,\"declinationArcseconds\":53642}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M98);
+            } break;
+            case Astro_TargetType_M99: {
+                static const char flashStr_M99[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M99\",\"catalogId\":\"M99\",\"targetName\":\"Messier M99\",\"rightAscensionSeconds\":44329,\"declinationArcseconds\":51899}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M99);
+            } break;
+            case Astro_TargetType_M100: {
+                static const char flashStr_M100[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M100\",\"catalogId\":\"M100\",\"targetName\":\"Messier M100\",\"rightAscensionSeconds\":44574,\"declinationArcseconds\":56961}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M100);
+            } break;
+            case Astro_TargetType_M101: {
+                static const char flashStr_M101[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M101\",\"catalogId\":\"M101\",\"targetName\":\"Pinwheel Galaxy\",\"targetClass\":\"Galaxy\",\"rightAscensionSeconds\":50592,\"declinationArcseconds\":195657}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M101);
+            } break;
+            case Astro_TargetType_M102: {
+                static const char flashStr_M102[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M102\",\"catalogId\":\"M102\",\"targetName\":\"Messier M102\",\"rightAscensionSeconds\":54389,\"declinationArcseconds\":200748}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M102);
+            } break;
+            case Astro_TargetType_M103: {
+                static const char flashStr_M103[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M103\",\"catalogId\":\"M103\",\"targetName\":\"Messier M103\",\"rightAscensionSeconds\":5592,\"declinationArcseconds\":218520}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M103);
+            } break;
+            case Astro_TargetType_M104: {
+                static const char flashStr_M104[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M104\",\"catalogId\":\"M104\",\"targetName\":\"Sombrero Galaxy\",\"targetClass\":\"Galaxy\",\"rightAscensionSeconds\":45599,\"declinationArcseconds\":-41843}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M104);
+            } break;
+            case Astro_TargetType_M105: {
+                static const char flashStr_M105[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M105\",\"catalogId\":\"M105\",\"targetName\":\"Messier M105\",\"rightAscensionSeconds\":38869,\"declinationArcseconds\":45294}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M105);
+            } break;
+            case Astro_TargetType_M106: {
+                static const char flashStr_M106[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M106\",\"catalogId\":\"M106\",\"targetName\":\"Messier M106\",\"rightAscensionSeconds\":44337,\"declinationArcseconds\":170294}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M106);
+            } break;
+            case Astro_TargetType_M107: {
+                static const char flashStr_M107[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M107\",\"catalogId\":\"M107\",\"targetName\":\"Messier M107\",\"rightAscensionSeconds\":59551,\"declinationArcseconds\":-46994}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M107);
+            } break;
+            case Astro_TargetType_M108: {
+                static const char flashStr_M108[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M108\",\"catalogId\":\"M108\",\"targetName\":\"Messier M108\",\"rightAscensionSeconds\":40291,\"declinationArcseconds\":200427}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M108);
+            } break;
+            case Astro_TargetType_M109: {
+                static const char flashStr_M109[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M109\",\"catalogId\":\"M109\",\"targetName\":\"Messier M109\",\"rightAscensionSeconds\":43056,\"declinationArcseconds\":192148}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M109);
+            } break;
+            case Astro_TargetType_M110: {
+                static const char flashStr_M110[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"M110\",\"catalogId\":\"M110\",\"targetName\":\"Messier M110\",\"rightAscensionSeconds\":2422,\"declinationArcseconds\":150067}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_M110);
+            } break;
+            case Astro_TargetType_Sirius: {
+                static const char flashStr_Sirius[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Sirius\",\"catalogId\":\"Sirius\",\"targetName\":\"Sirius\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":24309,\"declinationArcseconds\":-60178}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Sirius);
+            } break;
+            case Astro_TargetType_Canopus: {
+                static const char flashStr_Canopus[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Canopus\",\"catalogId\":\"Canopus\",\"targetName\":\"Canopus\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":23037,\"declinationArcseconds\":-189705}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Canopus);
+            } break;
+            case Astro_TargetType_Arcturus: {
+                static const char flashStr_Arcturus[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Arcturus\",\"catalogId\":\"Arcturus\",\"targetName\":\"Arcturus\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":51340,\"declinationArcseconds\":69057}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Arcturus);
+            } break;
+            case Astro_TargetType_Vega: {
+                static const char flashStr_Vega[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Vega\",\"catalogId\":\"Vega\",\"targetName\":\"Vega\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":67016,\"declinationArcseconds\":139621}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Vega);
+            } break;
+            case Astro_TargetType_Capella: {
+                static const char flashStr_Capella[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Capella\",\"catalogId\":\"Capella\",\"targetName\":\"Capella\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":19001,\"declinationArcseconds\":165593}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Capella);
+            } break;
+            case Astro_TargetType_RigelKentaurus: {
+                static const char flashStr_RigelKentaurus[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"RigelKentaurus\",\"catalogId\":\"Rigel Kentaurus\",\"targetName\":\"Rigel Kentaurus\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":52776,\"declinationArcseconds\":-219007}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_RigelKentaurus);
+            } break;
+            case Astro_TargetType_Procyon: {
+                static const char flashStr_Procyon[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Procyon\",\"catalogId\":\"Procyon\",\"targetName\":\"Procyon\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":27558,\"declinationArcseconds\":18810}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Procyon);
+            } break;
+            case Astro_TargetType_Betelgeuse: {
+                static const char flashStr_Betelgeuse[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Betelgeuse\",\"catalogId\":\"Betelgeuse\",\"targetName\":\"Betelgeuse\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":21310,\"declinationArcseconds\":26665}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Betelgeuse);
+            } break;
+            case Astro_TargetType_Achernar: {
+                static const char flashStr_Achernar[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Achernar\",\"catalogId\":\"Achernar\",\"targetName\":\"Achernar\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":5863,\"declinationArcseconds\":-206052}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Achernar);
+            } break;
+            case Astro_TargetType_Hadar: {
+                static const char flashStr_Hadar[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Hadar\",\"catalogId\":\"Hadar\",\"targetName\":\"Hadar\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":50629,\"declinationArcseconds\":-217343}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Hadar);
+            } break;
+            case Astro_TargetType_Altair: {
+                static const char flashStr_Altair[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Altair\",\"catalogId\":\"Altair\",\"targetName\":\"Altair\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":71447,\"declinationArcseconds\":31926}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Altair);
+            } break;
+            case Astro_TargetType_Acrux: {
+                static const char flashStr_Acrux[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Acrux\",\"catalogId\":\"Acrux\",\"targetName\":\"Acrux\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":44796,\"declinationArcseconds\":-227157}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Acrux);
+            } break;
+            case Astro_TargetType_Aldebaran: {
+                static const char flashStr_Aldebaran[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Aldebaran\",\"catalogId\":\"Aldebaran\",\"targetName\":\"Aldebaran\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":16555,\"declinationArcseconds\":59433}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Aldebaran);
+            } break;
+            case Astro_TargetType_Spica: {
+                static const char flashStr_Spica[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Spica\",\"catalogId\":\"Spica\",\"targetName\":\"Spica\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":48312,\"declinationArcseconds\":-40181}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Spica);
+            } break;
+            case Astro_TargetType_Antares: {
+                static const char flashStr_Antares[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Antares\",\"catalogId\":\"Antares\",\"targetName\":\"Antares\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":59364,\"declinationArcseconds\":-95155}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Antares);
+            } break;
+            case Astro_TargetType_Pollux: {
+                static const char flashStr_Pollux[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Pollux\",\"catalogId\":\"Pollux\",\"targetName\":\"Pollux\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":27919,\"declinationArcseconds\":100894}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Pollux);
+            } break;
+            case Astro_TargetType_Fomalhaut: {
+                static const char flashStr_Fomalhaut[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Fomalhaut\",\"catalogId\":\"Fomalhaut\",\"targetName\":\"Fomalhaut\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":82659,\"declinationArcseconds\":-106640}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Fomalhaut);
+            } break;
+            case Astro_TargetType_Deneb: {
+                static const char flashStr_Deneb[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Deneb\",\"catalogId\":\"Deneb\",\"targetName\":\"Deneb\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":74486,\"declinationArcseconds\":163009}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Deneb);
+            } break;
+            case Astro_TargetType_Regulus: {
+                static const char flashStr_Regulus[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Regulus\",\"catalogId\":\"Regulus\",\"targetName\":\"Regulus\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":36502,\"declinationArcseconds\":43082}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Regulus);
+            } break;
+            case Astro_TargetType_Polaris: {
+                static const char flashStr_Polaris[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Polaris\",\"catalogId\":\"Polaris\",\"targetName\":\"Polaris\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":9109,\"declinationArcseconds\":321351}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Polaris);
+            } break;
+            case Astro_TargetType_Castor: {
+                static const char flashStr_Castor[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Castor\",\"catalogId\":\"Castor\",\"targetName\":\"Castor\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":27276,\"declinationArcseconds\":114798}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Castor);
+            } break;
+            case Astro_TargetType_Bellatrix: {
+                static const char flashStr_Bellatrix[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Bellatrix\",\"catalogId\":\"Bellatrix\",\"targetName\":\"Bellatrix\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":19508,\"declinationArcseconds\":22859}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Bellatrix);
+            } break;
+            case Astro_TargetType_Alnilam: {
+                static const char flashStr_Alnilam[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Alnilam\",\"catalogId\":\"Alnilam\",\"targetName\":\"Alnilam\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":20173,\"declinationArcseconds\":-4327}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Alnilam);
+            } break;
+            case Astro_TargetType_Alnitak: {
+                static const char flashStr_Alnitak[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Alnitak\",\"catalogId\":\"Alnitak\",\"targetName\":\"Alnitak\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":20446,\"declinationArcseconds\":-6994}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Alnitak);
+            } break;
+            case Astro_TargetType_Mizar: {
+                static const char flashStr_Mizar[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Mizar\",\"catalogId\":\"Mizar\",\"targetName\":\"Mizar\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":48236,\"declinationArcseconds\":197731}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Mizar);
+            } break;
+            case Astro_TargetType_Dubhe: {
+                static const char flashStr_Dubhe[] PROGMEM = {"{\"type\":\"ATLD\",\"id\":\"Dubhe\",\"catalogId\":\"Dubhe\",\"targetName\":\"Dubhe\",\"targetClass\":\"Star\",\"rightAscensionSeconds\":39824,\"declinationArcseconds\":222303}"};
+                progmemStream = AstroPROGMEMStream((uintptr_t)flashStr_Dubhe);
             } break;
             default: break;
         }
