@@ -3,43 +3,52 @@
     Astruino Pins
 */
 
-#include "AstroPins.h"
-#include "AstroUtils.h"
-#include <stdio.h>
-#include <string.h>
-
-#ifndef ARDUINO
-static int hostDigitalPins[256] = {0};
-static int hostAnalogPins[256] = {0};
-
-void astroSetHostDigitalPin(pintype_t pin, int value) { if (pin >= 0 && pin < 256) { hostDigitalPins[pin] = value ? HIGH : LOW; } }
-int astroGetHostDigitalPin(pintype_t pin) { return pin >= 0 && pin < 256 ? hostDigitalPins[pin] : LOW; }
-void astroSetHostAnalogPin(pintype_t pin, int value) { if (pin >= 0 && pin < 256) { hostAnalogPins[pin] = value; } }
-int astroGetHostAnalogPin(pintype_t pin) { return pin >= 0 && pin < 256 ? hostAnalogPins[pin] : 0; }
-#endif
+#include "Astruino.h"
+#include "AnalogDeviceAbstraction.h"
 
 AstroPin *newPinObjectFromSubData(const AstroPinData *dataIn)
 {
-    if (!dataIn) { return nullptr; }
-    switch (dataIn->type) {
-        case AstroPin::Digital: return new AstroDigitalPin(dataIn);
-        case AstroPin::Analog: return new AstroAnalogPin(dataIn);
-        default: return nullptr;
+    if (!dataIn || !isValidType(dataIn->type)) return nullptr;
+    ASTRO_SOFT_ASSERT(dataIn && isValidType(dataIn->type), SFP(HStr_Err_InvalidParameter));
+
+    if (dataIn) {
+        switch (dataIn->type) {
+            case AstroPin::Digital:
+                return new AstroDigitalPin(dataIn);
+            case AstroPin::Analog:
+                return new AstroAnalogPin(dataIn);
+            default: break;
+        }
     }
+
+    return nullptr;
 }
 
+AstroPin::AstroPin()
+    : type(Unknown), pin(apin_none), mode(Astro_PinMode_Undefined), channel(apinchnl_none)
+{ ; }
+
 AstroPin::AstroPin(int classType, pintype_t pinNumber, Astro_PinMode pinMode, int8_t pinChannel)
-    : type((decltype(type))classType), pin(pinNumber), mode(pinMode), channel(pinChannel)
+    : type((typeof(type))classType), pin(pinNumber), mode(pinMode),
+      channel(isValidChannel(pinChannel) ? pinChannel : (isValidPin(pinNumber) && pinNumber >= apin_virtual ? pinChannelForExpanderChannel(pinNumber - apin_virtual) : apinchnl_none))
 { ; }
 
 AstroPin::AstroPin(const AstroPinData *dataIn)
-    : type(dataIn ? (decltype(type))dataIn->type : Unknown), pin(dataIn ? dataIn->pin : apin_none),
-      mode(dataIn ? dataIn->mode : Astro_PinMode_Undefined), channel(dataIn ? dataIn->channel : apinchnl_none)
+    : type((typeof(type))(dataIn->type)), pin(dataIn->pin), mode(dataIn->mode), channel(dataIn->channel)
 { ; }
+
+AstroPin::operator AstroDigitalPin() const
+{
+    return (isDigitalType() || isDigital() || (!isUnknownType() && !isAnalog())) ? AstroDigitalPin(pin, mode, channel) : AstroDigitalPin();
+}
+
+AstroPin::operator AstroAnalogPin() const
+{
+    return (isAnalogType() || isAnalog() || (!isUnknownType() && !isDigital())) ? AstroAnalogPin(pin, mode, isOutput() ? DAC_RESOLUTION : ADC_RESOLUTION, channel) : AstroAnalogPin();
+}
 
 void AstroPin::saveToData(AstroPinData *dataOut) const
 {
-    if (!dataOut) { return; }
     dataOut->type = (int8_t)type;
     dataOut->pin = pin;
     dataOut->mode = mode;
@@ -48,201 +57,543 @@ void AstroPin::saveToData(AstroPinData *dataOut) const
 
 void AstroPin::init()
 {
-#ifdef ARDUINO
-    if (!isValid() || isVirtual()) { return; }
-    switch (mode) {
-        case Astro_PinMode_Digital_Input: pinMode(pin, INPUT); break;
-        case Astro_PinMode_Digital_Input_PullUp: pinMode(pin, INPUT_PULLUP); break;
-        #ifdef INPUT_PULLDOWN
-        case Astro_PinMode_Digital_Input_PullDown: pinMode(pin, INPUT_PULLDOWN); break;
-        #else
-        case Astro_PinMode_Digital_Input_PullDown: pinMode(pin, INPUT); break;
-        #endif
-        case Astro_PinMode_Digital_Output:
-        case Astro_PinMode_Digital_Output_PushPull:
-        case Astro_PinMode_Analog_Output: pinMode(pin, OUTPUT); break;
-        case Astro_PinMode_Analog_Input: pinMode(pin, INPUT); break;
-        default: break;
-    }
-#endif
+    #if !ASTRO_SYS_DRY_RUN_ENABLE
+        if (isValid()) {
+            if (!(isExpanded() || isVirtual())) {
+                ASTRO_SOFT_ASSERT(!isMuxed() || channel == pinChannelForMuxerChannel(muxerChannelForPinChannel(channel)), SFP(HStr_Err_NotConfiguredProperly));
+
+                switch (mode) {
+                    case Astro_PinMode_Digital_Input:
+                    case Astro_PinMode_Analog_Input:
+                        pinMode(pin, INPUT);
+                        break;
+
+                    case Astro_PinMode_Digital_Input_PullUp:
+                        pinMode(pin, INPUT_PULLUP);
+                        break;
+
+                    case Astro_PinMode_Digital_Input_PullDown:
+                        #if HAS_INPUT_PULLDOWN
+                            pinMode(pin, INPUT_PULLDOWN);
+                        #else
+                            pinMode(pin, INPUT);
+                        #endif
+                        break;
+
+                    case Astro_PinMode_Digital_Output:
+                    case Astro_PinMode_Digital_Output_PushPull:
+                    case Astro_PinMode_Analog_Output:
+                        pinMode(pin, OUTPUT);
+                        break;
+
+                    default:
+                        break;
+                }
+            } else {
+                #ifdef ASTRO_USE_MULTITASKING
+                    ASTRO_SOFT_ASSERT(isVirtual() && pin == pinNumberForPinChannel(channel), SFP(HStr_Err_NotConfiguredProperly));
+                    ASTRO_SOFT_ASSERT(channel == pinChannelForExpanderChannel(channel), SFP(HStr_Err_NotConfiguredProperly));
+
+                    auto expander = getController() ? getController()->getPinExpander(isValidChannel(channel) ? expanderPosForPinChannel(channel) : expanderPosForPinNumber(pin)) : nullptr;
+                    if (expander) {
+                        #if HAS_INPUT_PULLDOWN
+                            expander->getIoAbstraction()->pinDirection(channel % 16, isOutput() ? OUTPUT : mode == Astro_PinMode_Digital_Input_PullUp ? INPUT_PULLUP : mode == Astro_PinMode_Digital_Input_PullDown ? INPUT_PULLDOWN : INPUT);
+                        #else
+                            expander->getIoAbstraction()->pinDirection(channel % 16, isOutput() ? OUTPUT : mode == Astro_PinMode_Digital_Input_PullUp ? INPUT_PULLUP : INPUT);
+                        #endif
+                    }
+                #else
+                    ASTRO_HARD_ASSERT(false, SFP(HStr_Err_NotConfiguredProperly));
+                #endif
+            }
+        }
+    #endif
 }
 
 void AstroPin::deinit()
 {
-#ifdef ARDUINO
-    if (pin >= 0 && !isVirtual()) { pinMode(pin, INPUT); }
-#endif
+    #if !ASTRO_SYS_DRY_RUN_ENABLE
+        if (isValid()) {
+            if (!(isExpanded() || isVirtual())) {
+                pinMode(pin, INPUT);
+            } else {
+                #ifdef ASTRO_USE_MULTITASKING
+                    auto expander = getController() ? getController()->getPinExpander(isValidChannel(channel) ? expanderPosForPinChannel(channel) : expanderPosForPinNumber(pin)) : nullptr;
+                    if (expander) {
+                        expander->getIoAbstraction()->pinDirection(channel % 16, INPUT);
+                    }
+                #else
+                    ASTRO_HARD_ASSERT(false, SFP(HStr_Err_NotConfiguredProperly));
+                #endif
+            }
+        }
+    #endif
 }
 
+bool AstroPin::enablePin(int step)
+{
+    #if !ASTRO_SYS_DRY_RUN_ENABLE
+        if (isValid() && isValidChannel(channel)) {
+            if (isMuxed()) {
+                SharedPtr<AstroPinMuxer> muxer = getController() ? getController()->getPinMuxer(pin) : nullptr;
+                if (muxer) {
+                    switch (step) {
+                        case 0: muxer->selectChannel(muxerChannelForPinChannel(channel)); muxer->activate(); return true;
+                        case 1: muxer->selectChannel(muxerChannelForPinChannel(channel)); return true;
+                        case 2: muxer->activate(); return true;
+                        default: return false;
+                    }
+                }
+            } else if (isExpanded() || isVirtual()) {
+                #ifdef ASTRO_USE_MULTITASKING
+                    auto expander = getController() ? getController()->getPinExpander(isValidChannel(channel) ? expanderPosForPinChannel(channel) : expanderPosForPinNumber(pin)) : nullptr;
+                    return expander && expander->trySyncChannel();
+                #else
+                    ASTRO_HARD_ASSERT(false, SFP(HStr_Err_NotConfiguredProperly));
+                #endif
+            }
+        }
+        return false;
+    #else
+        return isValid() && isValidChannel(channel);
+    #endif
+}
+
+
+AstroDigitalPin::AstroDigitalPin()
+    : AstroPin(Digital), activeLow(false)
+{ ; }
+
+AstroDigitalPin::AstroDigitalPin(pintype_t pinNumber, ard_pinmode_t pinMode, int8_t pinChannel)
+    : AstroPin(Digital, pinNumber, pinMode != OUTPUT ? (pinMode != INPUT ? (pinMode == INPUT_PULLUP ? Astro_PinMode_Digital_Input_PullUp : Astro_PinMode_Digital_Input_PullDown)
+                                                                         : Astro_PinMode_Digital_Input)
+                                                     : (pinMode == OUTPUT ? Astro_PinMode_Digital_Output : Astro_PinMode_Digital_Output_PushPull), pinChannel),
+      activeLow(pinMode == INPUT || pinMode == INPUT_PULLUP || pinMode == OUTPUT)
+{ ; }
+
+AstroDigitalPin::AstroDigitalPin(pintype_t pinNumber, Astro_PinMode pinMode, int8_t pinChannel)
+    : AstroPin(Digital, pinNumber, pinMode, pinChannel),
+      activeLow(pinMode == Astro_PinMode_Digital_Input ||
+                pinMode == Astro_PinMode_Digital_Input_PullUp ||
+                pinMode == Astro_PinMode_Digital_Output)
+{ ; }
+
+AstroDigitalPin::AstroDigitalPin(pintype_t pinNumber, ard_pinmode_t pinMode, bool isActiveLow, int8_t pinChannel)
+    : AstroPin(Digital, pinNumber, pinMode != OUTPUT ? (isActiveLow ? Astro_PinMode_Digital_Input_PullUp : Astro_PinMode_Digital_Input_PullDown)
+                                                     : (isActiveLow ? Astro_PinMode_Digital_Output : Astro_PinMode_Digital_Output_PushPull), pinChannel),
+      activeLow(isActiveLow)
+{ ; }
+
 AstroDigitalPin::AstroDigitalPin(pintype_t pinNumber, Astro_PinMode pinMode, bool isActiveLow, int8_t pinChannel)
-    : AstroPin(Digital, pinNumber, pinMode, pinChannel), activeLow(isActiveLow)
+    : AstroPin(Digital, pinNumber, pinMode, pinChannel),
+      activeLow(isActiveLow)
 { ; }
 
 AstroDigitalPin::AstroDigitalPin(const AstroPinData *dataIn)
-    : AstroPin(dataIn), activeLow(dataIn ? dataIn->activeLow : false)
-{
-    type = Digital;
-}
+    : AstroPin(dataIn), activeLow(dataIn->dataAs.digitalPin.activeLow)
+{ ; }
 
 void AstroDigitalPin::saveToData(AstroPinData *dataOut) const
 {
     AstroPin::saveToData(dataOut);
-    if (dataOut) { dataOut->type = Digital; dataOut->activeLow = activeLow; }
+
+    dataOut->dataAs.digitalPin.activeLow = activeLow;
 }
 
-int AstroDigitalPin::digitalRead()
+ard_pinstatus_t AstroDigitalPin::digitalRead()
 {
-    if (!canRead() && !isOutput()) { return LOW; }
-#ifdef ARDUINO
-    return ::digitalRead(pin);
-#else
-    return astroGetHostDigitalPin(pin);
-#endif
+    #if !ASTRO_SYS_DRY_RUN_ENABLE
+        if (isValid()) {
+            if (isValidChannel(channel)) { selectAndActivatePin(); }
+            if (!(isExpanded() || isVirtual())) {
+                return ::digitalRead(pin);
+            } else {
+                #ifdef ASTRO_USE_MULTITASKING
+                    auto expander = getController() ? getController()->getPinExpander(isValidChannel(channel) ? expanderPosForPinChannel(channel) : expanderPosForPinNumber(pin)) : nullptr;
+                    if (expander) {
+                        return (ard_pinstatus_t)(expander->getIoAbstraction()->readValue(channel % 16));
+                    }
+                #else
+                    ASTRO_HARD_ASSERT(false, SFP(HStr_Err_NotConfiguredProperly));
+                #endif
+            }
+        }
+    #endif
+    return (ard_pinstatus_t)-1;
 }
 
-void AstroDigitalPin::digitalWrite(int status)
+void AstroDigitalPin::digitalWrite(ard_pinstatus_t status)
 {
-    if (!canWrite()) { return; }
-#ifdef ARDUINO
-    ::digitalWrite(pin, status ? HIGH : LOW);
-#else
-    astroSetHostDigitalPin(pin, status);
-#endif
+    #if !ASTRO_SYS_DRY_RUN_ENABLE
+        if (isValid()) {
+            if (!(isExpanded() || isVirtual())) {
+                if (isMuxed()) { selectPin(); }
+                ::digitalWrite(pin, status);
+            } else {
+                #ifdef ASTRO_USE_MULTITASKING
+                    auto expander = getController() ? getController()->getPinExpander(isValidChannel(channel) ? expanderPosForPinChannel(channel) : expanderPosForPinNumber(pin)) : nullptr;
+                    if (expander) {
+                        expander->getIoAbstraction()->writeValue(channel % 16, (uint8_t)status);
+                    }
+                #else
+                    ASTRO_HARD_ASSERT(false, SFP(HStr_Err_NotConfiguredProperly));
+                #endif
+            }
+            if (isValidChannel(channel)) { activatePin(); }
+        }
+    #endif
 }
 
-AstroAnalogPin::AstroAnalogPin(pintype_t pinNumber, Astro_PinMode pinMode, uint8_t analogBitRes, int8_t pinChannel)
-    : AstroPin(Analog, pinNumber, pinMode, pinChannel), bitRes(analogBitRes ? analogBitRes : 10)
+
+AstroAnalogPin::AstroAnalogPin()
+    : AstroPin(Analog), bitRes(0)
+#ifdef ESP32
+      , pwmChannel(-1)
+#endif
+#ifdef ESP_PLATFORM
+      , pwmFrequency(0)
+#endif
+{ ; }
+
+AstroAnalogPin::AstroAnalogPin(pintype_t pinNumber, ard_pinmode_t pinMode, uint8_t analogBitRes,
+#ifdef ESP32
+                               uint8_t pinPWMChannel,
+#endif
+#ifdef ESP_PLATFORM
+                               float pinPWMFrequency,
+#endif
+                               int8_t pinChannel)
+    : AstroPin(Analog, pinNumber, pinMode != OUTPUT ? Astro_PinMode_Analog_Input : Astro_PinMode_Analog_Output, pinChannel),
+      bitRes(analogBitRes ? analogBitRes : (pinMode == OUTPUT ? DAC_RESOLUTION : ADC_RESOLUTION))
+#ifdef ESP32
+      , pwmChannel(pinPWMChannel)
+#endif
+#ifdef ESP_PLATFORM
+      , pwmFrequency(pinPWMFrequency)
+#endif
+{ ; }
+
+AstroAnalogPin::AstroAnalogPin(pintype_t pinNumber, Astro_PinMode pinMode, uint8_t analogBitRes,
+#ifdef ESP32
+                               uint8_t pinPWMChannel,
+#endif
+#ifdef ESP_PLATFORM
+                               float pinPWMFrequency,
+#endif
+                               int8_t pinChannel)
+    : AstroPin(Analog, pinNumber, pinMode, pinChannel),
+      bitRes(analogBitRes ? analogBitRes : (pinMode == Astro_PinMode_Analog_Output ? DAC_RESOLUTION : ADC_RESOLUTION))
+#ifdef ESP32
+      , pwmChannel(pinPWMChannel)
+#endif
+#ifdef ESP_PLATFORM
+      , pwmFrequency(pinPWMFrequency)
+#endif
 { ; }
 
 AstroAnalogPin::AstroAnalogPin(const AstroPinData *dataIn)
-    : AstroPin(dataIn), bitRes(dataIn && dataIn->bitRes ? dataIn->bitRes : 10)
+    : AstroPin(dataIn), bitRes(dataIn->dataAs.analogPin.bitRes)
+#ifdef ESP32
+      , pwmChannel(dataIn->dataAs.analogPin.pwmChannel)
+#endif
+#ifdef ESP_PLATFORM
+      , pwmFrequency(dataIn->dataAs.analogPin.pwmFrequency)
+#endif
+{ ; }
+
+void AstroAnalogPin::init()
 {
-    type = Analog;
+    #if !ASTRO_SYS_DRY_RUN_ENABLE
+        if (isValid()) {
+            if (!(isExpanded() || isVirtual())) {
+                AstroPin::init();
+
+                #ifdef ESP32
+                    ledcAttachPin(pin, pwmChannel);
+                    ledcSetup(pwmChannel, pwmFrequency, bitRes.bits);
+                #endif
+            } else {
+                #ifdef ASTRO_USE_MULTITASKING
+                    ASTRO_SOFT_ASSERT(isVirtual() && pin == pinNumberForPinChannel(channel), SFP(HStr_Err_NotConfiguredProperly));
+                    ASTRO_SOFT_ASSERT(channel == pinChannelForExpanderChannel(channel), SFP(HStr_Err_NotConfiguredProperly));
+
+                    auto expander = getController() ? getController()->getPinExpander(isValidChannel(channel) ? expanderPosForPinChannel(channel) : expanderPosForPinNumber(pin)) : nullptr;
+                    if (expander) {
+                        auto ioDir = isOutput() ? AnalogDirection::DIR_OUT : AnalogDirection::DIR_IN;
+                        auto analogIORef = (AnalogDevice *)(expander->getIoAbstraction());
+                        analogIORef->initPin(channel % 16, ioDir);
+
+                        auto ioRefBits = analogIORef->getBitDepth(ioDir, channel % 16);
+                        if (bitRes.bits != ioRefBits) {
+                            bitRes = BitResolution(ioRefBits);
+                        }
+                    }
+                #else
+                    ASTRO_HARD_ASSERT(false, SFP(HStr_Err_NotConfiguredProperly));
+                #endif
+            }
+        }
+    #endif
 }
 
 void AstroAnalogPin::saveToData(AstroPinData *dataOut) const
 {
     AstroPin::saveToData(dataOut);
-    if (dataOut) { dataOut->type = Analog; dataOut->bitRes = bitRes; }
+
+    dataOut->dataAs.analogPin.bitRes = bitRes.bits;
+    #ifdef ESP32
+        dataOut->dataAs.analogPin.pwmChannel = pwmChannel;
+    #endif
+    #ifdef ESP_PLATFORM
+        dataOut->dataAs.analogPin.pwmFrequency = pwmFrequency;
+    #endif
 }
 
 float AstroAnalogPin::analogRead()
 {
-    int raw = analogRead_raw();
-    int maxValue = (1 << (bitRes > 15 ? 15 : bitRes)) - 1;
-    return maxValue ? (float)raw / (float)maxValue : 0.0f;
+    return bitRes.transform(analogRead_raw());
 }
 
 int AstroAnalogPin::analogRead_raw()
 {
-    if (!canRead()) { return 0; }
-#ifdef ARDUINO
-    return ::analogRead(pin);
-#else
-    return astroGetHostAnalogPin(pin);
-#endif
+    #if !ASTRO_SYS_DRY_RUN_ENABLE
+        if (isValid()) {
+            if (isValidChannel(channel)) { selectAndActivatePin(); }
+            if (!(isExpanded() || isVirtual())) {
+                #if defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_SAMD)
+                    analogReadResolution(bitRes.bits);
+                #endif
+                return ::analogRead(pin);
+            } else {
+                #ifdef ASTRO_USE_MULTITASKING
+                    auto expander = getController() ? getController()->getPinExpander(isValidChannel(channel) ? expanderPosForPinChannel(channel) : expanderPosForPinNumber(pin)) : nullptr;
+                    if (expander) {
+                        auto analogIORef = (AnalogDevice *)(expander->getIoAbstraction());
+                        analogIORef->getCurrentValue(channel % 16);
+                    }
+                #else
+                    ASTRO_HARD_ASSERT(false, SFP(HStr_Err_NotConfiguredProperly));
+                #endif
+            }
+        }
+    #endif
+    return 0;
 }
 
 void AstroAnalogPin::analogWrite(float amount)
 {
-    amount = astroConstrain(amount, 0.0f, 1.0f);
-    int maxValue = (1 << (bitRes > 15 ? 15 : bitRes)) - 1;
-    analogWrite_raw((int)(amount * maxValue + 0.5f));
+    analogWrite_raw(bitRes.inverseTransform(amount));
 }
 
 void AstroAnalogPin::analogWrite_raw(int amount)
 {
-    if (!canWrite()) { return; }
-    int maxValue = (1 << (bitRes > 15 ? 15 : bitRes)) - 1;
-    amount = astroConstrain(amount, 0, maxValue);
-#ifdef ARDUINO
-    ::analogWrite(pin, amount);
-#else
-    astroSetHostAnalogPin(pin, amount);
-#endif
+    #if !ASTRO_SYS_DRY_RUN_ENABLE
+        if (isValid()) {
+            if (!(isExpanded() || isVirtual())) {
+                if (isMuxed()) { selectPin(); }
+                #ifdef ESP32
+                    ledcWrite(pwmChannel, amount);
+                #else
+                    #if defined(ARDUINO_ARCH_SAM) || defined(ARDUINO_ARCH_SAMD)
+                        analogWriteResolution(bitRes.bits);
+                    #elif defined(ESP8266)
+                        analogWriteRange(bitRes.maxVal);
+                        analogWriteFreq(pwmFrequency);
+                    #endif
+                    ::analogWrite(pin, amount);
+                #endif
+            } else {
+                #ifdef ASTRO_USE_MULTITASKING
+                    auto expander = getController() ? getController()->getPinExpander(isValidChannel(channel) ? expanderPosForPinChannel(channel) : expanderPosForPinNumber(pin)) : nullptr;
+                    if (expander) {
+                        auto analogIORef = (AnalogDevice *)(expander->getIoAbstraction());
+                        analogIORef->setCurrentValue(channel % 16, amount);
+                    }
+                #else
+                    ASTRO_HARD_ASSERT(false, SFP(HStr_Err_NotConfiguredProperly));
+                #endif
+            }
+            if (isValidChannel(channel)) { activatePin(); }
+        }
+    #endif
 }
+
 
 AstroPinData::AstroPinData()
-    : type(AstroPin::Unknown), pin(apin_none), mode(Astro_PinMode_Undefined),
-      channel(apinchnl_none), activeLow(false), bitRes(10)
+    : AstroSubData((int8_t)AstroPin::Unknown), pin(apin_none), mode(Astro_PinMode_Undefined), channel(apinchnl_none), dataAs{0}
 { ; }
 
-bool AstroPinData::toJSON(char *bufferOut, size_t bufferSize) const
+void AstroPinData::toJSONObject(JsonObject &objectOut) const
 {
-    if (!bufferOut || !bufferSize) { return false; }
-    int written = snprintf(bufferOut, bufferSize,
-        "{\"type\":%d,\"pin\":%d,\"mode\":%d,\"channel\":%d,\"activeLow\":%d,\"bitRes\":%u}",
-        type, (int)pin, (int)mode, (int)channel, activeLow ? 1 : 0, (unsigned int)bitRes);
-    return written >= 0 && (size_t)written < bufferSize;
-}
+    AstroSubData::toJSONObject(objectOut);
 
-bool AstroPinData::fromJSON(const char *jsonIn)
-{
-    if (!jsonIn) { return false; }
+    if (isValidPin(pin)) { objectOut[SFP(HStr_Key_Pin)] = pin; }
+    if (mode != Astro_PinMode_Undefined) { objectOut[SFP(HStr_Key_Mode)] = pinModeToString(mode); }
+    if (isValidChannel(channel)) { objectOut[SFP(HStr_Key_Channel)] = channel; }
 
-    long typeIn, pinIn, modeIn, channelIn, activeLowIn;
-    unsigned long bitResIn;
-    if (!astroJSONGetLong(jsonIn, "type", &typeIn) ||
-        !astroJSONGetLong(jsonIn, "pin", &pinIn) ||
-        !astroJSONGetLong(jsonIn, "mode", &modeIn) ||
-        !astroJSONGetLong(jsonIn, "channel", &channelIn) ||
-        !astroJSONGetLong(jsonIn, "activeLow", &activeLowIn) ||
-        !astroJSONGetUnsignedLong(jsonIn, "bitRes", &bitResIn)) {
-        return false;
+    if (mode != Astro_PinMode_Undefined) {
+        if (!(mode == Astro_PinMode_Analog_Input || mode == Astro_PinMode_Analog_Output)) {
+            objectOut[SFP(HStr_Key_ActiveLow)] = dataAs.digitalPin.activeLow;
+        } else {
+            objectOut[SFP(HStr_Key_BitRes)] = dataAs.analogPin.bitRes;
+            #ifdef ESP32
+                objectOut[SFP(HStr_Key_PWMChannel)] = dataAs.analogPin.pwmChannel;
+            #endif
+            #ifdef ESP_PLATFORM
+                objectOut[SFP(HStr_Key_PWMFrequency)] = dataAs.analogPin.pwmFrequency;
+            #endif
+        }
     }
-
-    type = (int8_t)typeIn;
-    pin = (pintype_t)pinIn;
-    mode = (Astro_PinMode)modeIn;
-    channel = (int8_t)channelIn;
-    activeLow = activeLowIn != 0;
-    bitRes = (uint8_t)bitResIn;
-    return true;
 }
+
+void AstroPinData::fromJSONObject(JsonObjectConst &objectIn)
+{
+    AstroSubData::fromJSONObject(objectIn);
+
+    pin = objectIn[SFP(HStr_Key_Pin)] | pin;
+    mode = pinModeFromString(objectIn[SFP(HStr_Key_Mode)]);
+    channel = objectIn[SFP(HStr_Key_Channel)] | channel;
+
+    if (mode != Astro_PinMode_Undefined) {
+        if (!(mode == Astro_PinMode_Analog_Input || mode == Astro_PinMode_Analog_Output)) {
+            type = (int8_t)AstroPin::Digital;
+            dataAs.digitalPin.activeLow = objectIn[SFP(HStr_Key_ActiveLow)] | dataAs.digitalPin.activeLow;
+        } else {
+            type = (int8_t)AstroPin::Analog;
+            dataAs.analogPin.bitRes = objectIn[SFP(HStr_Key_BitRes)] | dataAs.analogPin.bitRes;
+            #ifdef ESP32
+                dataAs.analogPin.pwmChannel = objectIn[SFP(HStr_Key_PWMChannel)] | dataAs.analogPin.pwmChannel;
+            #endif
+            #ifdef ESP_PLATFORM
+                dataAs.analogPin.pwmFrequency = objectIn[SFP(HStr_Key_PWMFrequency)] | dataAs.analogPin.pwmFrequency;
+            #endif
+        }
+    } else {
+        type = (int8_t)AstroPin::Unknown;
+    }
+}
+
 
 AstroPinMuxer::AstroPinMuxer()
-    : _signal(), _chipEnable(), _channelPins{apin_none, apin_none, apin_none, apin_none},
-      _channelBits(0), _channelSelect(0)
-{ ; }
-
-AstroPinMuxer::AstroPinMuxer(AstroPin signalPin, const pintype_t *channelPins, uint8_t channelBits,
-                             AstroDigitalPin chipEnablePin)
-    : _signal(signalPin), _chipEnable(chipEnablePin),
-      _channelPins{apin_none, apin_none, apin_none, apin_none},
-      _channelBits(channelBits > 4 ? 4 : channelBits), _channelSelect(0)
+    : _signal(), _chipEnable(), _channelPins{apin_none},
+      _channelBits(0), _channelSelect(-1), _usingISR(false)
 {
-    for (uint8_t i = 0; i < _channelBits; ++i) { _channelPins[i] = channelPins ? channelPins[i] : apin_none; }
+    _signal.channel = apinchnl_none; // unused
+}
+
+AstroPinMuxer::AstroPinMuxer(AstroPin signalPin,
+                             pintype_t *muxChannelPins, int8_t muxChannelBits,
+                             AstroDigitalPin chipEnablePin, AstroDigitalPin interruptPin)
+    : _signal(signalPin), _chipEnable(chipEnablePin), _interrupt(interruptPin),
+      _channelPins{ muxChannelBits > 0 ? muxChannelPins[0] : apin_none,
+                    muxChannelBits > 1 ? muxChannelPins[1] : apin_none,
+                    muxChannelBits > 2 ? muxChannelPins[2] : apin_none,
+                    muxChannelBits > 3 ? muxChannelPins[3] : apin_none },
+      _channelBits(muxChannelBits), _channelSelect(-1), _usingISR(false)
+{
+    _signal.channel = apinchnl_none; // unused
 }
 
 void AstroPinMuxer::init()
 {
-#ifdef ARDUINO
-    for (uint8_t i = 0; i < _channelBits; ++i) {
-        if (_channelPins[i] >= 0) { pinMode(_channelPins[i], OUTPUT); }
-    }
-#endif
+    _signal.deinit();
     _chipEnable.init();
-    deactivate();
-    selectChannel(0);
+    _chipEnable.deactivate();
+
+    if (isValidPin(_channelPins[0])) {
+        pinMode(_channelPins[0], OUTPUT);
+        ::digitalWrite(_channelPins[0], LOW);
+
+        if (isValidPin(_channelPins[1])) {
+            pinMode(_channelPins[1], OUTPUT);
+            ::digitalWrite(_channelPins[1], LOW);
+
+            if (isValidPin(_channelPins[2])) {
+                pinMode(_channelPins[2], OUTPUT);
+                ::digitalWrite(_channelPins[2], LOW);
+
+                if (isValidPin(_channelPins[3])) {
+                    pinMode(_channelPins[3], OUTPUT);
+                    ::digitalWrite(_channelPins[3], LOW);
+                }
+            }
+        }
+    }
+    _channelSelect = 0;
+}
+
+bool AstroPinMuxer::tryRegisterISR(bool anyChange)
+{
+    #ifdef ASTRO_USE_MULTITASKING
+        if (!_usingISR && _interrupt.isValid() && checkPinCanInterrupt(_interrupt.pin)) {
+            taskManager.addInterrupt(&interruptImpl, _interrupt.pin, !anyChange ? (_interrupt.activeLow ? FALLING : RISING) : CHANGE);
+            _usingISR = true;
+        }
+    #endif
+    return _usingISR;
 }
 
 void AstroPinMuxer::selectChannel(uint8_t channelNumber)
 {
-    uint8_t maxChannel = _channelBits ? (uint8_t)((1u << _channelBits) - 1u) : 0;
-    _channelSelect = channelNumber > maxChannel ? maxChannel : channelNumber;
-    for (uint8_t i = 0; i < _channelBits; ++i) {
-        int value = (_channelSelect & (1u << i)) ? HIGH : LOW;
-#ifdef ARDUINO
-        if (_channelPins[i] >= 0) { ::digitalWrite(_channelPins[i], value); }
-#else
-        astroSetHostDigitalPin(_channelPins[i], value);
-#endif
+    if (_channelSelect != channelNumber) {
+        #if ASTRO_MUXERS_SHARED_ADDR_BUS
+            if (getController()) { getController()->deactivatePinMuxers(); }
+        #endif
+
+        if (isValidPin(_channelPins[0])) {
+            ::digitalWrite(_channelPins[0], (channelNumber >> 0) & 1 ? HIGH : LOW);
+
+            if (isValidPin(_channelPins[1])) {
+                ::digitalWrite(_channelPins[1], (channelNumber >> 1) & 1 ? HIGH : LOW);
+
+                if (isValidPin(_channelPins[2])) {
+                    ::digitalWrite(_channelPins[2], (channelNumber >> 2) & 1 ? HIGH : LOW);
+
+                    if (isValidPin(_channelPins[3])) {
+                        ::digitalWrite(_channelPins[3], (channelNumber >> 3) & 1 ? HIGH : LOW);
+                    }
+                }
+            }
+        }
+        _channelSelect = channelNumber;
     }
 }
 
 void AstroPinMuxer::setIsActive(bool isActive)
 {
-    if (!_chipEnable.isValid()) { return; }
-    if (isActive) { _chipEnable.activate(); }
-    else { _chipEnable.deactivate(); }
+    if (isActive) {
+        _signal.init();
+        _chipEnable.activate();
+    } else {
+        _chipEnable.deactivate();
+        _signal.deinit();
+    }
 }
+
+#ifdef ASTRO_USE_MULTITASKING
+
+AstroPinExpander::AstroPinExpander()
+    : _expander(0), _channelBits(0), _ioRef(nullptr), _interrupt(), _usingISR(false)
+{ ; }
+
+AstroPinExpander::AstroPinExpander(aposi_t expanderPos, uint8_t channelBits, IoAbstractionRef ioRef, AstroDigitalPin interruptPin)
+    : _expander(expanderPos), _channelBits(channelBits), _ioRef(ioRef), _interrupt(interruptPin), _usingISR(false)
+{ ; }
+
+bool AstroPinExpander::tryRegisterISR(bool anyChange)
+{
+    #ifdef ASTRO_USE_MULTITASKING
+        if (!_usingISR && _interrupt.isValid() && checkPinCanInterrupt(_interrupt.pin)) {
+            taskManager.addInterrupt(&interruptImpl, _interrupt.pin, !anyChange ? (_interrupt.activeLow ? FALLING : RISING) : CHANGE);
+            _usingISR = true;
+        }
+    #endif
+    return _usingISR;
+}
+
+bool AstroPinExpander::trySyncChannel()
+{
+    return _ioRef->sync();
+}
+
+#endif // /ifdef ASTRO_USE_MULTITASKING
