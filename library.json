@@ -30,10 +30,10 @@
             ]
         },
         {
-            "name": "AstroLibLookup",
-            "base": "examples/AstroLibLookup",
+            "name": "AstroTargetsLibraryLookup",
+            "base": "examples/AstroTargetsLibraryLookup",
             "files": [
-                "AstroLibLookup.ino"
+                "AstroTargetsLibraryLookup.ino"
             ]
         },
         {

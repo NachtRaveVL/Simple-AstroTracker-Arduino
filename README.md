@@ -18,10 +18,9 @@ Our Keep-It-Simple controller system:
   * Includes local sidereal time, Julian date handling, coordinate normalization, J2000 precession, and equatorial-to-horizontal conversion.
   * Mount movement is kept separate from motor hardware so steppers, servos, DC motors, and external controllers can be adapted without changing the astronomy code.
   * Park/unpark handling, per-axis software limits, optional position feedback, pulse guiding, and wrapped Alt/Az azimuth motion are supported by the mount layer.
-* Includes `AstroLib` for compact astronomical target data.
+* Includes `AstroTargetsLibrary` for compact astronomical target data.
   * Includes all 110 Messier objects, a useful set of bright stars, and the Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, and Neptune.
-  * Checked-out target data uses the same load/cache style as the crop library in Hydruino so the full catalog does not need to stay expanded in RAM.
-  * Custom target slots and external target loading are supported.
+    * Custom target slots and external target loading are supported.
 * Supports familiar hobby electronics and Arduino-style I/O.
   * Digital and analog pins, active-low inputs, PWM outputs, pin muxing, callbacks, sensors, actuators, activation handles, triggers, measurements, and power rails follow the same general patterns as the sibling libraries.
   * Optional time and location providers allow RTC, GPS, network, radio, or application-supplied implementations without changing the tracking logic.
@@ -82,7 +81,7 @@ From there, make a local copy of one of the example sketches based on the kind o
 
 Storage-constrained MCUs may need built-in data or GUI features disabled. The `DataWriter` example and development export tools show how catalog and string data can be prepared for external-data workflows.
 
-### AstroLib and Tracking Data
+### AstroTargetsLibrary and Tracking Data
 
 Astruino includes a compact target catalog instead of keeping every object expanded in RAM. Fixed target coordinates are stored compactly, while moving solar-system targets resolve through the same `AstroTargetData` interface for the requested time.
 
@@ -90,7 +89,7 @@ The built-in library includes all Messier objects, a useful bright-star set, and
 
 Development/export sketches under `tests/` include:
 
-* `AstroLibExportToCPP` for PROGMEM-ready target catalog entries.
+* `AstroTargetsLibraryExportToCPP` for PROGMEM-ready target catalog entries.
 * `EnumTrieExportToCPP` for generated enum string decoding.
 * `EnumConversionTests` for round-trip string conversion checks.
 * `JSONExportTests` for serializable target and pin data.
@@ -526,14 +525,14 @@ void loop()
 ```Arduino
 // Simple-AstroTracker-Arduino Data Writer Example
 //
-// In this example we export the built-in AstroLib target records as compact JSON. This is
+// In this example we export the built-in AstroTargetsLibrary target records as compact JSON. This is
 // useful when preparing external SD/EEPROM storage for a constrained controller, or when
 // regenerating the built-in data after catalog changes.
 //
 // Astruino can operate with all built-in target data kept in Flash. External storage is
 // optional and is mainly useful when program space matters or user catalog data is desired.
 //
-// The companion tests/AstroLibExportToCPP sketch performs the opposite development task:
+// The companion tests/AstroTargetsLibraryExportToCPP sketch performs the opposite development task:
 // it exports checked-out target data as C++ PROGMEM cases for inclusion in the library.
 
 #include <Astruino.h>
@@ -553,7 +552,7 @@ void setup()
         yield();
     }
 
-    Serial.println(F("=== AstroLib targets ==="));
+    Serial.println(F("=== AstroTargetsLibrary targets ==="));
 
     char jsonBuffer[256];
     char targetId[ASTRO_TARGET_ID_MAXSIZE];
@@ -586,7 +585,7 @@ void loop()
 ### Main System Examples
 
 * **SimpleEquatorial** shows a small equatorial tracker using user-supplied motor target callbacks.
-* **AstroLibLookup** shows target checkout, coordinate resolution, and return.
+* **AstroTargetsLibraryLookup** shows target checkout, coordinate resolution, and return.
 * **NightSession** shows a mount, cover, observation trigger, environmental input, logger, and scheduler working together.
 * **ThermalCamera** shows the camera/dew thermal-balancing path.
 * **DataWriter** exports target data for external-data workflows.
@@ -595,7 +594,7 @@ The examples keep final motor and sensor hardware behind callbacks and interface
 
 ## Astronomy Callouts
 
-### AstroLib
+### AstroTargetsLibrary
 
 Repeated target checkouts share the same loaded target object. Returning the last normal checkout releases it again. Moving solar-system targets use the same target interface but resolve coordinates for the requested time.
 

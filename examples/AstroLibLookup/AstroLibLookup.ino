@@ -1,4 +1,4 @@
-// Simple-AstroTracker-Arduino AstroLib Lookup Example
+// Simple-AstroTracker-Arduino AstroTargetsLibrary Lookup Example
 //
 // Shows the built-in target library checkout/return pattern. The same AstroTargetData
 // object is used for fixed J2000 catalog objects and moving solar system objects.
@@ -34,7 +34,7 @@ void setup()
     Serial.begin(115200);
     while (!Serial) { ; }
 
-    Serial.println(F("Astruino AstroLib lookup"));
+    Serial.println(F("Astruino AstroTargetsLibrary lookup"));
 
     printTarget(Astro_Target_M31);
     printTarget(Astro_Target_M42);

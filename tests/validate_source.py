@@ -46,7 +46,7 @@ required_core = {
     "AstroMeasurements.cpp": 4500,
     "AstroTriggers.h": 1500,
     "AstroTriggers.cpp": 1500,
-    "AstroLib.cpp": 10000,
+    "AstroTargetsLibrary.cpp": 10000,
     "AstroScheduler.cpp": 4500,
     "AstroActivation.h": 2500,
     "AstroActivation.cpp": 2000,

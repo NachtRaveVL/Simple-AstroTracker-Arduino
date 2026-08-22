@@ -248,7 +248,7 @@ inline millis_t nzMillis();
 #include "AstroThermal.h"
 #include "AstroTargets.h"
 #include "AstroEphemeris.h"
-#include "AstroLib.h"
+#include "AstroTargetsLibrary.h"
 #include "AstroScheduler.h"
 #include "AstroLogger.h"
 #include "AstroPublisher.h"

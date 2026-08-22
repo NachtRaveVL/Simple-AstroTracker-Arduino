@@ -23,7 +23,7 @@ set(ASTRUINO_SRC
     ../src/AstroEphemeris.cpp
     ../src/AstroFactory.cpp
     ../src/AstroInterfaces.cpp
-    ../src/AstroLib.cpp
+    ../src/AstroTargetsLibrary.cpp
     ../src/AstroLogger.cpp
     ../src/AstroMeasurements.cpp
     ../src/AstroModules.cpp

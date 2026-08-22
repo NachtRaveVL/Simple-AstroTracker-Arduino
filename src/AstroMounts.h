@@ -7,7 +7,7 @@
 #define AstroMounts_H
 
 #include "AstroDrivers.h"
-#include "AstroLib.h"
+#include "AstroTargetsLibrary.h"
 #include "AstroObject.h"
 
 // Mount Axis State
