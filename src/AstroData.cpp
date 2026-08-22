@@ -4,100 +4,156 @@
 */
 
 #include "Astruino.h"
-#include "AstroUtils.h"
-#include "AstroStrings.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdint.h>
+#include "AstroCoreLogic.h"
 
-AstroSystemData::AstroSystemData()
-    : systemName{0}, systemMode(Astro_SystemMode_Tracking),
-      measurementMode(Astro_MeasurementMode_Metric), timeZoneOffset(0),
-      pollingInterval(ASTRO_SYS_POLLING_INTERVAL), observer(), scheduler(), logger(), publisher()
+static size_t skipBinaryStreamBytes(Stream *streamIn, size_t bytesToSkip)
 {
-    { const AstroString name = SFP(AStr_Astruino); snprintf(systemName, sizeof(systemName), "%s", name.c_str()); }
-}
+    size_t skippedBytes = 0;
+    uint8_t skipBuffer[16];
 
-bool AstroSystemData::toJSON(char *bufferOut, size_t bufferSize) const
-{
-    if (!bufferOut || !bufferSize) { return false; }
-    int written = snprintf(bufferOut, bufferSize,
-        "{\"type\":\"ASYS\",\"systemName\":\"%s\",\"systemMode\":%d,\"measurementMode\":%d,"
-        "\"timeZoneOffset\":%d,\"pollingInterval\":%u,\"lat\":%.7f,\"lon\":%.7f,\"elev\":%.2f,"
-        "\"deploySunAlt\":%.4f,\"stowSunAlt\":%.4f,\"alignTol\":%.5f,\"settleSecs\":%u,\"reportSecs\":%lu,"
-        "\"logLevel\":%d,\"logFilePrefix\":\"%s\",\"logToSDCard\":%s,\"logToWiFiStorage\":%s,"
-        "\"dataFilePrefix\":\"%s\",\"pubToSDCard\":%s,\"pubToWiFiStorage\":%s,\"pubToMQTT\":%s}",
-        systemName, (int)systemMode, (int)measurementMode, (int)timeZoneOffset, (unsigned int)pollingInterval,
-        observer.latitudeDegrees, observer.longitudeDegrees, observer.elevationMeters,
-        scheduler.deploySunAltitudeDegrees, scheduler.stowSunAltitudeDegrees,
-        scheduler.alignmentToleranceDegrees, (unsigned int)scheduler.settleSeconds,
-        (unsigned long)scheduler.reportIntervalSeconds, (int)logger.logLevel, logger.logFilePrefix,
-        logger.logToSDCard ? "true" : "false", logger.logToWiFiStorage ? "true" : "false",
-        publisher.dataFilePrefix, publisher.pubToSDCard ? "true" : "false",
-        publisher.pubToWiFiStorage ? "true" : "false", publisher.pubToMQTT ? "true" : "false");
-    return written >= 0 && (size_t)written < bufferSize;
-}
+    while (skippedBytes < bytesToSkip) {
+        size_t chunkSize = bytesToSkip - skippedBytes;
+        if (chunkSize > sizeof(skipBuffer)) { chunkSize = sizeof(skipBuffer); }
 
-bool AstroSystemData::fromJSON(const char *jsonIn)
-{
-    if (!jsonIn) { return false; }
-
-    char typeIn[8] = {0};
-    char systemNameIn[ASTRO_NAME_MAXSIZE] = {0};
-    char logPrefixIn[ASTRO_PREFIX_MAXSIZE] = {0};
-    char dataPrefixIn[ASTRO_PREFIX_MAXSIZE] = {0};
-    long systemModeIn, measurementModeIn, timeZoneIn, logLevelIn;
-    unsigned long pollingIn, settleIn, reportIn;
-    double latitudeIn, longitudeIn, elevationIn, deployIn, stowIn, alignIn;
-    bool logSDIn, logWiFiIn, pubSDIn, pubWiFiIn, pubMQTTIn;
-
-    if (!astroJSONGetString(jsonIn, "type", typeIn, sizeof(typeIn)) || strcmp(typeIn, "ASYS") != 0 ||
-        !astroJSONGetString(jsonIn, "systemName", systemNameIn, sizeof(systemNameIn)) ||
-        !astroJSONGetLong(jsonIn, "systemMode", &systemModeIn) ||
-        !astroJSONGetLong(jsonIn, "measurementMode", &measurementModeIn) ||
-        !astroJSONGetLong(jsonIn, "timeZoneOffset", &timeZoneIn) ||
-        !astroJSONGetUnsignedLong(jsonIn, "pollingInterval", &pollingIn) ||
-        !astroJSONGetDouble(jsonIn, "lat", &latitudeIn) ||
-        !astroJSONGetDouble(jsonIn, "lon", &longitudeIn) ||
-        !astroJSONGetDouble(jsonIn, "elev", &elevationIn) ||
-        !astroJSONGetDouble(jsonIn, "deploySunAlt", &deployIn) ||
-        !astroJSONGetDouble(jsonIn, "stowSunAlt", &stowIn) ||
-        !astroJSONGetDouble(jsonIn, "alignTol", &alignIn) ||
-        !astroJSONGetUnsignedLong(jsonIn, "settleSecs", &settleIn) ||
-        !astroJSONGetUnsignedLong(jsonIn, "reportSecs", &reportIn) ||
-        !astroJSONGetLong(jsonIn, "logLevel", &logLevelIn) ||
-        !astroJSONGetString(jsonIn, "logFilePrefix", logPrefixIn, sizeof(logPrefixIn)) ||
-        !astroJSONGetBool(jsonIn, "logToSDCard", &logSDIn) ||
-        !astroJSONGetBool(jsonIn, "logToWiFiStorage", &logWiFiIn) ||
-        !astroJSONGetString(jsonIn, "dataFilePrefix", dataPrefixIn, sizeof(dataPrefixIn)) ||
-        !astroJSONGetBool(jsonIn, "pubToSDCard", &pubSDIn) ||
-        !astroJSONGetBool(jsonIn, "pubToWiFiStorage", &pubWiFiIn) ||
-        !astroJSONGetBool(jsonIn, "pubToMQTT", &pubMQTTIn)) {
-        return false;
+        const size_t skipped = streamIn->readBytes(skipBuffer, chunkSize);
+        skippedBytes += skipped;
+        if (skipped != chunkSize) { break; }
     }
 
-    snprintf(systemName, sizeof(systemName), "%s", systemNameIn);
-    systemMode = (Astro_SystemMode)systemModeIn;
-    measurementMode = (Astro_MeasurementMode)measurementModeIn;
-    if (timeZoneIn < INT8_MIN || timeZoneIn > INT8_MAX) { return false; }
-    timeZoneOffset = (int16_t)timeZoneIn;
-    pollingInterval = (uint16_t)pollingIn;
-    observer = AstroObserver(latitudeIn, longitudeIn, elevationIn);
+    return skippedBytes;
+}
 
-    scheduler.deploySunAltitudeDegrees = deployIn;
-    scheduler.stowSunAltitudeDegrees = stowIn;
-    scheduler.alignmentToleranceDegrees = alignIn;
-    scheduler.settleSeconds = (uint16_t)settleIn;
-    scheduler.reportIntervalSeconds = (uint32_t)reportIn;
+size_t serializeDataToBinaryStream(const AstroData *data, Stream *streamOut, size_t skipBytes)
+{
+    return streamOut->write((const uint8_t *)data + skipBytes, data->_size - skipBytes);
+}
 
-    logger.logLevel = (Astro_LogLevel)logLevelIn;
-    snprintf(logger.logFilePrefix, sizeof(logger.logFilePrefix), "%s", logPrefixIn);
-    logger.logToSDCard = logSDIn;
-    logger.logToWiFiStorage = logWiFiIn;
+size_t deserializeDataFromBinaryStream(AstroData *data, Stream *streamIn, size_t skipBytes)
+{
+    return streamIn->readBytes((uint8_t *)data + skipBytes, data->_size - skipBytes);
+}
 
-    snprintf(publisher.dataFilePrefix, sizeof(publisher.dataFilePrefix), "%s", dataPrefixIn);
-    publisher.pubToSDCard = pubSDIn;
-    publisher.pubToWiFiStorage = pubWiFiIn;
-    publisher.pubToMQTT = pubMQTTIn;
-    return true;
+AstroData *newDataFromBinaryStream(Stream *streamIn)
+{
+    AstroData baseDecode;
+    const size_t baseSize = baseDecode._size;
+    const size_t basePayloadSize = baseSize - sizeof(void*);
+    size_t readBytes = deserializeDataFromBinaryStream(&baseDecode, streamIn, sizeof(void*));
+    const size_t serializedSize = baseDecode._size;
+    const bool baseReadValid = readBytes == basePayloadSize && serializedSize >= baseSize;
+    ASTRO_SOFT_ASSERT(baseReadValid, SFP(HStr_Err_ImportFailure));
+    if (!baseReadValid) { return nullptr; }
+
+    AstroData *data = _allocateDataFromBaseDecode(baseDecode);
+    ASTRO_SOFT_ASSERT(data, SFP(HStr_Err_AllocationFailure));
+    if (!data) { return nullptr; }
+
+    const auto readPlan = hydroBinaryDataReadPlan(serializedSize, data->_size, baseSize);
+    if (readPlan.copyBytes) {
+        readBytes += streamIn->readBytes((uint8_t *)data + baseSize, readPlan.copyBytes);
+    }
+
+    const size_t skippedBytes = skipBinaryStreamBytes(streamIn, readPlan.skipBytes);
+    const bool payloadReadValid = readBytes == basePayloadSize + readPlan.copyBytes &&
+                                  skippedBytes == readPlan.skipBytes;
+    ASTRO_SOFT_ASSERT(payloadReadValid, SFP(HStr_Err_ImportFailure));
+    if (!payloadReadValid) {
+        delete data;
+        return nullptr;
+    }
+
+    data->migrateFromBinaryVersion(baseDecode._version);
+    return data;
+}
+
+AstroData *newDataFromJSONObject(JsonObjectConst &objectIn)
+{
+    AstroData baseDecode;
+    baseDecode.fromJSONObject(objectIn);
+
+    AstroData *data = _allocateDataFromBaseDecode(baseDecode);
+    ASTRO_SOFT_ASSERT(data, SFP(HStr_Err_AllocationFailure));
+
+    if (data) {
+        data->fromJSONObject(objectIn);
+        return data;
+    }
+
+    return nullptr;
+}
+
+
+AstroData::AstroData()
+    : id{.chars={'\000','\000','\000','\000'}}, _version(1), _revision(-1)
+{
+    _size = sizeof(*this);
+}
+
+AstroData::AstroData(char id0, char id1, char id2, char id3, uint8_t version, uint8_t revision)
+    : id{.chars={id0,id1,id2,id3}}, _version(version), _revision((int8_t)revision)
+{
+    _size = sizeof(*this);
+    ASTRO_HARD_ASSERT(isStandardData(), SFP(HStr_Err_InvalidParameter));
+}
+
+AstroData::AstroData(aid_t idType, aid_t objType, aposi_t posIndex, aid_t classType, uint8_t version, uint8_t revision)
+    : id{.object={idType,objType,posIndex,classType}}, _version(version), _revision((int8_t)revision)
+{
+    _size = sizeof(*this);
+}
+
+AstroData::AstroData(const AstroIdentity &id)
+    : AstroData(id.type, id.objTypeAs.idType, id.posIndex, -1, 1, 0)
+{
+    _size = sizeof(*this);
+}
+
+void AstroData::toJSONObject(JsonObject &objectOut) const
+{
+    if (isStandardData()) {
+        objectOut[SFP(HStr_Key_Type)] = charsToString(id.chars, sizeof(id.chars));
+    } else {
+        int8_t typeVals[4] = {id.object.idType, id.object.objType, id.object.posIndex, id.object.classType};
+        objectOut[SFP(HStr_Key_Type)] = commaStringFromArray(typeVals, 4);
+    }
+    if (_version > 1) { objectOut[SFP(HStr_Key_Version)] = _version; }
+    if (getRevision() > 1) { objectOut[SFP(HStr_Key_Revision)] = getRevision(); }
+}
+
+void AstroData::fromJSONObject(JsonObjectConst &objectIn)
+{
+    JsonVariantConst idVar = objectIn[SFP(HStr_Key_Type)];
+    const char *idStr = idVar.as<const char *>();
+    if (idStr && idStr[0] == 'H') {
+        strncpy(id.chars, idStr, 4);
+    } else if (idStr) {
+        int8_t typeVals[4];
+        commaStringToArray(idStr, typeVals, 4);
+        id.object.idType = typeVals[0];
+        id.object.objType = typeVals[1];
+        id.object.posIndex = typeVals[2];
+        id.object.classType = typeVals[3];
+    }
+    _version = objectIn[SFP(HStr_Key_Version)] | _version;
+    _revision = objectIn[SFP(HStr_Key_Revision)] | _revision;
+    _revision = abs(_revision);
+}
+
+
+AstroSubData::AstroSubData()
+    : type(aid_none)
+{ ; }
+
+AstroSubData::AstroSubData(aid_t dataType)
+    : type(dataType)
+{ ; }
+
+void AstroSubData::toJSONObject(JsonObject &objectOut) const
+{
+    if (type != aid_none) { objectOut[SFP(HStr_Key_Type)] = type; }
+}
+
+void AstroSubData::fromJSONObject(JsonObjectConst &objectIn)
+{
+    type = objectIn[SFP(HStr_Key_Type)] | type;
 }
