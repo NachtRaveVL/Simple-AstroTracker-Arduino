@@ -16,6 +16,8 @@ AstroObject *newObjectFromData(const AstroData *dataIn)
                 return newActuatorObjectFromData((AstroActuatorData *)dataIn);
             case (aid_t)AstroIdentity::Sensor:
                 return newSensorObjectFromData((AstroSensorData *)dataIn);
+            case (aid_t)AstroIdentity::Target:
+                return newTargetObjectFromData((AstroTargetData *)dataIn);
             case (aid_t)AstroIdentity::Mount:
                 return newMountObjectFromData((AstroMountData *)dataIn);
             case (aid_t)AstroIdentity::Rail:
@@ -38,6 +40,9 @@ akey_t AstroIdentity::regenKey()
         case Sensor:
             keyString = sensorTypeToString(objTypeAs.sensorType, true);
             break;
+        case Target:
+            keyString = targetTypeToString(objTypeAs.targetType, true);
+            break;
         case Mount:
             keyString = mountTypeToString(objTypeAs.mountType, true);
             break;
@@ -59,6 +64,7 @@ String AstroIdentity::getDisplayString()
     switch (type) {
         case Actuator: return String(F("Actuator ")) + keyString;
         case Sensor: return String(F("Sensor ")) + keyString;
+        case Target: return String(F("Target ")) + keyString;
         case Mount: return String(F("Mount ")) + keyString;
         case Rail: return String(F("Rail ")) + keyString;
         default: return String(F("Unknown ")) + keyString;

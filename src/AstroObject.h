@@ -26,9 +26,10 @@ template<class T = AstroObjInterface> inline SharedPtr<T> getSharedPtr(const Ast
 // This class is mainly used to simplify object key generation, which is used when we
 // want to uniquely refer to objects in the Astruino system.
 struct AstroIdentity {
-    enum : signed char { Actuator, Sensor, Mount, Rail, Unknown = -1 } type; // Object type (custom RTTI)
+    enum : signed char { Actuator, Sensor, Target, Mount, Rail, Unknown = -1 } type; // Object type (custom RTTI)
     inline bool isActuatorType() const { return type == Actuator; }
     inline bool isSensorType() const { return type == Sensor; }
+    inline bool isTargetType() const { return type == Target; }
     inline bool isMountType() const { return type == Mount; }
     inline bool isRailType() const { return type == Rail; }
     inline bool isUnknownType() const { return type <= Unknown; }
@@ -36,6 +37,7 @@ struct AstroIdentity {
     union {
         Astro_ActuatorType actuatorType;                    // As actuator type enumeration
         Astro_SensorType sensorType;                        // As sensor type enumeration
+        Astro_TargetType targetType;                        // As target type enumeration
         Astro_MountType mountType;                          // As mount type enumeration
         Astro_RailType railType;                            // As rail type enumeration
         aid_t idType;                                       // As standard id type enumeration
@@ -60,6 +62,9 @@ struct AstroIdentity {
     // Sensor id constructor
     inline AstroIdentity(Astro_SensorType sensorTypeIn,
                          aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG) : type(Sensor), objTypeAs{.sensorType=sensorTypeIn}, posIndex(positionIndex), keyString(), key(akey_none) { regenKey(); }
+    // Target id constructor
+    inline AstroIdentity(Astro_TargetType targetTypeIn,
+                         aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG) : type(Target), objTypeAs{.targetType=targetTypeIn}, posIndex(positionIndex), keyString(), key(akey_none) { regenKey(); }
     // Mount id constructor
     inline AstroIdentity(Astro_MountType mountTypeIn,
                          aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG) : type(Mount), objTypeAs{.mountType=mountTypeIn}, posIndex(positionIndex), keyString(), key(akey_none) { regenKey(); }
@@ -88,6 +93,7 @@ class AstroObject : public AstroObjInterface {
 public:
     inline bool isActuatorType() const { return _id.isActuatorType(); }
     inline bool isSensorType() const { return _id.isSensorType(); }
+    inline bool isTargetType() const { return _id.isTargetType(); }
     inline bool isMountType() const { return _id.isMountType(); }
     inline bool isRailType() const { return _id.isRailType(); }
     inline bool isUnknownType() const { return _id.isUnknownType(); }
