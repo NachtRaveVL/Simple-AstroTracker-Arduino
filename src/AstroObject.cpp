@@ -39,7 +39,7 @@ akey_t AstroIdentity::regenKey()
             keyString = sensorTypeToString(objTypeAs.sensorType, true);
             break;
         case Mount:
-            keyString = reservoirTypeToString(objTypeAs.reservoirType, true);
+            keyString = mountTypeToString(objTypeAs.mountType, true);
             break;
         case Rail:
             keyString = railTypeToString(objTypeAs.railType, true);

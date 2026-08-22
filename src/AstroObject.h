@@ -36,7 +36,7 @@ struct AstroIdentity {
     union {
         Astro_ActuatorType actuatorType;                    // As actuator type enumeration
         Astro_SensorType sensorType;                        // As sensor type enumeration
-        Astro_MountType reservoirType;                  // As reservoir type enumeration
+        Astro_MountType mountType;                          // As mount type enumeration
         Astro_RailType railType;                            // As rail type enumeration
         aid_t idType;                                       // As standard id type enumeration
     } objTypeAs;                                            // Object type union
@@ -61,8 +61,8 @@ struct AstroIdentity {
     inline AstroIdentity(Astro_SensorType sensorTypeIn,
                          aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG) : type(Sensor), objTypeAs{.sensorType=sensorTypeIn}, posIndex(positionIndex), keyString(), key(akey_none) { regenKey(); }
     // Mount id constructor
-    inline AstroIdentity(Astro_MountType reservoirTypeIn,
-                         aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG) : type(Mount), objTypeAs{.reservoirType=reservoirTypeIn}, posIndex(positionIndex), keyString(), key(akey_none) { regenKey(); }
+    inline AstroIdentity(Astro_MountType mountTypeIn,
+                         aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG) : type(Mount), objTypeAs{.mountType=mountTypeIn}, posIndex(positionIndex), keyString(), key(akey_none) { regenKey(); }
     // Rail id constructor
     inline AstroIdentity(Astro_RailType railTypeIn,
                          aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG) : type(Rail), objTypeAs{.railType=railTypeIn}, posIndex(positionIndex), keyString(), key(akey_none) { regenKey(); }
