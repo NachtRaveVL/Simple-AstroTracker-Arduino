@@ -6,173 +6,180 @@
 #ifndef AstroInlines_HH
 #define AstroInlines_HH
 
-struct AstroI2CDeviceSetup;
-struct AstroSPIDeviceSetup;
-struct AstroUARTDeviceSetup;
-struct AstroDeviceSetup;
-struct AstroBitResolution;
-struct AstroTwilight;
+struct I2CDeviceSetup;
+struct SPIDeviceSetup;
+struct UARTDeviceSetup;
+struct DeviceSetup;
+struct BitResolution;
+struct Location;
+struct Twilight;
 
-#include "AstroDefines.h"
-#include "AstroCoordinates.h"
-#include <math.h>
+#include "Hydruino.h"
+// Only have defines included at this point, complex inline imps at top of Hydruino.hpp
 
-// Returns if pin is valid.
+// Returns if pin is valid
 inline bool isValidPin(pintype_t pin) { return pin != apin_none; }
-// Returns if pin channel is valid.
+// Returns if channel is valid
 inline bool isValidChannel(int8_t channel) { return channel != apinchnl_none; }
-// Returns if measurement row is valid.
+// Returns if measurement row is valid1
 inline bool isValidRow(uint8_t row) { return row != (uint8_t)-1; }
-// Returns if time millis is valid.
-inline bool isValidTime(millis_t time) { return time != 0; }
-// Returns if position index is valid.
-inline bool isValidIndex(aposi_t index) { return index >= 0; }
-// Returns if id key is valid.
+// Returns if taskId is valid
+inline bool isValidTask(unsigned int taskId) { return taskId != 0xffffU; } // purposeful, not using library define incase not included
+// Returns if time millis is valid
+inline bool isValidTime(millis_t time) { return time != millis_none; }
+// Returns if position index is valid
+inline bool isValidIndex(aposi_t index) { return index != aposi_none; }
+// Returns if id key is valid
 inline bool isValidKey(akey_t key) { return key != akey_none; }
-// Returns if frame is valid.
+// Returns if id type is valid
+inline bool isValidType(aid_t type) { return type != aid_none; }
+// Returns if frame is valid
 inline bool isValidFrame(aframe_t frame) { return frame != aframe_none; }
 
-// Returns if two single-precision floating point values are equal within the library epsilon.
+// Returns if two single-precision floating point values are equal with respect to defined error epsilon.
 inline bool isFPEqual(float lhs, float rhs) { return fabsf(rhs - lhs) <= FLT_EPSILON; }
-// Returns if two double-precision floating point values are equal within the library epsilon.
+// Returns if two double-precision floating point values are equal with respect to defined error epsilon.
 inline bool isFPEqual(double lhs, double rhs) { return fabs(rhs - lhs) <= DBL_EPSILON; }
 
-// Returns the first units value that is not undefined.
-inline Astro_UnitsType definedUnitsElse(Astro_UnitsType units1, Astro_UnitsType units2)
-{
+// Returns the first unit in parameter list that isn't undefined, allowing defaulting chains to be nicely defined.
+inline Astro_UnitsType definedUnitsElse(Astro_UnitsType units1, Astro_UnitsType units2) {
     return units1 != Astro_UnitsType_Undefined ? units1 : units2;
 }
 
-// Returns the first units value that is not undefined.
-inline Astro_UnitsType definedUnitsElse(Astro_UnitsType units1, Astro_UnitsType units2, Astro_UnitsType units3)
-{
-    return units1 != Astro_UnitsType_Undefined ? units1 :
-           units2 != Astro_UnitsType_Undefined ? units2 : units3;
+// Returns the first unit in parameter list that isn't undefined, allowing defaulting chains to be nicely defined.
+inline Astro_UnitsType definedUnitsElse(Astro_UnitsType units1, Astro_UnitsType units2, Astro_UnitsType units3) {
+    return units1 != Astro_UnitsType_Undefined ? units1 : (units2 != Astro_UnitsType_Undefined ? units2 : units3);
 }
 
-// Returns a signed -1 when a pin is not valid, useful during serialization and display.
+// Returns proper signed -1 int value when pin # isn't valid, for type conversion situations.
 inline int intForPin(pintype_t pin) { return isValidPin(pin) ? (int)pin : -1; }
 
-// Rounds a floating point value to a requested number of decimal places.
-inline double roundToDecimalPlaces(double value, int decimalPlaces)
-{
+// Rounds floating point value to the number of decimal places.
+inline float roundToDecimalPlaces(float value, int decimalPlaces) {
     if (decimalPlaces >= 0) {
-        const double shiftScaler = pow(10.0, decimalPlaces);
-        return round(value * shiftScaler) / shiftScaler;
+        float shiftScaler = powf(10.0f, decimalPlaces);
+        return roundf(value * shiftScaler) / shiftScaler;
     }
     return value;
 }
 
-#ifdef ARDUINO
 // I2C Device Setup
-// Quick storage for I2C device connection settings.
-struct AstroI2CDeviceSetup {
-    TwoWire *wire;                                          // I2C wire instance
-    uint32_t speed;                                         // I2C max data speed, in Hz
-    uint8_t address;                                        // I2C device address
+// A quick and easy structure for storing I2C device connection settings.
+struct I2CDeviceSetup {
+    TwoWire *wire;                      // I2C wire instance
+    uint32_t speed;                     // I2C max data speed (Hz)
+    uint8_t address;                    // I2C device address
 
-    inline AstroI2CDeviceSetup(TwoWire *i2cWire = ASTRO_USE_WIRE, uint32_t i2cSpeed = 100000U, uint8_t i2cAddress = 0)
-        : wire(i2cWire), speed(i2cSpeed), address(i2cAddress) { ; }
+    inline I2CDeviceSetup(TwoWire *i2cWire = ASTRO_USE_WIRE, uint32_t i2cSpeed = 100000U, uint8_t i2cAddress = 0b000) : wire(i2cWire), speed(i2cSpeed), address(i2cAddress) { ; }
+    inline I2CDeviceSetup(uint32_t i2cSpeed, uint8_t i2cAddress = 0b000, TwoWire *i2cWire = ASTRO_USE_WIRE) : wire(i2cWire), speed(i2cSpeed), address(i2cAddress) { ; }
+    inline I2CDeviceSetup(uint8_t i2cAddress, TwoWire *i2cWire = ASTRO_USE_WIRE, uint32_t i2cSpeed = 100000U) : wire(i2cWire), speed(i2cSpeed), address(i2cAddress) { ; }
 };
 
 // SPI Device Setup
-// Quick storage for SPI device connection settings.
-struct AstroSPIDeviceSetup {
-    SPIClass *spi;                                          // SPI class instance
-    uint32_t speed;                                         // SPI max data speed, in Hz
-    pintype_t cs;                                           // SPI chip-select pin
+// A quick and easy structure for storing SPI device connection settings.
+struct SPIDeviceSetup {
+    SPIClass *spi;                      // SPI class instance
+    uint32_t speed;                     // SPI max data speed (Hz)
+    pintype_t cs;                       // SPI cable select pin (active-low)
 
-    inline AstroSPIDeviceSetup(SPIClass *spiClass = ASTRO_USE_SPI, uint32_t spiSpeed = 1000000U, pintype_t spiCS = apin_none)
-        : spi(spiClass), speed(spiSpeed), cs(spiCS) { ; }
+    inline SPIDeviceSetup(SPIClass *spiClass = ASTRO_USE_SPI, uint32_t spiSpeed = F_SPD, pintype_t spiCS = -1) : spi(spiClass), speed(spiSpeed), cs(spiCS) { ; }
+    inline SPIDeviceSetup(uint32_t spiSpeed, pintype_t spiCS = -1, SPIClass *spiClass = ASTRO_USE_SPI) : spi(spiClass), speed(spiSpeed), cs(spiCS) { ; }
+    inline SPIDeviceSetup(pintype_t spiCS, SPIClass *spiClass = ASTRO_USE_SPI, uint32_t spiSpeed = F_SPD) : spi(spiClass), speed(spiSpeed), cs(spiCS) { ; }
 };
 
 // UART Device Setup
-// Quick storage for serial device connection settings.
-struct AstroUARTDeviceSetup {
-    SerialClass *serial;                                    // UART class instance
-    uint32_t baud;                                          // UART baud rate, in bits per second
+// A quick and easy structure for storing serial device connection settings.
+struct UARTDeviceSetup {
+    SerialClass *serial;                // UART class instance
+    uint32_t baud;                      // UART baud rate (bps)
 
-    inline AstroUARTDeviceSetup(SerialClass *serialClass = ASTRO_USE_SERIAL1, uint32_t serialBaud = 9600U)
-        : serial(serialClass), baud(serialBaud) { ; }
+    inline UARTDeviceSetup(SerialClass *serialClass = ASTRO_USE_SERIAL1, uint32_t serialBaud = 9600U) : serial(serialClass), baud(serialBaud) { ; }
+    inline UARTDeviceSetup(uint32_t serialBaud, SerialClass *serialClass = ASTRO_USE_SERIAL1) : serial(serialClass), baud(serialBaud) { ; }
 };
-#else
-// Host versions retain the same configuration shape without requiring Arduino classes.
-struct AstroI2CDeviceSetup {
-    void *wire;                                             // Host I2C instance placeholder
-    uint32_t speed;                                         // I2C max data speed, in Hz
-    uint8_t address;                                        // I2C device address
-    inline AstroI2CDeviceSetup(void *i2cWire = nullptr, uint32_t i2cSpeed = 100000U, uint8_t i2cAddress = 0)
-        : wire(i2cWire), speed(i2cSpeed), address(i2cAddress) { ; }
-};
-// SPI Device Setup
-// Host-side equivalent of the SPI connection settings structure.
-struct AstroSPIDeviceSetup {
-    void *spi;                                              // Host SPI instance placeholder
-    uint32_t speed;                                         // SPI max data speed, in Hz
-    pintype_t cs;                                           // SPI chip-select pin
-    inline AstroSPIDeviceSetup(void *spiClass = nullptr, uint32_t spiSpeed = 1000000U, pintype_t spiCS = apin_none)
-        : spi(spiClass), speed(spiSpeed), cs(spiCS) { ; }
-};
-// UART Device Setup
-// Host-side equivalent of the serial connection settings structure.
-struct AstroUARTDeviceSetup {
-    void *serial;                                           // Host UART instance placeholder
-    uint32_t baud;                                          // UART baud rate, in bits per second
-    inline AstroUARTDeviceSetup(void *serialClass = nullptr, uint32_t serialBaud = 9600U)
-        : serial(serialClass), baud(serialBaud) { ; }
-};
-#endif
 
 // Combined Device Setup
-// Tagged union for the common I2C, SPI, and UART connection settings.
-struct AstroDeviceSetup {
-    enum : signed char { None, I2CSetup, SPISetup, UARTSetup } cfgType; // Configuration type
-    AstroI2CDeviceSetup i2c;                                // I2C configuration
-    AstroSPIDeviceSetup spi;                                // SPI configuration
-    AstroUARTDeviceSetup uart;                              // UART configuration
+// A union of the various device setup structures, to assist with user device settings.
+struct DeviceSetup {
+    enum : signed char { None, I2CSetup, SPISetup, UARTSetup } cfgType; // Config type
+    union {
+        I2CDeviceSetup i2c;             // I2C config
+        SPIDeviceSetup spi;             // SPI config
+        UARTDeviceSetup uart;           // UART config
+    } cfgAs;                            // Config data
 
-    inline AstroDeviceSetup() : cfgType(None), i2c(), spi(), uart() { ; }
-    inline AstroDeviceSetup(const AstroI2CDeviceSetup &setup) : cfgType(I2CSetup), i2c(setup), spi(), uart() { ; }
-    inline AstroDeviceSetup(const AstroSPIDeviceSetup &setup) : cfgType(SPISetup), i2c(), spi(setup), uart() { ; }
-    inline AstroDeviceSetup(const AstroUARTDeviceSetup &setup) : cfgType(UARTSetup), i2c(), spi(), uart(setup) { ; }
+    inline DeviceSetup() : cfgType(None), cfgAs{.i2c=I2CDeviceSetup(nullptr)} { ; }
+    inline DeviceSetup(I2CDeviceSetup i2cSetup) : cfgType(I2CSetup), cfgAs{.i2c=i2cSetup} { ; }
+    inline DeviceSetup(SPIDeviceSetup spiSetup) : cfgType(SPISetup), cfgAs{.spi=spiSetup} { ; }
+    inline DeviceSetup(UARTDeviceSetup uartSetup) : cfgType(UARTSetup), cfgAs{.uart=uartSetup} { ; }
 };
 
 // Analog Bit Resolution
-// Converts between raw ADC/DAC values and normalized [0,1] values.
-struct AstroBitResolution {
-    uint8_t bits;                                           // Bit resolution
-    int32_t maxVal;                                         // Maximum raw value
+// Used to calculate analog pin range boundary values and convert between integer and
+// normalized floating-point formats. The #-of-bits of accuracy will correspond to an
+// e.g. lower analogRead() of 0 and an upper analogRead() of 2 ^ #-of-bits, aka maxVal.
+// Note: Off-by-one? No, b/c for e.g. 12-bit analogRead(): 0 => no-sig/bin-low,
+//       1 => min-sig/PWM-wf, 4095 => max-sig/PWM-wf, 4096=full-sig/bin-high
+struct BitResolution {
+    uint8_t bits;                       // Bit resolution (#-of-bits)
+    int_least32_t maxVal;               // Maximum value (2 ^ #-of-bits)
 
-    inline AstroBitResolution(uint8_t numBits = 8)
-        : bits(numBits), maxVal((1L << (numBits > 30 ? 30 : numBits)) - 1) { ; }
+    // Bit resolution from # of bits
+    inline BitResolution(uint8_t numBits = 8) : bits(numBits), maxVal(1 << numBits) { ; }
 
-    inline float transform(int value) const
-    {
-        return maxVal > 0 ? constrain(value / (float)maxVal, 0.0f, 1.0f) : 0.0f;
-    }
+    // Transforms value from raw/integer [0,2^#bits] into normalized fp intensity [0.0,1.0].
+    inline float transform(int value) const { return constrain(value / (float)maxVal, 0.0f, 1.0f); }
 
-    inline int inverseTransform(float value) const
-    {
-        return constrain((int)roundf(maxVal * constrain(value, 0.0f, 1.0f)), 0, maxVal);
+    // Inverse transforms value from normalized fp intensity [0.0,1.0] back into raw/integer [0,2^#bits].
+    inline int inverseTransform(float value) const { return constrain((int)((float)maxVal * value), 0, maxVal); }
+};
+
+// Device Location Data
+// Used in calculating twilight times, UTC offsets, and sun's positioning.
+struct Location {
+    double latitude;                    // Latitude (degrees)
+    double longitude;                   // Longitude (minutes)
+    double altitude;                    // Altitude (MSL)
+
+    inline Location() : latitude(DBL_UNDEF), longitude(DBL_UNDEF), altitude(DBL_UNDEF) { ; }
+    inline Location(double latitudeIn, double longitudeIn, double altitudeIn = DBL_UNDEF) : latitude(latitudeIn), longitude(longitudeIn), altitude(altitudeIn) { ; }
+
+    inline bool hasPosition() const { return latitude != DBL_UNDEF && longitude != DBL_UNDEF; }
+    inline bool hasAltitude() const { return altitude != DBL_UNDEF; }
+
+    // Determines sun altitude for accurate sunrise/sunset calculations. Note: Costly method due to sqrt().
+    inline double resolveSunAlt(double defaultSunAlt = SUNRISESET_STD_ALTITUDE) const {
+        return hasAltitude() ? SUNRISESET_STD_ALTITUDE - 0.0353 * sqrt(altitude) : defaultSunAlt; // msl-to-sunAlt eq from SolarCalculator example code
     }
 };
 
 // Twilight Timing Data
-// Stores daily sunrise/sunset style thresholds for simple day/night scheduling.
-struct AstroTwilight {
-    double dawnHour;                                        // Dawn hour, fractional local or UTC
-    double duskHour;                                        // Dusk hour, fractional local or UTC
-    bool isUTC;                                             // Hours are in UTC when true
+// Used in calculating sunrise/sunset hours and checking if times are in the daytime or nighttime.
+struct Twilight {
+    double sunrise;                     // Hour of sunrise (+fractional)
+    double sunset;                      // Hour of sunset (+fractional)
+    bool isUTC;                         // Sunrise/sunset hours stored in UTC format flag
 
-    inline AstroTwilight(double dawnHourIn = 6.0, double duskHourIn = 18.0, bool isUTCIn = false)
-        : dawnHour(dawnHourIn), duskHour(duskHourIn), isUTC(isUTCIn) { ; }
+    inline Twilight() : sunrise(ASTRO_NIGHT_FINISH_HR), sunset(ASTRO_NIGHT_START_HR), isUTC(false) { ; }
+    inline Twilight(double sunriseIn, double sunsetIn, bool isUTCIn = true) : sunrise(sunriseIn), sunset(sunsetIn), isUTC(isUTCIn) { ; }
 
-    inline bool isDaytimeHour(double hour) const
-    {
-        return dawnHour <= duskHour ? hour >= dawnHour && hour <= duskHour
-                                    : hour >= dawnHour || hour <= duskHour;
-    }
-    inline bool isNighttimeHour(double hour) const { return !isDaytimeHour(hour); }
+    // Determines if passed unix/UTC time is in daytime hours.
+    inline bool isDaytime(time_t unixTime = unixNow()) const;
+    // Determins if passed local DateTime (offset by system TZ) is in daytime hours.
+    inline bool isDaytime(DateTime localTime) const;
+    // Determines if passed unix/UTC time is in nighttime hours.
+    inline bool isNighttime(time_t unixTime = unixNow()) const { return !isDaytime(unixTime); }
+    // Determins if passed local DateTime (offset by system TZ) is in nighttime hours.
+    inline bool isNighttime(DateTime localTime) const { return !isDaytime(localTime); }
+
+    // Converts fractional sunrise/sunset hours to unix/UTC time or local DateTime (offset by system TZ).
+    static inline time_t hourToUnixTime(double hour, bool isUTC);
+    static inline DateTime hourToLocalTime(double hour, bool isUTC);
+
+    // Converts sunrise/sunset hours to unix/UTC time or local DateTime (offset by system TZ).
+    inline time_t getSunriseUnixTime() const { return hourToUnixTime(sunrise, isUTC); }
+    inline time_t getSunsetUnixTime() const { return hourToUnixTime(sunset, isUTC); }
+    inline DateTime getSunriseLocalTime() const { return hourToLocalTime(sunrise, isUTC); }
+    inline DateTime getSunsetLocalTime() const { return hourToLocalTime(sunset, isUTC); }
 };
 
 #endif // /ifndef AstroInlines_HH
