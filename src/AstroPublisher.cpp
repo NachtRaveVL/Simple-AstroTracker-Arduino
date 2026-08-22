@@ -46,13 +46,13 @@ void AstroPublisher::update()
 
 bool AstroPublisher::beginPublishingToSDCard(String dataFilePrefix)
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(HStr_Err_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
     if (hasPublisherData() && !publisherData()->pubToSDCard) {
         auto sd = Astroduino::_activeInstance->getSDCard();
 
         if (sd) {
-            String dataFilename = getYYMMDDFilename(dataFilePrefix, SFP(HStr_csv));
+            String dataFilename = getYYMMDDFilename(dataFilePrefix, SFP(AStr_csv));
             createDirectoryFor(sd, dataFilename);
             #if ASTRO_SYS_LEAVE_FILES_OPEN
                 auto &dataFile = _dataFileSD ? *_dataFileSD : *(_dataFileSD = new File(sd->open(dataFilename.c_str(), FILE_WRITE)));
@@ -89,10 +89,10 @@ bool AstroPublisher::beginPublishingToSDCard(String dataFilePrefix)
 
 bool AstroPublisher::beginPublishingToWiFiStorage(String dataFilePrefix)
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(HStr_Err_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
     if (hasPublisherData() && !publisherData()->pubToWiFiStorage) {
-        String dataFilename = getYYMMDDFilename(dataFilePrefix, SFP(HStr_csv));
+        String dataFilename = getYYMMDDFilename(dataFilePrefix, SFP(AStr_csv));
         #if ASTRO_SYS_LEAVE_FILES_OPEN
             auto &dataFile = _dataFileWS ? *_dataFileWS : *(_dataFileWS = new WiFiStorageFile(WiFiStorage.open(dataFilename.c_str())));
         #else
@@ -128,7 +128,7 @@ static uint32_t mqttNow()
 
 bool AstroPublisher::beginPublishingToMQTTClient(MQTTClient &client)
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(HStr_Err_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
     if (hasPublisherData() && !_mqttClient) {
         _mqttClient = &client;
@@ -151,7 +151,7 @@ bool AstroPublisher::beginPublishingToMQTTClient(MQTTClient &client)
 
 void AstroPublisher::publishData(aposi_t columnIndex, AstroSingleMeasurement measurement)
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData() && _dataColumns && _columnSize, SFP(HStr_Err_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData() && _dataColumns && _columnSize, SFP(AStr_Err_NotYetInitialized));
     if (_dataColumns && _columnSize && columnIndex >= 0 && columnIndex < _columnSize) {
         _dataColumns[columnIndex].measurement = measurement;
         publishIfNeeded();
@@ -160,7 +160,7 @@ void AstroPublisher::publishData(aposi_t columnIndex, AstroSingleMeasurement mea
 
 aposi_t AstroPublisher::getColumnIndexStart(akey_t sensorKey)
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData() && _dataColumns && _columnSize, SFP(HStr_Err_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData() && _dataColumns && _columnSize, SFP(AStr_Err_NotYetInitialized));
     if (_dataColumns && _columnSize) {
         for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
             if (_dataColumns[columnIndex].sensorKey == sensorKey) {
@@ -179,14 +179,14 @@ Signal<Pair<uint8_t, const AstroDataColumn *>, ASTRO_PUBLISH_SIGNAL_SLOTS> &Astr
 void AstroPublisher::notifyDateChanged()
 {
     if (isPublishingEnabled()) {
-        _dataFilename = getYYMMDDFilename(charsToString(publisherData()->dataFilePrefix, 16), SFP(HStr_csv));
+        _dataFilename = getYYMMDDFilename(charsToString(publisherData()->dataFilePrefix, 16), SFP(AStr_csv));
         cleanupOldestData();
     }
 }
 
 void AstroPublisher::advancePollingFrame()
 {
-    ASTRO_HARD_ASSERT(hasPublisherData(), SFP(HStr_Err_NotYetInitialized));
+    ASTRO_HARD_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
     auto pollingFrame = Astroduino::_activeInstance->getPollingFrame();
 
@@ -324,7 +324,7 @@ void AstroPublisher::publish(time_t timestamp)
 
 void AstroPublisher::performTabulation()
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(HStr_Err_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
     bool sameOrder = _dataColumns && _columnSize ? true : false;
     int columnSize = 0;
@@ -351,7 +351,7 @@ void AstroPublisher::performTabulation()
         if (_columnSize) {
             if (!_dataColumns) {
                 _dataColumns = new AstroDataColumn[_columnSize];
-                ASTRO_SOFT_ASSERT(_dataColumns, SFP(HStr_Err_AllocationFailure));
+                ASTRO_SOFT_ASSERT(_dataColumns, SFP(AStr_Err_AllocationFailure));
             }
             if (_dataColumns) {
                 int columnIndex = 0;
@@ -363,7 +363,7 @@ void AstroPublisher::performTabulation()
                         auto rowCount = getMeasurementRowCount(measurement);
 
                         for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-                            ASTRO_HARD_ASSERT(columnIndex < _columnSize, SFP(HStr_Err_OperationFailure));
+                            ASTRO_HARD_ASSERT(columnIndex < _columnSize, SFP(AStr_Err_OperationFailure));
                             _dataColumns[columnIndex].measurement = getAsSingleMeasurement(measurement, rowIndex);
                             _dataColumns[columnIndex].sensorKey = sensor->getKey();
                             columnIndex++;
@@ -402,7 +402,7 @@ void AstroPublisher::resetDataFile()
                 AstroSensor *lastSensor = nullptr;
                 uint8_t measurementRow = 0;
 
-                dataFile.print(SFP(HStr_Key_Timestamp));
+                dataFile.print(SFP(AStr_Key_Timestamp));
 
                 for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
                     dataFile.print(',');
@@ -418,8 +418,8 @@ void AstroPublisher::resetDataFile()
                         dataFile.print('_');
                         dataFile.print(unitsTypeToSymbol(getMeasurementUnits(sensor->getMeasurement(), measurementRow)));
                     } else {
-                        ASTRO_SOFT_ASSERT(false, SFP(HStr_Err_OperationFailure));
-                        dataFile.print(SFP(HStr_Undefined));
+                        ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_OperationFailure));
+                        dataFile.print(SFP(AStr_Undefined));
                     }
                 }
 
@@ -457,7 +457,7 @@ void AstroPublisher::resetDataFile()
             AstroSensor *lastSensor = nullptr;
             uint8_t measurementRow = 0;
 
-            dataFileStream.print(SFP(HStr_Key_Timestamp));
+            dataFileStream.print(SFP(AStr_Key_Timestamp));
 
             for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
                 dataFileStream.print(',');
@@ -473,8 +473,8 @@ void AstroPublisher::resetDataFile()
                     dataFileStream.print('_');
                     dataFileStream.print(unitsTypeToSymbol(getMeasurementUnits(sensor->getMeasurement(), measurementRow)));
                 } else {
-                    ASTRO_SOFT_ASSERT(false, SFP(HStr_Err_OperationFailure));
-                    dataFileStream.print(SFP(HStr_Undefined));
+                    ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_OperationFailure));
+                    dataFileStream.print(SFP(AStr_Undefined));
                 }
             }
 
@@ -499,17 +499,17 @@ void AstroPublisherSubData::toJSONObject(JsonObject &objectOut) const
 {
     //AstroSubData::toJSONObject(objectOut); // purposeful no call to base method (ignores type)
 
-    if (dataFilePrefix[0]) { objectOut[SFP(HStr_Key_DataFilePrefix)] = charsToString(dataFilePrefix, 16); }
-    if (pubToSDCard != false) { objectOut[SFP(HStr_Key_PublishToSDCard)] = pubToSDCard; }
-    if (pubToWiFiStorage != false) { objectOut[SFP(HStr_Key_PublishToWiFiStorage)] = pubToWiFiStorage; }
+    if (dataFilePrefix[0]) { objectOut[SFP(AStr_Key_DataFilePrefix)] = charsToString(dataFilePrefix, 16); }
+    if (pubToSDCard != false) { objectOut[SFP(AStr_Key_PublishToSDCard)] = pubToSDCard; }
+    if (pubToWiFiStorage != false) { objectOut[SFP(AStr_Key_PublishToWiFiStorage)] = pubToWiFiStorage; }
 }
 
 void AstroPublisherSubData::fromJSONObject(JsonObjectConst &objectIn)
 {
     //AstroSubData::fromJSONObject(objectIn); // purposeful no call to base method (ignores type)
 
-    const char *dataFilePrefixStr = objectIn[SFP(HStr_Key_DataFilePrefix)];
+    const char *dataFilePrefixStr = objectIn[SFP(AStr_Key_DataFilePrefix)];
     if (dataFilePrefixStr && dataFilePrefixStr[0]) { strncpy(dataFilePrefix, dataFilePrefixStr, 16); }
-    pubToSDCard = objectIn[SFP(HStr_Key_PublishToSDCard)] | pubToSDCard;
-    pubToWiFiStorage = objectIn[SFP(HStr_Key_PublishToWiFiStorage)] | pubToWiFiStorage;
+    pubToSDCard = objectIn[SFP(AStr_Key_PublishToSDCard)] | pubToSDCard;
+    pubToWiFiStorage = objectIn[SFP(AStr_Key_PublishToWiFiStorage)] | pubToWiFiStorage;
 }
