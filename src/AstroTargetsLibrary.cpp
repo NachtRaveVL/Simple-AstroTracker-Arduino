@@ -3,7 +3,7 @@
     Astruino Targets Library
 */
 
-#include "Astruino.h"   
+#include "Astruino.h"
 
 AstroTargetsLibraryBook::AstroTargetsLibraryBook()
     : data(), count(1), userSet(false)
