@@ -6,51 +6,106 @@
 #ifndef AstroPublisher_H
 #define AstroPublisher_H
 
-#include "AstroMeasurements.h"
-#include "AstroData.h"
-
+class AstroPublisher;
 struct AstroPublisherSubData;
+struct AstroDataColumn;
 
-struct AstroDataColumn {
-    akey_t sensorKey;
-    AstroSingleMeasurement measurement;
+#include "Astruino.h"
+#include "AstroMeasurements.h"
 
-    AstroDataColumn(akey_t sensorKeyIn = akey_none,
-                    AstroSingleMeasurement measurementIn = AstroSingleMeasurement())
-        : sensorKey(sensorKeyIn), measurement(measurementIn) { ; }
-};
-
+// Data Publisher
+// The Publisher allows for data collection and publishing capabilities. The data output
+// is based on a simple table of time and measured value. Each time segment, called a
+// polling frame (and controlled by the polling rate interval), collects data from all
+// sensors into a data row, with the appropriate total number of columns. At time of
+// either all sensors having reported in for their frame #, or the frame # proceeding
+// to advance (in which case the existing value is recycled), the table's row is
+// submitted to configured publishing services.
+// Publishing to SD card .csv data files (via SPI card reader) is supported as is logging to
+// WiFiStorage .csv data files (via OS/OTA filesystem / WiFiNINA_Generic only). MQTT is also
+// supported but requires additional setup.
 class AstroPublisher {
 public:
     AstroPublisher();
-    inline void setSubData(AstroPublisherSubData *data) { _data = data; }
-    bool addColumn(akey_t sensorKey);
-    bool publishData(akey_t sensorKey, const AstroSingleMeasurement &measurement);
-    bool publishData(akey_t sensorKey, double value, Astro_UnitsType units, aframe_t frame, int64_t timestamp);
-    inline bool publishData(akey_t sensorKey, double value, aframe_t frame, int64_t timestamp)
-        { return publishData(sensorKey, value, Astro_UnitsType_Raw_1, frame, timestamp); }
-    void advancePollingFrame(aframe_t frame, int64_t timestamp);
-    aposi_t getColumnIndexStart(akey_t sensorKey) const;
-    inline uint8_t getColumnCount() const { return _columnCount; }
-    inline const AstroDataColumn *getColumns() const { return _columns; }
-    inline bool isPublishingEnabled() const { return _columnCount > 0; }
-    Signal<Pair<uint8_t, const AstroDataColumn *>, ASTRO_DEFAULT_MAXSIZE> &getPublishSignal();
+    ~AstroPublisher();
+
+    void update();
+ 
+    bool beginPublishingToSDCard(String dataFilePrefix);
+    inline bool isPublishingToSDCard() const;
+
+#ifdef ASTRO_USE_WIFI_STORAGE
+    bool beginPublishingToWiFiStorage(String dataFilePrefix);
+    inline bool isPublishingToWiFiStorage() const;
+#endif
+
+#ifdef ASTRO_USE_MQTT
+    bool beginPublishingToMQTTClient(MQTTClient &client);
+    inline bool isPublishingToMQTTClient() const;
+#endif
+
+    void publishData(aposi_t columnIndex, AstroSingleMeasurement measurement);
+
+    inline void setNeedsTabulation();
+    inline bool needsTabulation() { return _needsTabulation; }
+
+    inline bool isPublishingEnabled() const;
+    aposi_t getColumnIndexStart(akey_t sensorKey);
+
+    Signal<Pair<uint8_t, const AstroDataColumn *>, ASTRO_PUBLISH_SIGNAL_SLOTS> &getPublishSignal();
+
+    void notifyDateChanged();
 
 protected:
-    AstroDataColumn _columns[ASTRO_PUBLISH_MAX_COLUMNS];    // Publisher data columns
-    uint8_t _columnCount;                                   // Active column count
-    aframe_t _publishedFrame;                               // Last published polling frame
-    AstroPublisherSubData *_data;                           // Serialized publisher settings, not owned
-    Signal<Pair<uint8_t, const AstroDataColumn *>, ASTRO_DEFAULT_MAXSIZE> _publishSignal; // Data publishing signal
+#if ASTRO_SYS_LEAVE_FILES_OPEN
+    File *_dataFileSD;                                      // SD card log file instance (owned)
+#ifdef ASTRO_USE_WIFI_STORAGE
+    WiFiStorageFile *_dataFileWS;                           // WiFiStorageFile log file instance (owned)
+#endif
+#endif
+#ifdef ASTRO_USE_MQTT
+    MQTTClient *_mqttClient;                                // MQTT client object (strong)
+#endif
+    String _dataFilename;                                   // Resolved data file name (based on day)
+    aframe_t _pollingFrame;                                 // Polling frame that publishing is caught up to
+    bool _needsTabulation;                                  // Needs tabulation tracking flag
+    uint8_t _columnSize;                                    // Number of data columns
+    AstroDataColumn *_dataColumns;                          // Data columns array (owned)
 
-    void publishIfReady(aframe_t frame, int64_t timestamp);
+    Signal<Pair<uint8_t, const AstroDataColumn *>, ASTRO_PUBLISH_SIGNAL_SLOTS> _publishSignal; // Data publishing signal
+
+    friend class Astroduino;
+
+    void advancePollingFrame();
+    friend void dataLoop();
+
+    void publishIfNeeded();
+    void publish(time_t timestamp);
+
+    void performTabulation();
+
+public: // consider protected
+    inline AstroPublisherSubData *publisherData() const;
+    inline bool hasPublisherData() const;
+
+    void resetDataFile();
+    void cleanupOldestData(bool force = false);
 };
 
+// Publisher Data Column
+// Data column worth of storage. Intended to be array allocated.
+struct AstroDataColumn {
+    akey_t sensorKey;                                       // Key to sensor object
+    AstroSingleMeasurement measurement;                     // Storage polling frame measurement
+};
+
+
+// Publisher Serialization Sub Data
+// A part of ASYS system data.
 struct AstroPublisherSubData : public AstroSubData {
-    char dataFilePrefix[ASTRO_PREFIX_MAXSIZE];
-    bool pubToSDCard;
-    bool pubToWiFiStorage;
-    bool pubToMQTT;
+    char dataFilePrefix[ASTRO_PREFIX_MAXSIZE];              // Base data file name prefix / folder (default: "data/he")
+    bool pubToSDCard;                                       // If publishing sensor data to SD card is enabled (default: false)
+    bool pubToWiFiStorage;                                  // If publishing sensor data to WiFiStorage is enabled (default: false)
 
     AstroPublisherSubData();
     void toJSONObject(JsonObject &objectOut) const;

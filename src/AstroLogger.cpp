@@ -4,111 +4,281 @@
 */
 
 #include "Astruino.h"
-#include <stdio.h>
-#include <string.h>
 
-AstroLogger::AstroLogger()
-    : _logLevel(Astro_LogLevel_All), _data(nullptr), _logSignal()
+AstroLogEvent::AstroLogEvent(Astro_LogLevel levelIn, const String &prefixIn, const String &msgIn, const String &suffix1In, const String &suffix2In)
+    : level(levelIn), timestamp(localNow().timestamp(DateTime::TIMESTAMP_FULL)), prefix(prefixIn), msg(msgIn), suffix1(suffix1In), suffix2(suffix2In)
 { ; }
 
-void AstroLogger::setSubData(AstroLoggerSubData *data)
+
+AstroLogger::AstroLogger() :
+#if ASTRO_SYS_LEAVE_FILES_OPEN
+    _logFileSD(nullptr),
+#ifdef ASTRO_USE_WIFI_STORAGE
+    _logFileWS(nullptr),
+#endif
+#endif
+    _logFilename(), _initTime(0), _lastSpaceCheck(0)
+{ ; }
+
+AstroLogger::~AstroLogger()
 {
-    _data = data;
+    flush();
+
+    #if ASTRO_SYS_LEAVE_FILES_OPEN
+        if (_logFileSD) {
+            _logFileSD->close();
+            delete _logFileSD; _logFileSD = nullptr;
+            Astroduino::_activeInstance->endSDCard();
+        }
+        #ifdef ASTRO_USE_WIFI_STORAGE
+            if (_logFileWS) {
+                _logFileWS->close();
+                delete _logFileWS; _logFileWS = nullptr;
+            }
+        #endif
+    #endif
+}
+
+bool AstroLogger::beginLoggingToSDCard(String logFilePrefix)
+{
+    ASTRO_SOFT_ASSERT(hasLoggerData(), SFP(AStr_Err_NotYetInitialized));
+
+    if (hasLoggerData() && !loggerData()->logToSDCard) {
+        auto sd = Astroduino::_activeInstance->getSDCard();
+
+        if (sd) {
+            String logFilename = getYYMMDDFilename(logFilePrefix, SFP(AStr_txt));
+            createDirectoryFor(sd, logFilename);
+            #if ASTRO_SYS_LEAVE_FILES_OPEN
+                auto &logFile = _logFileSD ? *_logFileSD : *(_logFileSD = new File(sd->open(logFilename.c_str(), FILE_WRITE)));
+            #else
+                auto logFile = sd->open(logFilename.c_str(), FILE_WRITE);
+            #endif
+
+            if (logFile) {
+                #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                    logFile.close();
+                    Astroduino::_activeInstance->endSDCard(sd);
+                #endif
+
+                strncpy(loggerData()->logFilePrefix, logFilePrefix.c_str(), 16);
+                loggerData()->logToSDCard = true;
+                _logFilename = logFilename;
+                Astroduino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+
+                return true;
+            }
+        }
+
+        #if !ASTRO_SYS_LEAVE_FILES_OPEN
+            Astroduino::_activeInstance->endSDCard(sd);
+        #endif
+    }
+
+    return false;
+}
+
+#ifdef ASTRO_USE_WIFI_STORAGE
+
+bool AstroLogger::beginLoggingToWiFiStorage(String logFilePrefix)
+{
+    ASTRO_SOFT_ASSERT(hasLoggerData(), SFP(AStr_Err_NotYetInitialized));
+
+    if (hasLoggerData() && !loggerData()->logToWiFiStorage) {
+        String logFilename = getYYMMDDFilename(logFilePrefix, SFP(AStr_txt));
+        #if ASTRO_SYS_LEAVE_FILES_OPEN
+            auto &logFile = _logFileWS ? *_logFileWS : *(_logFileWS = new WiFiStorageFile(WiFiStorage.open(logFilename.c_str())));
+        #else
+            auto logFile = WiFiStorage.open(logFilename.c_str());
+        #endif
+
+        if (logFile) {
+            #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                logFile.close();
+            #endif
+
+            strncpy(loggerData()->logFilePrefix, logFilePrefix.c_str(), 16);
+            loggerData()->logToWiFiStorage = true;
+            _logFilename = logFilename;
+            Astroduino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+#endif
+
+void AstroLogger::logSystemUptime()
+{
+    TimeSpan elapsed(getSystemUptime());
+    if (elapsed.totalseconds()) {
+        logMessage(SFP(AStr_Log_SystemUptime), timeSpanToString(elapsed));
+    }
+}
+
+void AstroLogger::logMessage(const String &msg, const String &suffix1, const String &suffix2)
+{
+    if (!hasLoggerData() || (loggerData()->logLevel != Astro_LogLevel_None && loggerData()->logLevel <= Astro_LogLevel_All)) {
+        log(AstroLogEvent(Astro_LogLevel_Info, SFP(AStr_Log_Prefix_Info), msg, suffix1, suffix2));
+    }
+}
+
+void AstroLogger::logWarning(const String &warn, const String &suffix1, const String &suffix2)
+{
+    if (!hasLoggerData() || (loggerData()->logLevel != Astro_LogLevel_None && loggerData()->logLevel <= Astro_LogLevel_Warnings)) {
+        log(AstroLogEvent(Astro_LogLevel_Warnings, SFP(AStr_Log_Prefix_Warning), warn, suffix1, suffix2));
+    }
+}
+
+void AstroLogger::logError(const String &err, const String &suffix1, const String &suffix2)
+{
+    if (!hasLoggerData() || (loggerData()->logLevel != Astro_LogLevel_None && loggerData()->logLevel <= Astro_LogLevel_Errors)) {
+        log(AstroLogEvent(Astro_LogLevel_Errors, SFP(AStr_Log_Prefix_Error), err, suffix1, suffix2));
+    }
+}
+
+void AstroLogger::log(const AstroLogEvent &event)
+{
+    #ifdef ASTRO_ENABLE_DEBUG_OUTPUT
+        if (Serial) {
+            Serial.print(event.timestamp);
+            Serial.print(' ');
+            Serial.print(event.prefix);
+            Serial.print(event.msg);
+            Serial.print(event.suffix1);
+            Serial.println(event.suffix2);
+        }
+    #endif
+
+    if (isLoggingToSDCard()) {
+        auto sd = Astroduino::_activeInstance->getSDCard(ASTRO_LOFS_BEGIN);
+
+        if (sd) {
+            #if ASTRO_SYS_LEAVE_FILES_OPEN
+                auto &logFile = _logFileSD ? *_logFileSD : *(_logFileSD = new File(sd->open(_logFilename.c_str(), FILE_WRITE)));
+            #else
+                createDirectoryFor(sd, _logFilename);
+                auto logFile = sd->open(_logFilename.c_str(), FILE_WRITE);
+            #endif
+
+            if (logFile) {
+                logFile.print(event.timestamp);
+                logFile.print(' ');
+                logFile.print(event.prefix);
+                logFile.print(event.msg);
+                logFile.print(event.suffix1);
+                logFile.println(event.suffix2);
+
+                #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                    logFile.flush();
+                    logFile.close();
+                #endif
+            }
+
+            #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                Astroduino::_activeInstance->endSDCard(sd);
+            #endif
+        }
+    }
+
+#ifdef ASTRO_USE_WIFI_STORAGE
+
+    if (isLoggingToWiFiStorage()) {
+        #if ASTRO_SYS_LEAVE_FILES_OPEN
+            auto &logFile = _logFileWS ? *_logFileWS : *(_logFileWS = new WiFiStorageFile(WiFiStorage.open(_logFilename.c_str())));
+        #else
+            auto logFile = WiFiStorage.open(_logFilename.c_str());
+        #endif
+
+        if (logFile) {
+            auto logFileStream = AstroWiFiStorageFileStream(logFile, logFile.size());
+
+            logFileStream.print(event.timestamp);
+            logFileStream.print(' ');
+            logFileStream.print(event.prefix);
+            logFileStream.print(event.msg);
+            logFileStream.print(event.suffix1);
+            logFileStream.println(event.suffix2);
+
+            #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                logFileStream.flush();
+                logFile.close();
+            #endif
+        }
+    }
+
+#endif
+
+    #ifdef ASTRO_USE_MULTITASKING
+        scheduleSignalFireOnce<const AstroLogEvent>(_logSignal, event);
+    #else
+        _logSignal.fire(event);
+    #endif
+}
+
+void AstroLogger::flush()
+{
+    #ifdef ASTRO_ENABLE_DEBUG_OUTPUT
+        if (Serial) { Serial.flush(); }
+    #endif
+    #if ASTRO_SYS_LEAVE_FILES_OPEN
+        if(_logFileSD) { _logFileSD->flush(); }
+    #endif
+    yield();
 }
 
 void AstroLogger::setLogLevel(Astro_LogLevel logLevel)
 {
-    if (_data) { _data->logLevel = logLevel; }
-    _logLevel = logLevel;
+    ASTRO_SOFT_ASSERT(hasLoggerData(), SFP(AStr_Err_NotYetInitialized));
+    if (hasLoggerData() && loggerData()->logLevel != logLevel) {
+        loggerData()->logLevel = logLevel;
+        Astroduino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+    }
 }
 
-Astro_LogLevel AstroLogger::getLogLevel() const
-{
-    return _data ? _data->logLevel : _logLevel;
-}
-
-void AstroLogger::log(Astro_LogLevel level, int64_t timestamp, const char *prefix, const char *message)
-{
-    if (getLogLevel() == Astro_LogLevel_None || level < getLogLevel()) { return; }
-
-    AstroLogEvent event;
-    event.level = level;
-    event.timestamp = timestamp;
-    snprintf(event.prefix, sizeof(event.prefix), "%s", prefix ? prefix : "");
-    snprintf(event.message, sizeof(event.message), "%s", message ? message : "");
-    _logSignal.fire(event);
-}
-
-Signal<const AstroLogEvent, ASTRO_DEFAULT_MAXSIZE> &AstroLogger::getLogSignal()
+Signal<const AstroLogEvent, ASTRO_LOG_SIGNAL_SLOTS> &AstroLogger::getLogSignal()
 {
     return _logSignal;
 }
 
-void AstroLogger::logMessage(int64_t timestamp, const char *message)
+void AstroLogger::notifyDateChanged()
 {
-    log(Astro_LogLevel_Info, timestamp, "[INFO] ", message);
+    if (isLoggingEnabled()) {
+        _logFilename = getYYMMDDFilename(charsToString(loggerData()->logFilePrefix, 16), SFP(AStr_txt));
+        cleanupOldestLogs();
+    }
 }
 
-void AstroLogger::logWarning(int64_t timestamp, const char *message)
+void AstroLogger::cleanupOldestLogs(bool force)
 {
-    log(Astro_LogLevel_Warnings, timestamp, "[WARN] ", message);
+    // TODO: Old data cleanup. #17 in Hydruino.
 }
 
-void AstroLogger::logError(int64_t timestamp, const char *message)
-{
-    log(Astro_LogLevel_Errors, timestamp, "[ERROR] ", message);
-}
-
-void AstroLogger::logField(int64_t timestamp, const char *fieldName, double value, const char *units)
-{
-    char message[ASTRO_LOG_MESSAGE_MAXSIZE];
-    if (units && units[0]) { snprintf(message, sizeof(message), "%s: %.3f %s", fieldName, value, units); }
-    else { snprintf(message, sizeof(message), "%s: %.3f", fieldName, value); }
-    logMessage(timestamp, message);
-}
-
-void AstroLogger::logEnvironment(int64_t timestamp, double ambientC, double humidity, double dewPointC,
-                                 double opticsC, double cameraSensorC, double cameraBodyC,
-                                 float dewHeaterPower, float cameraCoolingPower, float cameraFanPower)
-{
-    AstroString envReport = SFP(AStr_EnvironmentReport);
-    logMessage(timestamp, envReport.c_str());
-    logField(timestamp, "Ambient temperature", ambientC, "C");
-    logField(timestamp, "Humidity", humidity, "%");
-    logField(timestamp, "Dew point", dewPointC, "C");
-    if (opticsC < 900.0) { logField(timestamp, "Optics temperature", opticsC, "C"); }
-    if (cameraSensorC < 900.0) { logField(timestamp, "Camera sensor temperature", cameraSensorC, "C"); }
-    if (cameraBodyC < 900.0) { logField(timestamp, "Camera body temperature", cameraBodyC, "C"); }
-    if (dewHeaterPower >= 0.0f) { logField(timestamp, "Dew heater", dewHeaterPower * 100.0, "%"); }
-    if (cameraCoolingPower >= 0.0f) { logField(timestamp, "Camera cooling", cameraCoolingPower * 100.0, "%"); }
-    if (cameraFanPower >= 0.0f) { logField(timestamp, "Camera fan", cameraFanPower * 100.0, "%"); }
-}
 
 AstroLoggerSubData::AstroLoggerSubData()
-    : AstroSubData(0), logLevel(Astro_LogLevel_All), logFilePrefix{0},
-      logToSDCard(false), logToWiFiStorage(false)
-{
-    snprintf(logFilePrefix, sizeof(logFilePrefix), "logs/astro");
-}
+    : AstroSubData(0), logLevel(Astro_LogLevel_All), logFilePrefix{0}, logToSDCard(false), logToWiFiStorage(false)
+{ ; }
 
 void AstroLoggerSubData::toJSONObject(JsonObject &objectOut) const
 {
-    AstroSubData::toJSONObject(objectOut);
-    objectOut["logLevel"] = (int)logLevel;
-    objectOut["logFilePrefix"] = logFilePrefix;
-    objectOut["logToSDCard"] = logToSDCard;
-    objectOut["logToWiFiStorage"] = logToWiFiStorage;
+    //AstroSubData::toJSONObject(objectOut); // purposeful no call to base method (ignores type)
+
+    if (logLevel != Astro_LogLevel_All) { objectOut[SFP(AStr_Key_LogLevel)] = logLevel; }
+    if (logFilePrefix[0]) { objectOut[SFP(AStr_Key_LogFilePrefix)] = charsToString(logFilePrefix, 16); }
+    if (logToSDCard != false) { objectOut[SFP(AStr_Key_LogToSDCard)] = logToSDCard; }
+    if (logToWiFiStorage != false) { objectOut[SFP(AStr_Key_LogToWiFiStorage)] = logToWiFiStorage; }
 }
 
 void AstroLoggerSubData::fromJSONObject(JsonObjectConst &objectIn)
 {
-    AstroSubData::fromJSONObject(objectIn);
-    logLevel = (Astro_LogLevel)(objectIn["logLevel"] | (int)logLevel);
-    const char *prefix = objectIn["logFilePrefix"] | nullptr;
-    if (prefix) {
-        strncpy(logFilePrefix, prefix, ASTRO_PREFIX_MAXSIZE - 1);
-        logFilePrefix[ASTRO_PREFIX_MAXSIZE - 1] = '\0';
-    }
-    logToSDCard = objectIn["logToSDCard"] | logToSDCard;
-    logToWiFiStorage = objectIn["logToWiFiStorage"] | logToWiFiStorage;
+    //AstroSubData::fromJSONObject(objectIn); // purposeful no call to base method (ignores type)
+
+    logLevel = objectIn[SFP(AStr_Key_LogLevel)] | logLevel;
+    const char *logFilePrefixStr = objectIn[SFP(AStr_Key_LogFilePrefix)];
+    if (logFilePrefixStr && logFilePrefixStr[0]) { strncpy(logFilePrefix, logFilePrefixStr, 16); }
+    logToSDCard = objectIn[SFP(AStr_Key_LogToSDCard)] | logToSDCard;
+    logToWiFiStorage = objectIn[SFP(AStr_Key_LogToWiFiStorage)] | logToWiFiStorage;
 }

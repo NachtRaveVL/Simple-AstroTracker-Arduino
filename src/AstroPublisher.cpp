@@ -4,89 +4,512 @@
 */
 
 #include "Astruino.h"
-#include <stdio.h>
-#include <string.h>
 
 AstroPublisher::AstroPublisher()
-    : _columns(), _columnCount(0), _publishedFrame(aframe_none), _data(nullptr), _publishSignal()
+    : _dataFilename(), _needsTabulation(false), _pollingFrame(0), _dataColumns(nullptr), _columnSize(0)
+#if ASTRO_SYS_LEAVE_FILES_OPEN
+      , _dataFileSD(nullptr)
+#ifdef ASTRO_USE_WIFI_STORAGE
+      , _dataFileWS(nullptr)
+#endif
+#endif
+#ifdef ASTRO_USE_MQTT
+    , _mqttClient(nullptr)
+#endif
 { ; }
 
-bool AstroPublisher::addColumn(akey_t sensorKey)
+AstroPublisher::~AstroPublisher()
 {
-    if (!sensorKey || _columnCount >= ASTRO_PUBLISH_MAX_COLUMNS) { return false; }
-    if (getColumnIndexStart(sensorKey) >= 0) { return true; }
-    _columns[_columnCount++] = AstroDataColumn(sensorKey);
-    return true;
+    if (_dataColumns) { delete [] _dataColumns; _dataColumns = nullptr; }
+    #if ASTRO_SYS_LEAVE_FILES_OPEN
+        if (_dataFileSD) { _dataFileSD->flush(); _dataFileSD->close(); delete _dataFileSD; _dataFileSD = nullptr; }
+        #ifdef ASTRO_USE_WIFI_STORAGE
+            if (_dataFileWS) { _dataFileWS->close(); delete _dataFileWS; _dataFileWS = nullptr; }
+        #endif
+    #endif
+    #ifdef ASTRO_USE_MQTT
+        if (_mqttClient) {
+            if (_mqttClient->connected()) { _mqttClient->disconnect(); }
+            delete _mqttClient; _mqttClient = nullptr;
+        }
+    #endif
 }
 
-bool AstroPublisher::publishData(akey_t sensorKey, const AstroSingleMeasurement &measurement)
+void AstroPublisher::update()
 {
-    aposi_t index = getColumnIndexStart(sensorKey);
-    if (index < 0) { return false; }
-    _columns[index].measurement = measurement;
-    publishIfReady(measurement.frame, measurement.timestamp);
-    return true;
+    if (hasPublisherData()) {
+        if (_needsTabulation) { performTabulation(); }
+
+        publishIfNeeded();
+    }
 }
 
-bool AstroPublisher::publishData(akey_t sensorKey, double value, Astro_UnitsType units,
-                                 aframe_t frame, int64_t timestamp)
+bool AstroPublisher::beginPublishingToSDCard(String dataFilePrefix)
 {
-    return publishData(sensorKey, AstroSingleMeasurement(value, units, timestamp, frame));
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(HStr_Err_NotYetInitialized));
+
+    if (hasPublisherData() && !publisherData()->pubToSDCard) {
+        auto sd = Astroduino::_activeInstance->getSDCard();
+
+        if (sd) {
+            String dataFilename = getYYMMDDFilename(dataFilePrefix, SFP(HStr_csv));
+            createDirectoryFor(sd, dataFilename);
+            #if ASTRO_SYS_LEAVE_FILES_OPEN
+                auto &dataFile = _dataFileSD ? *_dataFileSD : *(_dataFileSD = new File(sd->open(dataFilename.c_str(), FILE_WRITE)));
+            #else
+                auto dataFile = sd->open(dataFilename.c_str(), FILE_WRITE);
+            #endif
+
+            if (dataFile) {
+                #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                    dataFile.close();
+                    Astroduino::_activeInstance->endSDCard(sd);
+                #endif
+
+                strncpy(publisherData()->dataFilePrefix, dataFilePrefix.c_str(), 16);
+                publisherData()->pubToSDCard = true;
+                _dataFilename = dataFilename;
+                
+                setNeedsTabulation();
+                Astroduino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+
+                return true;
+            }
+
+            #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                Astroduino::_activeInstance->endSDCard(sd);
+            #endif
+        }
+    }
+
+    return false;
 }
 
-void AstroPublisher::advancePollingFrame(aframe_t frame, int64_t timestamp)
+#ifdef ASTRO_USE_WIFI_STORAGE
+
+bool AstroPublisher::beginPublishingToWiFiStorage(String dataFilePrefix)
 {
-    publishIfReady(frame, timestamp);
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(HStr_Err_NotYetInitialized));
+
+    if (hasPublisherData() && !publisherData()->pubToWiFiStorage) {
+        String dataFilename = getYYMMDDFilename(dataFilePrefix, SFP(HStr_csv));
+        #if ASTRO_SYS_LEAVE_FILES_OPEN
+            auto &dataFile = _dataFileWS ? *_dataFileWS : *(_dataFileWS = new WiFiStorageFile(WiFiStorage.open(dataFilename.c_str())));
+        #else
+            auto dataFile = WiFiStorage.open(dataFilename.c_str());
+        #endif
+
+        if (dataFile) {
+            #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                dataFile.close();
+            #endif
+
+            strncpy(publisherData()->dataFilePrefix, dataFilePrefix.c_str(), 16);
+            publisherData()->pubToWiFiStorage = true;
+            _dataFilename = dataFilename;
+
+            setNeedsTabulation();
+            Astroduino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+
+            return true;
+        }
+    }
+
+    return false;
 }
 
-aposi_t AstroPublisher::getColumnIndexStart(akey_t sensorKey) const
+#endif
+#ifdef ASTRO_USE_MQTT
+
+static uint32_t mqttNow()
 {
-    for (uint8_t index = 0; index < _columnCount; ++index) {
-        if (_columns[index].sensorKey == sensorKey) { return (aposi_t)index; }
+    return unixNow();
+}
+
+bool AstroPublisher::beginPublishingToMQTTClient(MQTTClient &client)
+{
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(HStr_Err_NotYetInitialized));
+
+    if (hasPublisherData() && !_mqttClient) {
+        _mqttClient = &client;
+        _mqttClient->setClockSource(&mqttNow);
+        if (!_mqttClient->connected()) {
+            String unPw = String(F("public"));
+            _mqttClient->connect(Astroduino::_activeInstance->getSystemName().c_str(),
+                                 unPw.c_str(), unPw.c_str());
+        }
+
+        setNeedsTabulation();
+
+        return true;
+    }
+
+    return false;
+}
+
+#endif
+
+void AstroPublisher::publishData(aposi_t columnIndex, AstroSingleMeasurement measurement)
+{
+    ASTRO_SOFT_ASSERT(hasPublisherData() && _dataColumns && _columnSize, SFP(HStr_Err_NotYetInitialized));
+    if (_dataColumns && _columnSize && columnIndex >= 0 && columnIndex < _columnSize) {
+        _dataColumns[columnIndex].measurement = measurement;
+        publishIfNeeded();
+    }
+}
+
+aposi_t AstroPublisher::getColumnIndexStart(akey_t sensorKey)
+{
+    ASTRO_SOFT_ASSERT(hasPublisherData() && _dataColumns && _columnSize, SFP(HStr_Err_NotYetInitialized));
+    if (_dataColumns && _columnSize) {
+        for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
+            if (_dataColumns[columnIndex].sensorKey == sensorKey) {
+                return (aposi_t)columnIndex;
+            }
+        }
     }
     return (aposi_t)-1;
 }
 
-void AstroPublisher::publishIfReady(aframe_t frame, int64_t timestamp)
-{
-    (void)timestamp;
-    if (!_columnCount || frame == aframe_none || frame == _publishedFrame) { return; }
-    for (uint8_t index = 0; index < _columnCount; ++index) {
-        if (_columns[index].measurement.frame != frame) { return; }
-    }
-    _publishedFrame = frame;
-    _publishSignal.fire(Pair<uint8_t, const AstroDataColumn *>(_columnCount, _columns));
-}
-
-Signal<Pair<uint8_t, const AstroDataColumn *>, ASTRO_DEFAULT_MAXSIZE> &AstroPublisher::getPublishSignal()
+Signal<Pair<uint8_t, const AstroDataColumn *>, ASTRO_PUBLISH_SIGNAL_SLOTS> &AstroPublisher::getPublishSignal()
 {
     return _publishSignal;
 }
 
-AstroPublisherSubData::AstroPublisherSubData()
-    : AstroSubData(0), dataFilePrefix{0}, pubToSDCard(false), pubToWiFiStorage(false), pubToMQTT(false)
+void AstroPublisher::notifyDateChanged()
 {
-    snprintf(dataFilePrefix, sizeof(dataFilePrefix), "data/astro");
+    if (isPublishingEnabled()) {
+        _dataFilename = getYYMMDDFilename(charsToString(publisherData()->dataFilePrefix, 16), SFP(HStr_csv));
+        cleanupOldestData();
+    }
 }
+
+void AstroPublisher::advancePollingFrame()
+{
+    ASTRO_HARD_ASSERT(hasPublisherData(), SFP(HStr_Err_NotYetInitialized));
+
+    auto pollingFrame = Astroduino::_activeInstance->getPollingFrame();
+
+    if (pollingFrame && _pollingFrame != pollingFrame) {
+        time_t timestamp = unixNow();
+        _pollingFrame = pollingFrame;
+
+        if (Astroduino::_activeInstance->inOperationalMode()) {
+            #ifdef ASTRO_USE_MULTITASKING
+                scheduleObjectMethodCallOnce<AstroPublisher>(this, &AstroPublisher::publish, timestamp);
+            #else
+                publish(timestamp);
+            #endif
+        }
+    }
+
+    if (++pollingFrame == 0) { pollingFrame = 1; } // use only valid frame #
+
+    Astroduino::_activeInstance->_pollingFrame = pollingFrame;
+}
+
+void AstroPublisher::publishIfNeeded()
+{
+    if (_dataColumns && _columnSize && Astroduino::_activeInstance->isPollingFrameOld(_pollingFrame)) {
+        bool allCurrent = true;
+
+        for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
+            if (Astroduino::_activeInstance->isPollingFrameOld(_dataColumns[columnIndex].measurement.frame)) {
+                allCurrent = false;
+                break;
+            }
+        }
+
+        if (allCurrent) {
+            time_t timestamp = unixNow();
+            _pollingFrame = Astroduino::_activeInstance->getPollingFrame();
+
+            if (Astroduino::_activeInstance->inOperationalMode()) {
+                #ifdef ASTRO_USE_MULTITASKING
+                    scheduleObjectMethodCallOnce<AstroPublisher>(this, &AstroPublisher::publish, timestamp);
+                #else
+                    publish(timestamp);
+                #endif
+            }
+        }
+    }
+}
+
+void AstroPublisher::publish(time_t timestamp)
+{
+    if (isPublishingToSDCard()) {
+        auto sd = Astroduino::_activeInstance->getSDCard(ASTRO_LOFS_BEGIN);
+
+        if (sd) {
+            #if ASTRO_SYS_LEAVE_FILES_OPEN
+                auto &dataFile = _dataFileSD ? *_dataFileSD : *(_dataFileSD = new File(sd->open(_dataFilename.c_str(), FILE_WRITE)));
+            #else
+                createDirectoryFor(sd, _dataFilename);
+                auto dataFile = sd->open(_dataFilename.c_str(), FILE_WRITE);
+            #endif
+
+            if (dataFile) {
+                dataFile.print(timestamp);
+
+                for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
+                    dataFile.print(',');
+                    dataFile.print(_dataColumns[columnIndex].measurement.value);
+                }
+
+                dataFile.println();
+
+                #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                    dataFile.flush();
+                    dataFile.close();
+                #endif
+            }
+
+            #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                Astroduino::_activeInstance->endSDCard(sd);
+            #endif
+        }
+    }
+
+#ifdef ASTRO_USE_WIFI_STORAGE
+
+    if (isPublishingToWiFiStorage()) {
+        #if ASTRO_SYS_LEAVE_FILES_OPEN
+            auto &dataFile = _dataFileWS ? *_dataFileWS : *(_dataFileWS = new WiFiStorageFile(WiFiStorage.open(_dataFilename.c_str())));
+        #else
+            auto dataFile = WiFiStorage.open(_dataFilename.c_str());
+        #endif
+
+        if (dataFile) {
+            auto dataFileStream = AstroWiFiStorageFileStream(dataFile, dataFile.size());
+            dataFileStream.print(timestamp);
+
+            for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
+                dataFileStream.print(',');
+                dataFileStream.print(_dataColumns[columnIndex].measurement.value);
+            }
+
+            dataFileStream.println();
+            #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                dataFile.close();
+            #endif
+        }
+    }
+
+#endif
+#ifdef ASTRO_USE_MQTT
+
+    if (isPublishingToMQTTClient()) {
+        String systemName = Astroduino::_activeInstance->getSystemName();
+        for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
+            auto sensor = (AstroSensor *)(Astroduino::_activeInstance->_objects[_dataColumns[columnIndex].sensorKey].get());
+            if (sensor) {
+                String topic; topic.reserve(systemName.length() + 1 + sensor->getKeyString().length() + 1);
+                topic.concat(systemName);
+                topic.concat('/');
+                topic.concat(sensor->getKeyString());
+                String payload = String(_dataColumns[columnIndex].measurement.value, 6); // skipping units/rounding/etc to allow MQTT broker full value data
+                _mqttClient->publish(topic.c_str(), payload.c_str());
+            }
+        }
+    }
+
+#endif
+
+    #ifdef ASTRO_USE_MULTITASKING
+        scheduleSignalFireOnce<Pair<uint8_t, const AstroDataColumn *>>(_publishSignal, make_pair(_columnSize, (const AstroDataColumn *)_dataColumns));
+    #else
+        _publishSignal.fire(make_pair(_columnSize, (const AstroDataColumn *)_dataColumns));
+    #endif
+}
+
+void AstroPublisher::performTabulation()
+{
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(HStr_Err_NotYetInitialized));
+
+    bool sameOrder = _dataColumns && _columnSize ? true : false;
+    int columnSize = 0;
+
+    for (auto iter = Astroduino::_activeInstance->_objects.begin(); iter != Astroduino::_activeInstance->_objects.end(); ++iter) {
+        if (iter->second->isSensorType()) {
+            auto sensor = static_pointer_cast<AstroSensor>(iter->second);
+            auto rowCount = getMeasurementRowCount(sensor->getMeasurement());
+
+            for (int rowIndex = 0; sameOrder && rowIndex < rowCount; ++rowIndex) {
+                sameOrder = sameOrder && (columnSize + rowIndex + 1 <= _columnSize) &&
+                            (_dataColumns[columnSize + rowIndex].sensorKey == sensor->getKey());
+            }
+
+            columnSize += rowCount;
+        }
+    }
+    sameOrder = sameOrder && (columnSize == _columnSize);
+
+    if (!sameOrder) {
+        if (_dataColumns && _columnSize != columnSize) { delete [] _dataColumns; _dataColumns = nullptr; }
+        _columnSize = columnSize;
+
+        if (_columnSize) {
+            if (!_dataColumns) {
+                _dataColumns = new AstroDataColumn[_columnSize];
+                ASTRO_SOFT_ASSERT(_dataColumns, SFP(HStr_Err_AllocationFailure));
+            }
+            if (_dataColumns) {
+                int columnIndex = 0;
+
+                for (auto iter = Astroduino::_activeInstance->_objects.begin(); iter != Astroduino::_activeInstance->_objects.end(); ++iter) {
+                    if (iter->second->isSensorType()) {
+                        auto sensor = static_pointer_cast<AstroSensor>(iter->second);
+                        auto measurement = sensor->getMeasurement();
+                        auto rowCount = getMeasurementRowCount(measurement);
+
+                        for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
+                            ASTRO_HARD_ASSERT(columnIndex < _columnSize, SFP(HStr_Err_OperationFailure));
+                            _dataColumns[columnIndex].measurement = getAsSingleMeasurement(measurement, rowIndex);
+                            _dataColumns[columnIndex].sensorKey = sensor->getKey();
+                            columnIndex++;
+                        }
+                    }
+                }
+            }
+        }
+
+        resetDataFile();
+    }
+
+    _needsTabulation = false;
+}
+
+void AstroPublisher::resetDataFile()
+{
+    if (isPublishingToSDCard()) {
+        auto sd = Astroduino::_activeInstance->getSDCard(ASTRO_LOFS_BEGIN);
+
+        if (sd) {
+            #if ASTRO_SYS_LEAVE_FILES_OPEN
+                if (_dataFileSD) { _dataFileSD->flush(); _dataFileSD->close(); delete _dataFileSD; _dataFileSD = nullptr; }
+            #endif
+            if (sd->exists(_dataFilename.c_str())) {
+                sd->remove(_dataFilename.c_str());
+            }
+            #if ASTRO_SYS_LEAVE_FILES_OPEN
+                auto &dataFile = _dataFileSD ? *_dataFileSD : *(_dataFileSD = new File(sd->open(_dataFilename.c_str(), FILE_WRITE)));
+            #else
+                createDirectoryFor(sd, _dataFilename);
+                auto dataFile = sd->open(_dataFilename.c_str(), FILE_WRITE);
+            #endif
+
+            if (dataFile) {
+                AstroSensor *lastSensor = nullptr;
+                uint8_t measurementRow = 0;
+
+                dataFile.print(SFP(HStr_Key_Timestamp));
+
+                for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
+                    dataFile.print(',');
+
+                    auto sensor = (AstroSensor *)(Astroduino::_activeInstance->_objects[_dataColumns[columnIndex].sensorKey].get());
+                    if (sensor && sensor == lastSensor) { ++measurementRow; }
+                    else { measurementRow = 0; lastSensor = sensor; }
+
+                    if (sensor) {
+                        dataFile.print(sensor->getKeyString());
+                        dataFile.print('_');
+                        dataFile.print(unitsCategoryToString(defaultCategoryForSensor(sensor->getSensorType(), measurementRow)));
+                        dataFile.print('_');
+                        dataFile.print(unitsTypeToSymbol(getMeasurementUnits(sensor->getMeasurement(), measurementRow)));
+                    } else {
+                        ASTRO_SOFT_ASSERT(false, SFP(HStr_Err_OperationFailure));
+                        dataFile.print(SFP(HStr_Undefined));
+                    }
+                }
+
+                dataFile.println();
+
+                #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                    dataFile.flush();
+                    dataFile.close();
+                #endif
+            }
+
+            #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                Astroduino::_activeInstance->endSDCard(sd);
+            #endif
+        }
+    }
+
+#ifdef ASTRO_USE_WIFI_STORAGE
+
+    if (isPublishingToWiFiStorage()) {
+        #if ASTRO_SYS_LEAVE_FILES_OPEN
+            if (_dataFileWS) { _dataFileWS->close(); delete _dataFileWS; _dataFileWS = nullptr; }
+        #endif
+        if (WiFiStorage.exists(_dataFilename.c_str())) {
+            WiFiStorage.remove(_dataFilename.c_str());
+        }
+        #if ASTRO_SYS_LEAVE_FILES_OPEN
+            auto &dataFile = _dataFileWS ? *_dataFileWS : *(_dataFileWS = new WiFiStorageFile(WiFiStorage.open(_dataFilename.c_str())));
+        #else
+            auto dataFile = WiFiStorage.open(_dataFilename.c_str());
+        #endif
+
+        if (dataFile) {
+            auto dataFileStream = AstroWiFiStorageFileStream(dataFile);
+            AstroSensor *lastSensor = nullptr;
+            uint8_t measurementRow = 0;
+
+            dataFileStream.print(SFP(HStr_Key_Timestamp));
+
+            for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
+                dataFileStream.print(',');
+
+                auto sensor = (AstroSensor *)(Astroduino::_activeInstance->_objects[_dataColumns[columnIndex].sensorKey].get());
+                if (sensor && sensor == lastSensor) { ++measurementRow; }
+                else { measurementRow = 0; lastSensor = sensor; }
+
+                if (sensor) {
+                    dataFileStream.print(sensor->getKeyString());
+                    dataFileStream.print('_');
+                    dataFileStream.print(unitsCategoryToString(defaultCategoryForSensor(sensor->getSensorType(), measurementRow)));
+                    dataFileStream.print('_');
+                    dataFileStream.print(unitsTypeToSymbol(getMeasurementUnits(sensor->getMeasurement(), measurementRow)));
+                } else {
+                    ASTRO_SOFT_ASSERT(false, SFP(HStr_Err_OperationFailure));
+                    dataFileStream.print(SFP(HStr_Undefined));
+                }
+            }
+
+            dataFileStream.println();
+        }
+    }
+
+#endif
+}
+
+void AstroPublisher::cleanupOldestData(bool force)
+{
+    // TODO: Old data cleanup. #17 in Hydruino.
+}
+
+
+AstroPublisherSubData::AstroPublisherSubData()
+    : AstroSubData(0), dataFilePrefix{0}, pubToSDCard(false), pubToWiFiStorage(false)
+{ ; }
 
 void AstroPublisherSubData::toJSONObject(JsonObject &objectOut) const
 {
-    AstroSubData::toJSONObject(objectOut);
-    objectOut["dataFilePrefix"] = dataFilePrefix;
-    objectOut["pubToSDCard"] = pubToSDCard;
-    objectOut["pubToWiFiStorage"] = pubToWiFiStorage;
-    objectOut["pubToMQTT"] = pubToMQTT;
+    //AstroSubData::toJSONObject(objectOut); // purposeful no call to base method (ignores type)
+
+    if (dataFilePrefix[0]) { objectOut[SFP(HStr_Key_DataFilePrefix)] = charsToString(dataFilePrefix, 16); }
+    if (pubToSDCard != false) { objectOut[SFP(HStr_Key_PublishToSDCard)] = pubToSDCard; }
+    if (pubToWiFiStorage != false) { objectOut[SFP(HStr_Key_PublishToWiFiStorage)] = pubToWiFiStorage; }
 }
 
 void AstroPublisherSubData::fromJSONObject(JsonObjectConst &objectIn)
 {
-    AstroSubData::fromJSONObject(objectIn);
-    const char *prefix = objectIn["dataFilePrefix"] | nullptr;
-    if (prefix) {
-        strncpy(dataFilePrefix, prefix, ASTRO_PREFIX_MAXSIZE - 1);
-        dataFilePrefix[ASTRO_PREFIX_MAXSIZE - 1] = '\0';
-    }
-    pubToSDCard = objectIn["pubToSDCard"] | pubToSDCard;
-    pubToWiFiStorage = objectIn["pubToWiFiStorage"] | pubToWiFiStorage;
-    pubToMQTT = objectIn["pubToMQTT"] | pubToMQTT;
+    //AstroSubData::fromJSONObject(objectIn); // purposeful no call to base method (ignores type)
+
+    const char *dataFilePrefixStr = objectIn[SFP(HStr_Key_DataFilePrefix)];
+    if (dataFilePrefixStr && dataFilePrefixStr[0]) { strncpy(dataFilePrefix, dataFilePrefixStr, 16); }
+    pubToSDCard = objectIn[SFP(HStr_Key_PublishToSDCard)] | pubToSDCard;
+    pubToWiFiStorage = objectIn[SFP(HStr_Key_PublishToWiFiStorage)] | pubToWiFiStorage;
 }
