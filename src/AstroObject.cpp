@@ -4,128 +4,67 @@
 */
 
 #include "Astruino.h"
-#include "AstroUtils.h"
-#include "AstroStrings.h"
-#include <stdio.h>
-#include <string.h>
 
-AstroIdentity::AstroIdentity(akey_t keyIn)
-    : type(Unknown), objTypeAs(), posIndex(ASTRO_POS_SEARCH_FROMBEG), keyString(), key(keyIn)
-{ objTypeAs.idType = Unknown; }
+AstroObject *newObjectFromData(const AstroData *dataIn)
+{
+    if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
 
-AstroIdentity::AstroIdentity(const char *keyStringIn)
-    : type(Unknown), objTypeAs(), posIndex(ASTRO_POS_SEARCH_FROMBEG),
-      keyString(keyStringIn ? keyStringIn : ""), key(keyStringIn ? astroStringHash(keyStringIn) : akey_none)
-{ objTypeAs.idType = Unknown; }
+    if (dataIn && dataIn->isObjectData()) {
+        switch (dataIn->id.object.idType) {
+            case (aid_t)AstroIdentity::Actuator:
+                return newActuatorObjectFromData((AstroActuatorData *)dataIn);
+            case (aid_t)AstroIdentity::Sensor:
+                return newSensorObjectFromData((AstroSensorData *)dataIn);
+            case (aid_t)AstroIdentity::Mount:
+                return newMountObjectFromData((AstroMountData *)dataIn);
+            case (aid_t)AstroIdentity::Rail:
+                return newRailObjectFromData((AstroRailData *)dataIn);
+            default: // Unable
+                return nullptr;
+        }
+    }
 
-AstroIdentity::AstroIdentity(Astro_ActuatorType actuatorTypeIn, aposi_t positionIndex)
-    : type(Actuator), objTypeAs(), posIndex(positionIndex), keyString(), key(akey_none)
-{ objTypeAs.actuatorType = actuatorTypeIn; regenKey(); }
+    return nullptr;
+}
 
-AstroIdentity::AstroIdentity(Astro_SensorType sensorTypeIn, aposi_t positionIndex)
-    : type(Sensor), objTypeAs(), posIndex(positionIndex), keyString(), key(akey_none)
-{ objTypeAs.sensorType = sensorTypeIn; regenKey(); }
-
-AstroIdentity::AstroIdentity(Astro_MountType mountTypeIn, aposi_t positionIndex)
-    : type(Mount), objTypeAs(), posIndex(positionIndex), keyString(), key(akey_none)
-{ objTypeAs.mountType = mountTypeIn; regenKey(); }
-
-AstroIdentity::AstroIdentity(Astro_RailType railTypeIn, aposi_t positionIndex)
-    : type(Rail), objTypeAs(), posIndex(positionIndex), keyString(), key(akey_none)
-{ objTypeAs.railType = railTypeIn; regenKey(); }
-
-AstroIdentity::AstroIdentity(int objectType, int16_t subType, aposi_t positionIndex)
-    : type((decltype(type))objectType), objTypeAs(), posIndex(positionIndex), keyString(), key(akey_none)
-{ objTypeAs.idType = subType; regenKey(); }
 
 akey_t AstroIdentity::regenKey()
 {
     switch (type) {
-        case Actuator: keyString = actuatorTypeToString(objTypeAs.actuatorType, true); break;
-        case Sensor: keyString = sensorTypeToString(objTypeAs.sensorType, true); break;
-        case Mount: keyString = mountTypeToString(objTypeAs.mountType, true); break;
-        case Rail: keyString = railTypeToString(objTypeAs.railType, true); break;
-        case Cover: keyString = SFP(AStr_Cover); break;
-        case ObservationDevice: keyString = "ObservationDevice"; break;
-        default: return key;
+        case Actuator:
+            keyString = actuatorTypeToString(objTypeAs.actuatorType, true);
+            break;
+        case Sensor:
+            keyString = sensorTypeToString(objTypeAs.sensorType, true);
+            break;
+        case Mount:
+            keyString = reservoirTypeToString(objTypeAs.reservoirType, true);
+            break;
+        case Rail:
+            keyString = railTypeToString(objTypeAs.railType, true);
+            break;
+        default: // Unable
+            return key;
     }
-
-    if (posIndex >= 0) {
-        keyString += " #";
-        keyString += astroPositionIndexToString(posIndex);
-    }
-    key = astroStringHash(keyString.c_str());
+    keyString.concat(' ');
+    keyString.concat('#');
+    keyString.concat(positionIndexToString(posIndex, true));
+    key = stringHash(keyString);
     return key;
 }
 
-AstroString AstroIdentity::getDisplayString() const
+String AstroIdentity::getDisplayString()
 {
-    AstroString display;
     switch (type) {
-        case Actuator: display = "Actuator "; break;
-        case Sensor: display = "Sensor "; break;
-        case Mount: display = "Mount "; break;
-        case Rail: display = "Rail "; break;
-        case Cover: display = "Cover "; break;
-        case ObservationDevice: display = "Observation "; break;
-        default: display = "Unknown "; break;
-    }
-    display += keyString;
-    return display;
-}
-
-AstroObjectData::AstroObjectData()
-    : idType(AstroIdentity::Unknown), objType(AstroIdentity::Unknown),
-      posIndex(ASTRO_POS_SEARCH_FROMBEG), revision(0), name{0}
-{ ; }
-
-bool AstroObjectData::toJSON(char *bufferOut, size_t bufferSize) const
-{
-    if (!bufferOut || !bufferSize) { return false; }
-    int written = snprintf(bufferOut, bufferSize,
-        "{\"type\":\"AOBJ\",\"idType\":%d,\"objType\":%d,\"posIndex\":%d,\"revision\":%u,\"name\":\"%s\"}",
-        (int)idType, (int)objType, (int)posIndex, (unsigned int)revision, name);
-    return written >= 0 && (size_t)written < bufferSize;
-}
-
-bool AstroObjectData::fromJSON(const char *jsonIn)
-{
-    if (!jsonIn) { return false; }
-
-    long idTypeIn, objTypeIn, posIndexIn;
-    unsigned long revisionIn;
-    char typeIn[8] = {0};
-    char nameIn[ASTRO_NAME_MAXSIZE] = {0};
-    if (!astroJSONGetString(jsonIn, "type", typeIn, sizeof(typeIn)) || strcmp(typeIn, "AOBJ") != 0 ||
-        !astroJSONGetLong(jsonIn, "idType", &idTypeIn) ||
-        !astroJSONGetLong(jsonIn, "objType", &objTypeIn) ||
-        !astroJSONGetLong(jsonIn, "posIndex", &posIndexIn) ||
-        !astroJSONGetUnsignedLong(jsonIn, "revision", &revisionIn) ||
-        !astroJSONGetString(jsonIn, "name", nameIn, sizeof(nameIn))) {
-        return false;
-    }
-
-    idType = (int8_t)idTypeIn;
-    objType = (int16_t)objTypeIn;
-    posIndex = (aposi_t)posIndexIn;
-    revision = (uint8_t)revisionIn;
-    snprintf(name, sizeof(name), "%s", nameIn);
-    return true;
-}
-
-AstroObject::AstroObject(AstroIdentity id)
-    : _id(id), _revision(-1), _linksSize(0), _links(nullptr)
-{ ; }
-
-AstroObject::AstroObject(const AstroObjectData *dataIn)
-    : _id(dataIn ? AstroIdentity(dataIn->idType, dataIn->objType, dataIn->posIndex) : AstroIdentity()),
-      _revision(dataIn ? (int8_t)dataIn->revision : -1), _linksSize(0), _links(nullptr)
-{
-    if (dataIn && dataIn->name[0]) {
-        _id.keyString = dataIn->name;
-        _id.key = astroStringHash(_id.keyString.c_str());
+        case Actuator: return String(F("Actuator ")) + keyString;
+        case Sensor: return String(F("Sensor ")) + keyString;
+        case Mount: return String(F("Mount ")) + keyString;
+        case Rail: return String(F("Rail ")) + keyString;
+        default: return String(F("Unknown ")) + keyString;
     }
 }
+
 
 AstroObject::~AstroObject()
 {
@@ -137,95 +76,114 @@ void AstroObject::update()
 
 void AstroObject::handleLowMemory()
 {
-    if (_links && _linksSize > 1 && !_links[_linksSize >> 1].object) { allocateLinkages(_linksSize >> 1); }
+    if (_links && !_links[_linksSize >> 1].first) { allocateLinkages(_linksSize >> 1); } // shrink /2 if too big
 }
 
-AstroObjectData *AstroObject::newSaveData()
+AstroData *AstroObject::newSaveData()
 {
-    AstroObjectData *dataOut = allocateData();
-    if (dataOut) { saveToData(dataOut); }
-    return dataOut;
+    auto data = allocateData();
+    ASTRO_SOFT_ASSERT(data, SFP(AStr_Err_AllocationFailure));
+    if (data) { saveToData(data); }
+    return data;
 }
 
 void AstroObject::allocateLinkages(size_t size)
 {
-    if (_linksSize == size) { return; }
-    AstroObjectLink *newLinks = size ? new AstroObjectLink[size] : nullptr;
-    if (size && !newLinks) { return; }
+    if (_linksSize != size) {
+        Pair<AstroObject *, int8_t> *newLinks = size ? new Pair<AstroObject *, int8_t>[size] : nullptr;
 
-    size_t copyCount = _linksSize < size ? _linksSize : size;
-    for (size_t i = 0; i < copyCount; ++i) { newLinks[i] = _links[i]; }
-    if (_links) { delete [] _links; }
-    _links = newLinks;
-    _linksSize = size;
-}
+        if (size) {
+            ASTRO_HARD_ASSERT(newLinks, SFP(AStr_Err_AllocationFailure));
 
-bool AstroObject::addLinkage(AstroObject *object)
-{
-    if (!object) { return false; }
-    if (!_links) { allocateLinkages(); }
-    if (!_links) { return false; }
-
-    size_t index = 0;
-    for (; index < _linksSize && _links[index].object; ++index) {
-        if (_links[index].object == object) {
-            ++_links[index].count;
-            return true;
-        }
-    }
-    if (index >= _linksSize) {
-        size_t oldSize = _linksSize;
-        allocateLinkages(_linksSize ? _linksSize << 1 : 1);
-        index = oldSize;
-    }
-    if (index < _linksSize) {
-        _links[index] = AstroObjectLink(object, 1);
-        return true;
-    }
-    return false;
-}
-
-bool AstroObject::removeLinkage(AstroObject *object)
-{
-    if (!_links || !object) { return false; }
-    for (size_t i = 0; i < _linksSize && _links[i].object; ++i) {
-        if (_links[i].object == object) {
-            if (--_links[i].count <= 0) {
-                for (size_t j = i; j + 1 < _linksSize; ++j) { _links[j] = _links[j + 1]; }
-                _links[_linksSize - 1] = AstroObjectLink();
-            }
-            return true;
-        }
-    }
-    return false;
-}
-
-bool AstroObject::hasLinkage(AstroObject *object) const
-{
-    if (!_links || !object) { return false; }
-    for (size_t i = 0; i < _linksSize && _links[i].object; ++i) {
-        if (_links[i].object == object) { return true; }
-    }
-    return false;
-}
-
-void AstroObject::unresolveAny(AstroObject *object)
-{
-    if (this == object && _links) {
-        AstroObject *lastObject = nullptr;
-        for (size_t linksIndex = 0; linksIndex < _linksSize && _links[linksIndex].object; ++linksIndex) {
-            AstroObject *linkedObject = _links[linksIndex].object;
-            if (linkedObject != object) {
-                linkedObject->unresolveAny(object); // may clobber indexing
-
-                if (linksIndex && _links[linksIndex].object != linkedObject) {
-                    while (linksIndex && _links[linksIndex].object != lastObject) { --linksIndex; }
-                    linkedObject = lastObject;
+            hposi_t linksIndex = 0;
+            if (_links) {
+                for (; linksIndex < _linksSize && linksIndex < size; ++linksIndex) {
+                    newLinks[linksIndex] = _links[linksIndex];
                 }
             }
-            lastObject = linkedObject;
+            for (; linksIndex < size; ++linksIndex) {
+                newLinks[linksIndex] = make_pair((AstroObject *)nullptr, (int8_t)0);
+            }
+        }
+
+        if (_links) { delete [] _links; }
+        _links = newLinks;
+        _linksSize = size;
+    }
+}
+
+bool AstroObject::addLinkage(AstroObject *obj)
+{
+    if (!_links) { allocateLinkages(); }
+    if (_links) {
+        hposi_t linksIndex = 0;
+        for (; linksIndex < _linksSize && _links[linksIndex].first; ++linksIndex) {
+            if (_links[linksIndex].first == obj) {
+                _links[linksIndex].second++;
+                return true;
+            }
+        }
+        if (linksIndex >= _linksSize) { allocateLinkages(_linksSize << 1); } // grow *2 if too small
+        if (linksIndex < _linksSize) {
+            _links[linksIndex] = make_pair(obj, (int8_t)1);
+            return true;
         }
     }
+    return false;
+}
+
+bool AstroObject::removeLinkage(AstroObject *obj)
+{
+    if (_links) {
+        for (hposi_t linksIndex = 0; linksIndex < _linksSize && _links[linksIndex].first; ++linksIndex) {
+            if (_links[linksIndex].first == obj) {
+                if (--_links[linksIndex].second <= 0) {
+                    for (int linksSubIndex = linksIndex; linksSubIndex < _linksSize - 1; ++linksSubIndex) {
+                        _links[linksSubIndex] = _links[linksSubIndex + 1];
+                    }
+                    _links[_linksSize - 1] = make_pair((AstroObject *)nullptr, (int8_t)0);
+                }
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool AstroObject::hasLinkage(AstroObject *obj) const
+{
+    if (_links) {
+        for (hposi_t linksIndex = 0; linksIndex < _linksSize && _links[linksIndex].first; ++linksIndex) {
+            if (_links[linksIndex].first == obj) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void AstroObject::unresolveAny(AstroObject *obj)
+{
+    if (this == obj && _links) {
+        AstroObject *lastObject = nullptr;
+        for (hposi_t linksIndex = 0; linksIndex < _linksSize && _links[linksIndex].first; ++linksIndex) {
+            AstroObject *object = _links[linksIndex].first;
+            if (object != obj) {
+                object->unresolveAny(obj); // may clobber indexing
+
+                if (linksIndex && _links[linksIndex].first != object) {
+                    while (linksIndex && _links[linksIndex].first != lastObject) { --linksIndex; }
+                    object = lastObject;
+                }
+            }
+            lastObject = object;
+        }
+    }
+}
+
+AstroIdentity AstroObject::getId() const
+{
+    return _id;
 }
 
 akey_t AstroObject::getKey() const
@@ -233,9 +191,19 @@ akey_t AstroObject::getKey() const
     return _id.key;
 }
 
-AstroString AstroObject::getKeyString() const
+String AstroObject::getKeyString() const
 {
     return _id.keyString;
+}
+
+SharedPtr<AstroObjInterface> AstroObject::getSharedPtr() const
+{
+    return getController() ? static_pointer_cast<AstroObjInterface>(getController()->objectById(_id)) : nullptr;
+}
+
+SharedPtr<AstroObjInterface> AstroObject::getSharedPtrFor(const AstroObjInterface *obj) const
+{
+    return obj->isObject() ? obj->getSharedPtr() : nullptr;
 }
 
 bool AstroObject::isObject() const
@@ -243,55 +211,80 @@ bool AstroObject::isObject() const
     return true;
 }
 
-SharedPtr<AstroObjInterface> AstroObject::getSharedPtr() const
+AstroData *AstroObject::allocateData() const
 {
-    return getController() ? getController()->objectById(_id) : nullptr;
+    ASTRO_HARD_ASSERT(false, SFP(AStr_Err_UnsupportedOperation));
+    return new AstroData();
 }
 
-SharedPtr<AstroObjInterface> AstroObject::getSharedPtrFor(const AstroObjInterface *object) const
+void AstroObject::saveToData(AstroData *dataOut)
 {
-    return object == this ? getSharedPtr() : nullptr;
+    dataOut->id.object.idType = (aid_t)_id.type;
+    dataOut->id.object.objType = _id.objTypeAs.idType;
+    dataOut->id.object.posIndex = _id.posIndex;
+    dataOut->_revision = getRevision();
+    if (_id.keyString.length()) {
+        strncpy(((AstroObjectData *)dataOut)->name, _id.keyString.c_str(), ASTRO_NAME_MAXSIZE);
+    }
 }
 
-AstroObjectData *AstroObject::allocateData() const
-{
-    return new AstroObjectData();
-}
 
-void AstroObject::saveToData(AstroObjectData *dataOut) const
-{
-    if (!dataOut) { return; }
-    dataOut->idType = (int8_t)_id.type;
-    dataOut->objType = _id.objTypeAs.idType;
-    dataOut->posIndex = _id.posIndex;
-    dataOut->revision = getRevision();
-    snprintf(dataOut->name, sizeof(dataOut->name), "%s", _id.keyString.c_str());
-}
-
-akey_t AstroSubObject::getKey() const
-{
-    uintptr_t address = (uintptr_t)this;
-    return (akey_t)((address ^ (address >> 16)) & 0xffff);
-}
+void AstroSubObject::unresolveAny(AstroObject *obj)
+{ ; }
 
 AstroIdentity AstroSubObject::getId() const
 {
     return AstroIdentity(getKey());
 }
 
-AstroString AstroSubObject::getKeyString() const
+akey_t AstroSubObject::getKey() const
 {
-    char buffer[2 * sizeof(void *) + 3];
-    snprintf(buffer, sizeof(buffer), "%p", (const void *)this);
-    return AstroString(buffer);
+    return (akey_t)(intptr_t)this;
+}
+
+String AstroSubObject::getKeyString() const
+{
+    return addressToString((uintptr_t)this);
 }
 
 SharedPtr<AstroObjInterface> AstroSubObject::getSharedPtr() const
 {
-    return _parent ? _parent->getSharedPtrFor(this) : nullptr;
+    return _parent ? _parent->getSharedPtrFor((const AstroObjInterface *)this) : nullptr;
 }
 
-SharedPtr<AstroObjInterface> AstroSubObject::getSharedPtrFor(const AstroObjInterface *object) const
+SharedPtr<AstroObjInterface> AstroSubObject::getSharedPtrFor(const AstroObjInterface *obj) const
 {
-    return object->isObject() ? object->getSharedPtr() : _parent ? _parent->getSharedPtrFor(object) : nullptr;
+    return obj->isObject() ? obj->getSharedPtr() : _parent ? _parent->getSharedPtrFor(obj) : nullptr;
+}
+
+bool AstroSubObject::isObject() const
+{
+    return false;
+}
+
+void AstroSubObject::setParent(AstroObjInterface *parent)
+{
+    _parent = parent;
+}
+
+
+AstroObjectData::AstroObjectData()
+    : AstroData(), name{0}
+{
+    _size = sizeof(*this);
+}
+
+void AstroObjectData::toJSONObject(JsonObject &objectOut) const
+{
+    AstroData::toJSONObject(objectOut);
+
+    if (name[0]) { objectOut[SFP(AStr_Key_Id)] = charsToString(name, ASTRO_NAME_MAXSIZE); }
+}
+
+void AstroObjectData::fromJSONObject(JsonObjectConst &objectIn)
+{
+    AstroData::fromJSONObject(objectIn);
+
+    const char *nameStr = objectIn[SFP(AStr_Key_Id)];
+    if (nameStr && nameStr[0]) { strncpy(name, nameStr, ASTRO_NAME_MAXSIZE); }
 }

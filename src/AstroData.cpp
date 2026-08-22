@@ -41,11 +41,11 @@ AstroData *newDataFromBinaryStream(Stream *streamIn)
     size_t readBytes = deserializeDataFromBinaryStream(&baseDecode, streamIn, sizeof(void*));
     const size_t serializedSize = baseDecode._size;
     const bool baseReadValid = readBytes == basePayloadSize && serializedSize >= baseSize;
-    ASTRO_SOFT_ASSERT(baseReadValid, SFP(HStr_Err_ImportFailure));
+    ASTRO_SOFT_ASSERT(baseReadValid, SFP(AStr_Err_ImportFailure));
     if (!baseReadValid) { return nullptr; }
 
     AstroData *data = _allocateDataFromBaseDecode(baseDecode);
-    ASTRO_SOFT_ASSERT(data, SFP(HStr_Err_AllocationFailure));
+    ASTRO_SOFT_ASSERT(data, SFP(AStr_Err_AllocationFailure));
     if (!data) { return nullptr; }
 
     const auto readPlan = hydroBinaryDataReadPlan(serializedSize, data->_size, baseSize);
@@ -56,7 +56,7 @@ AstroData *newDataFromBinaryStream(Stream *streamIn)
     const size_t skippedBytes = skipBinaryStreamBytes(streamIn, readPlan.skipBytes);
     const bool payloadReadValid = readBytes == basePayloadSize + readPlan.copyBytes &&
                                   skippedBytes == readPlan.skipBytes;
-    ASTRO_SOFT_ASSERT(payloadReadValid, SFP(HStr_Err_ImportFailure));
+    ASTRO_SOFT_ASSERT(payloadReadValid, SFP(AStr_Err_ImportFailure));
     if (!payloadReadValid) {
         delete data;
         return nullptr;
@@ -72,7 +72,7 @@ AstroData *newDataFromJSONObject(JsonObjectConst &objectIn)
     baseDecode.fromJSONObject(objectIn);
 
     AstroData *data = _allocateDataFromBaseDecode(baseDecode);
-    ASTRO_SOFT_ASSERT(data, SFP(HStr_Err_AllocationFailure));
+    ASTRO_SOFT_ASSERT(data, SFP(AStr_Err_AllocationFailure));
 
     if (data) {
         data->fromJSONObject(objectIn);
@@ -93,7 +93,7 @@ AstroData::AstroData(char id0, char id1, char id2, char id3, uint8_t version, ui
     : id{.chars={id0,id1,id2,id3}}, _version(version), _revision((int8_t)revision)
 {
     _size = sizeof(*this);
-    ASTRO_HARD_ASSERT(isStandardData(), SFP(HStr_Err_InvalidParameter));
+    ASTRO_HARD_ASSERT(isStandardData(), SFP(AStr_Err_InvalidParameter));
 }
 
 AstroData::AstroData(aid_t idType, aid_t objType, aposi_t posIndex, aid_t classType, uint8_t version, uint8_t revision)
@@ -111,18 +111,18 @@ AstroData::AstroData(const AstroIdentity &id)
 void AstroData::toJSONObject(JsonObject &objectOut) const
 {
     if (isStandardData()) {
-        objectOut[SFP(HStr_Key_Type)] = charsToString(id.chars, sizeof(id.chars));
+        objectOut[SFP(AStr_Key_Type)] = charsToString(id.chars, sizeof(id.chars));
     } else {
         int8_t typeVals[4] = {id.object.idType, id.object.objType, id.object.posIndex, id.object.classType};
-        objectOut[SFP(HStr_Key_Type)] = commaStringFromArray(typeVals, 4);
+        objectOut[SFP(AStr_Key_Type)] = commaStringFromArray(typeVals, 4);
     }
-    if (_version > 1) { objectOut[SFP(HStr_Key_Version)] = _version; }
-    if (getRevision() > 1) { objectOut[SFP(HStr_Key_Revision)] = getRevision(); }
+    if (_version > 1) { objectOut[SFP(AStr_Key_Version)] = _version; }
+    if (getRevision() > 1) { objectOut[SFP(AStr_Key_Revision)] = getRevision(); }
 }
 
 void AstroData::fromJSONObject(JsonObjectConst &objectIn)
 {
-    JsonVariantConst idVar = objectIn[SFP(HStr_Key_Type)];
+    JsonVariantConst idVar = objectIn[SFP(AStr_Key_Type)];
     const char *idStr = idVar.as<const char *>();
     if (idStr && idStr[0] == 'H') {
         strncpy(id.chars, idStr, 4);
@@ -134,8 +134,8 @@ void AstroData::fromJSONObject(JsonObjectConst &objectIn)
         id.object.posIndex = typeVals[2];
         id.object.classType = typeVals[3];
     }
-    _version = objectIn[SFP(HStr_Key_Version)] | _version;
-    _revision = objectIn[SFP(HStr_Key_Revision)] | _revision;
+    _version = objectIn[SFP(AStr_Key_Version)] | _version;
+    _revision = objectIn[SFP(AStr_Key_Revision)] | _revision;
     _revision = abs(_revision);
 }
 
@@ -150,10 +150,10 @@ AstroSubData::AstroSubData(aid_t dataType)
 
 void AstroSubData::toJSONObject(JsonObject &objectOut) const
 {
-    if (type != aid_none) { objectOut[SFP(HStr_Key_Type)] = type; }
+    if (type != aid_none) { objectOut[SFP(AStr_Key_Type)] = type; }
 }
 
 void AstroSubData::fromJSONObject(JsonObjectConst &objectIn)
 {
-    type = objectIn[SFP(HStr_Key_Type)] | type;
+    type = objectIn[SFP(AStr_Key_Type)] | type;
 }

@@ -152,12 +152,12 @@ inline bool AstroLogger::isLoggingToWiFiStorage() const
 
 inline void AstroLogger::logActivation(const AstroActuator *actuator)
 {
-    if (actuator) { logMessage(actuator->getId().getDisplayString(), SFP(HStr_Log_HasEnabled)); }
+    if (actuator) { logMessage(actuator->getId().getDisplayString(), SFP(AStr_Log_HasEnabled)); }
 }
 
 inline void AstroLogger::logDeactivation(const AstroActuator *actuator)
 {
-    if (actuator) { logMessage(actuator->getId().getDisplayString(), SFP(HStr_Log_HasDisabled)); }
+    if (actuator) { logMessage(actuator->getId().getDisplayString(), SFP(AStr_Log_HasDisabled)); }
 }
 
 inline void AstroLogger::logProcess(const AstroObjInterface *obj, const String &processString, const String &statusString)

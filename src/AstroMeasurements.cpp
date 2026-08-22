@@ -11,7 +11,7 @@
 AstroMeasurement *newMeasurementObjectFromSubData(const AstroMeasurementData *dataIn)
 {
     if (!dataIn || !isValidType(dataIn->type)) return nullptr;
-    Astro_SOFT_ASSERT(dataIn && isValidType(dataIn->type), SFP(HStr_Err_InvalidParameter));
+    Astro_SOFT_ASSERT(dataIn && isValidType(dataIn->type), SFP(AStr_Err_InvalidParameter));
 
     if (dataIn) {
         switch (dataIn->type) {
@@ -254,20 +254,20 @@ void AstroMeasurementData::toJSONObject(JsonObject &objectOut) const
 {
     //AstroSubData::toJSONObject(objectOut); // purposeful no call to base method (ignores type)
 
-    objectOut[SFP(HStr_Key_MeasurementRow)] = measurementRow;
-    objectOut[SFP(HStr_Key_Value)] = value;
-    objectOut[SFP(HStr_Key_Units)] = unitsTypeToSymbol(units);
-    objectOut[SFP(HStr_Key_Timestamp)] = timestamp;
+    objectOut[SFP(AStr_Key_MeasurementRow)] = measurementRow;
+    objectOut[SFP(AStr_Key_Value)] = value;
+    objectOut[SFP(AStr_Key_Units)] = unitsTypeToSymbol(units);
+    objectOut[SFP(AStr_Key_Timestamp)] = timestamp;
 }
 
 void AstroMeasurementData::fromJSONObject(JsonObjectConst &objectIn)
 {
     //AstroSubData::fromJSONObject(objectIn); // purposeful no call to base method (ignores type)
 
-    measurementRow = objectIn[SFP(HStr_Key_MeasurementRow)] | measurementRow;
-    value = objectIn[SFP(HStr_Key_Value)] | value;
-    units = unitsTypeFromSymbol(objectIn[SFP(HStr_Key_Units)]);
-    timestamp = objectIn[SFP(HStr_Key_Timestamp)] | timestamp;
+    measurementRow = objectIn[SFP(AStr_Key_MeasurementRow)] | measurementRow;
+    value = objectIn[SFP(AStr_Key_Value)] | value;
+    units = unitsTypeFromSymbol(objectIn[SFP(AStr_Key_Units)]);
+    timestamp = objectIn[SFP(AStr_Key_Timestamp)] | timestamp;
 }
 
 void AstroMeasurementData::fromJSONVariant(JsonVariantConst &variantIn)
@@ -278,6 +278,6 @@ void AstroMeasurementData::fromJSONVariant(JsonVariantConst &variantIn)
     } else if (variantIn.is<float>() || variantIn.is<int>()) {
         value = variantIn.as<float>();
     } else {
-        Astro_SOFT_ASSERT(false, SFP(HStr_Err_UnsupportedOperation));
+        Astro_SOFT_ASSERT(false, SFP(AStr_Err_UnsupportedOperation));
     }
 }
