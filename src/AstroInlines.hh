@@ -14,8 +14,8 @@ struct BitResolution;
 struct Location;
 struct Twilight;
 
-#include "Hydruino.h"
-// Only have defines included at this point, complex inline imps at top of Hydruino.hpp
+#include "Astruino.h"
+// Only have defines included at this point, complex inline imps at top of Astruino.hpp
 
 // Returns if pin is valid
 inline bool isValidPin(pintype_t pin) { return pin != apin_none; }
