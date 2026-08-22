@@ -15,10 +15,12 @@
 // Base class for measurements supplied by pins, callbacks, or external sensor adapters.
 class AstroSensor : public AstroObject, public AstroSensorObjectInterface, public AstroMeasurementUnitsInterface {
 public:
+    const enum : signed char { Value, Callback, Digital, Analog, Unknown = -1 } classType;
     AstroSensor(Astro_SensorType sensorType = Astro_SensorType_Generic,
                 Astro_UnitsType units = Astro_UnitsType_Undefined,
-                aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
-    AstroSensor(const AstroObjectData *dataIn, Astro_UnitsType units = Astro_UnitsType_Undefined);
+                aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG,
+                int classTypeIn = Unknown);
+    AstroSensor(const AstroSensorData *dataIn);
     virtual ~AstroSensor() { ; }
 
     virtual bool readValue(double *valueOut) = 0;
@@ -45,11 +47,16 @@ public:
     virtual void setMeasurementUnits(Astro_UnitsType units, uint8_t measurementRow = 0) override { if (measurementRow == 0) { setUnits(units); } }
     virtual Astro_UnitsType getMeasurementUnits(uint8_t measurementRow = 0) const override { return measurementRow == 0 ? getUnits() : Astro_UnitsType_Undefined; }
     virtual const AstroSingleMeasurement &getMeasurement() const override { return _measurement; }
+    Signal<const AstroMeasurement *, ASTRO_DEFAULT_MAXSIZE> &getMeasurementSignal();
 
 protected:
-    Astro_SensorType _sensorType;                            // Sensor type
-    AstroSingleMeasurement _measurement;                    // Latest sensor measurement
+    Astro_SensorType _sensorType;                           // Sensor type
+    AstroSingleMeasurement _measurement;                   // Latest sensor measurement
     const AstroCalibrationData *_calibrationData;           // Calibration data
+    Signal<const AstroMeasurement *, ASTRO_DEFAULT_MAXSIZE> _measurementSignal; // Measurement signal
+
+    virtual AstroData *allocateData() const override;
+    virtual void saveToData(AstroData *dataOut) const override;
 };
 
 // Value Sensor
@@ -60,19 +67,14 @@ public:
                      Astro_UnitsType units = Astro_UnitsType_Undefined,
                      aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG,
                      double value = 0.0)
-        : AstroSensor(sensorType, units, positionIndex), _value(value)
-    { ; }
-
-    AstroValueSensor(const AstroObjectData *dataIn, Astro_UnitsType units = Astro_UnitsType_Undefined, double value = 0.0)
-        : AstroSensor(dataIn, units), _value(value)
-    { ; }
-
+        : AstroSensor(sensorType, units, positionIndex, Value), _value(value) { ; }
+    AstroValueSensor(const AstroSensorData *dataIn, double value = 0.0)
+        : AstroSensor(dataIn), _value(value) { ; }
     virtual bool readValue(double *valueOut) override { if (!valueOut) { return false; } *valueOut = _value; return true; }
     inline void setValue(double value) { _value = value; }
     inline double getValue() const { return _value; }
-
 protected:
-    double _value;                                          // Stored sensor value
+    double _value;                                         // Stored sensor value
 };
 
 // Callback Sensor
@@ -85,16 +87,11 @@ public:
                         Astro_SensorType sensorType = Astro_SensorType_Generic,
                         Astro_UnitsType units = Astro_UnitsType_Undefined,
                         aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG)
-        : AstroSensor(sensorType, units, positionIndex), _callback(callback), _context(context)
-    { ; }
-
-    virtual bool readValue(double *valueOut) override {
-        return _callback ? _callback(_context, valueOut) : false;
-    }
-
+        : AstroSensor(sensorType, units, positionIndex, Callback), _callback(callback), _context(context) { ; }
+    virtual bool readValue(double *valueOut) override { return _callback ? _callback(_context, valueOut) : false; }
 protected:
-    ReadCallback _callback;                                 // Callback function
-    void *_context;                                         // Callback user context
+    ReadCallback _callback;                                // Callback function
+    void *_context;                                        // Callback user context
 };
 
 // Digital Sensor
@@ -103,18 +100,15 @@ class AstroDigitalSensor : public AstroSensor {
 public:
     AstroDigitalSensor(AstroDigitalPin inputPin = AstroDigitalPin(),
                        Astro_SensorType sensorType = Astro_SensorType_Generic,
-                       aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
-
+                       aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);
+    AstroDigitalSensor(const AstroSensorData *dataIn);
     virtual bool readValue(double *valueOut) override;
     inline const AstroDigitalPin &getInputPin() const { return _inputPin; }
-
 protected:
-    AstroDigitalPin _inputPin;                              // Input pin
+    AstroDigitalPin _inputPin;                             // Input pin
+    virtual void saveToData(AstroData *dataOut) const override;
 };
 
-// Analog Sensor
-// Reads a normalized scalar measurement from an analog input pin. User calibration uses
-// AstroCalibrationData through the same sensor calibration path as the sibling libraries.
 class AstroAnalogSensor : public AstroSensor {
 public:
     AstroAnalogSensor(AstroAnalogPin inputPin = AstroAnalogPin(),
@@ -122,11 +116,12 @@ public:
                       Astro_UnitsType units = Astro_UnitsType_Raw_1,
                       aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
 
+    AstroAnalogSensor(const AstroSensorData *dataIn);
     virtual bool readValue(double *valueOut) override;
     inline const AstroAnalogPin &getInputPin() const { return _inputPin; }
-
 protected:
-    AstroAnalogPin _inputPin;                               // Input pin
+    AstroAnalogPin _inputPin;                              // Input pin
+    virtual void saveToData(AstroData *dataOut) const override;
 };
 
 #endif // /ifndef AstroSensors_H

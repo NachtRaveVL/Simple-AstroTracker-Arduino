@@ -121,7 +121,6 @@ typedef uint8_t pintype_t;
 typedef Adafruit_GPS GPSClass;
 #endif
 
-#include <ArduinoJson.h>
 #include <ArxContainer.h>
 #include <ArxSmartPtr.h>
 #include <I2C_eeprom.h>
@@ -178,6 +177,7 @@ typedef Adafruit_GPS GPSClass;
 #endif
 
 #include "AstroDefines.h"
+#include <ArduinoJson.h>
 
 #ifdef ARDUINO
 
@@ -219,10 +219,13 @@ template<class T, class U> inline SharedPtr<T> reinterpret_pointer_cast(const Sh
 
 #endif
 
+inline millis_t nzMillis();
+
 #include "AstroStrings.h"
 #include "AstroCoordinates.h"
 #include "AstroInlines.hh"
 #include "AstroCallback.hh"
+#include "AstroCoreLogic.h"
 #include "AstroInterfaces.h"
 #include "AstroActivation.h"
 #include "AstroAttachments.h"
@@ -256,7 +259,7 @@ template<class T, class U> inline SharedPtr<T> reinterpret_pointer_cast(const Sh
 // Main controller interface for DIY astronomical tracking systems. Networking, GPS,
 // displays, and external storage remain optional so a small offline system can use the
 // same controller lifecycle as a more fully equipped build.
-class Astruino : public AstroFactory, public AstroObjectRegistration {
+class Astruino : public AstroFactory, public AstroCalibrations, public AstroObjectRegistration {
 public:
     AstroScheduler scheduler;                              // Scheduler public instance
     AstroLogger logger;                                    // Logger public instance
@@ -346,10 +349,9 @@ protected:
 
     void allocateRTC();
     void deallocateRTC();
-
     void applySystemData();
 
-    friend SharedPtr<AstroObjInterface> AstroDLinkObject::resolveObject();
+    friend class AstroDLinkObject;
 };
 
 // Returns the currently active controller instance.

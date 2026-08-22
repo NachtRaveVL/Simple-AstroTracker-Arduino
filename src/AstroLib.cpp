@@ -260,7 +260,7 @@ void AstroTargetsLibrary::returnTargetData(const AstroTargetData *targetData)
     AstroTargetsLibraryBook *book = _targetsData[targetId];
     if (!book) { return; }
     if (book->count) { --book->count; }
-    if (!book->count && (!book->userSet || !book->data.modified)) {
+    if (!book->count && (!book->userSet || !book->data.isModified())) {
         delete book;
         _targetsData[targetId] = nullptr;
     }
@@ -277,6 +277,7 @@ bool AstroTargetsLibrary::setUserTargetData(const AstroTargetData *targetData)
     } else {
         book->data = *targetData;
     }
+    book->data.bumpRevisionIfNeeded();
     book->userSet = true;
     _hasUserTargets = true;
     return true;
@@ -329,7 +330,7 @@ AstroTargetsLibraryBook *AstroTargetsLibrary::newBookFromBuiltin(Astro_TargetId 
     if (targetId <= Astro_Target_Neptune) {
         data.targetClass = Astro_TargetClass_SolarSystem;
         data.movingTarget = true;
-        copyMovingTargetString(targetId, data.id, sizeof(data.id));
+        copyMovingTargetString(targetId, data.catalogId, sizeof(data.catalogId));
         copyMovingTargetString(targetId, data.targetName, sizeof(data.targetName));
         return new AstroTargetsLibraryBook(data);
     }
@@ -352,7 +353,7 @@ AstroTargetsLibraryBook *AstroTargetsLibrary::newBookFromBuiltin(Astro_TargetId 
 
     if (targetId >= Astro_Target_M1 && targetId <= Astro_Target_M110) {
         unsigned int messier = (unsigned int)targetId - (unsigned int)Astro_Target_M1 + 1;
-        snprintf(data.id, sizeof(data.id), "M%u", messier);
+        snprintf(data.catalogId, sizeof(data.catalogId), "M%u", messier);
         if (packed.nameOffset) {
             copyTargetString(packed.nameOffset, data.targetName, sizeof(data.targetName));
         } else {
@@ -360,8 +361,8 @@ AstroTargetsLibraryBook *AstroTargetsLibrary::newBookFromBuiltin(Astro_TargetId 
         }
     } else {
         copyTargetString(packed.nameOffset, data.targetName, sizeof(data.targetName));
-        strncpy(data.id, data.targetName, sizeof(data.id) - 1);
-        data.id[sizeof(data.id) - 1] = '\0';
+        strncpy(data.catalogId, data.targetName, sizeof(data.catalogId) - 1);
+        data.catalogId[sizeof(data.catalogId) - 1] = '\0';
     }
 
     return new AstroTargetsLibraryBook(data);

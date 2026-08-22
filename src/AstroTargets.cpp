@@ -5,17 +5,14 @@
 
 #include "AstroTargets.h"
 #include "AstroEphemeris.h"
-#include "AstroUtils.h"
-#include <stdio.h>
 #include <string.h>
 
 AstroTargetData::AstroTargetData()
-    : targetId(Astro_Target_Undefined), targetClass(Astro_TargetClass_Unknown),
-      rightAscensionSeconds(0), declinationArcseconds(0), magnitudeCenti(32767),
-      movingTarget(false), modified(false)
+    : AstroData('A','T','L','D'), targetId(Astro_Target_Undefined), targetClass(Astro_TargetClass_Unknown),
+      catalogId{0}, targetName{0}, rightAscensionSeconds(0), declinationArcseconds(0),
+      magnitudeCenti(32767), movingTarget(false)
 {
-    id[0] = '\0';
-    targetName[0] = '\0';
+    _size = sizeof(*this);
 }
 
 AstroEquatorialCoordinates AstroTargetData::getCoordinates(int64_t unixTime) const
@@ -27,49 +24,42 @@ AstroEquatorialCoordinates AstroTargetData::getCoordinates(int64_t unixTime) con
     return astroPrecessJ2000(getJ2000Coordinates(), unixTime);
 }
 
-bool AstroTargetData::toJSON(char *bufferOut, size_t bufferSize) const
+void AstroTargetData::toJSONObject(JsonObject &objectOut) const
 {
-    if (!bufferOut || !bufferSize) { return false; }
-    int written = snprintf(bufferOut, bufferSize,
-        "{\"type\":\"ATLD\",\"id\":\"%s\",\"name\":\"%s\",\"targetId\":%u,\"class\":%d,\"raSec\":%ld,\"decArcSec\":%ld,\"mag100\":%d,\"moving\":%s}",
-        id, targetName, (unsigned int)targetId, (int)targetClass,
-        (long)rightAscensionSeconds, (long)declinationArcseconds, (int)magnitudeCenti,
-        movingTarget ? "true" : "false");
-    return written > 0 && (size_t)written < bufferSize;
+    AstroData::toJSONObject(objectOut);
+    objectOut["catalogId"] = catalogId;
+    objectOut["name"] = targetName;
+    objectOut["targetId"] = (unsigned int)targetId;
+    objectOut["class"] = (int)targetClass;
+    objectOut["raSec"] = rightAscensionSeconds;
+    objectOut["decArcSec"] = declinationArcseconds;
+    objectOut["mag100"] = magnitudeCenti;
+    objectOut["moving"] = movingTarget;
 }
 
-
-bool AstroTargetData::fromJSON(const char *jsonIn)
+void AstroTargetData::fromJSONObject(JsonObjectConst &objectIn)
 {
-    if (!jsonIn) { return false; }
+    AstroData::fromJSONObject(objectIn);
 
-    char typeIn[8] = {0};
-    char idIn[ASTRO_TARGET_ID_MAXSIZE] = {0};
-    char nameIn[ASTRO_TARGET_NAME_MAXSIZE] = {0};
-    unsigned long targetIdIn = 0;
-    long targetClassIn = 0, raIn = 0, decIn = 0, magnitudeIn = 32767;
-    bool movingIn = false;
-    if (!astroJSONGetString(jsonIn, "type", typeIn, sizeof(typeIn)) || strcmp(typeIn, "ATLD") != 0 ||
-        !astroJSONGetString(jsonIn, "id", idIn, sizeof(idIn)) ||
-        !astroJSONGetString(jsonIn, "name", nameIn, sizeof(nameIn)) ||
-        !astroJSONGetUnsignedLong(jsonIn, "targetId", &targetIdIn) ||
-        !astroJSONGetLong(jsonIn, "class", &targetClassIn) ||
-        !astroJSONGetLong(jsonIn, "raSec", &raIn) ||
-        !astroJSONGetLong(jsonIn, "decArcSec", &decIn) ||
-        !astroJSONGetLong(jsonIn, "mag100", &magnitudeIn) ||
-        !astroJSONGetBool(jsonIn, "moving", &movingIn) ||
-        targetIdIn >= Astro_Target_Count) {
-        return false;
+    unsigned int targetIdIn = objectIn["targetId"] | (unsigned int)targetId;
+    if (targetIdIn >= Astro_Target_Count) { targetId = Astro_Target_Undefined; return; }
+    targetId = (Astro_TargetId)targetIdIn;
+    targetClass = (Astro_TargetClass)(objectIn["class"] | (int)targetClass);
+
+    const char *catalogIdIn = objectIn["catalogId"] | nullptr;
+    if (catalogIdIn) {
+        strncpy(catalogId, catalogIdIn, sizeof(catalogId) - 1);
+        catalogId[sizeof(catalogId) - 1] = '\0';
+    }
+    const char *targetNameIn = objectIn["name"] | nullptr;
+    if (targetNameIn) {
+        strncpy(targetName, targetNameIn, sizeof(targetName) - 1);
+        targetName[sizeof(targetName) - 1] = '\0';
     }
 
-    targetId = (Astro_TargetId)targetIdIn;
-    targetClass = (Astro_TargetClass)targetClassIn;
-    snprintf(id, sizeof(id), "%s", idIn);
-    snprintf(targetName, sizeof(targetName), "%s", nameIn);
-    rightAscensionSeconds = (int32_t)raIn;
-    declinationArcseconds = (int32_t)decIn;
-    magnitudeCenti = (int16_t)magnitudeIn;
-    movingTarget = movingIn;
-    modified = false;
-    return true;
+    rightAscensionSeconds = objectIn["raSec"] | rightAscensionSeconds;
+    declinationArcseconds = objectIn["decArcSec"] | declinationArcseconds;
+    magnitudeCenti = objectIn["mag100"] | magnitudeCenti;
+    movingTarget = objectIn["moving"] | movingTarget;
+    unsetModified();
 }

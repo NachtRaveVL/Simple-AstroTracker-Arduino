@@ -111,12 +111,14 @@ public:
     SharedPtr<AstroServoAxisDriver> addServoAxisDriver(AstroAnalogPin outputPin,
                                                        double minDegrees = 0.0,
                                                        double maxDegrees = 180.0); // Max degrees
-    SharedPtr<AstroThresholdTrigger> addThresholdTrigger(SharedPtr<AstroSensor> sensor,
-                                                         double threshold, bool triggerBelow = false,
-                                                         double tolerance = 0.0, uint32_t stableTimeMs = 0); // Tolerance
-    SharedPtr<AstroRangeTrigger> addRangeTrigger(SharedPtr<AstroSensor> sensor,
-                                                 double low, double high, bool triggerOutside = true,
-                                                 double tolerance = 0.0, uint32_t stableTimeMs = 0); // Tolerance
+    SharedPtr<AstroMeasurementValueTrigger> addThresholdTrigger(SharedPtr<AstroSensor> sensor,
+                                                                 double threshold, bool triggerBelow = false,
+                                                                 double detriggerTolerance = 0.0,
+                                                                 millis_t detriggerDelay = 0); // De-trigger tolerance/delay
+    SharedPtr<AstroMeasurementRangeTrigger> addRangeTrigger(SharedPtr<AstroSensor> sensor,
+                                                             double low, double high, bool triggerOutside = true,
+                                                             double detriggerTolerance = 0.0,
+                                                             millis_t detriggerDelay = 0); // De-trigger tolerance/delay
 
     // Creates a concrete object from serialized object data (return ownership transfer - user code *must* delete returned object).
     static AstroObject *newObjectFromData(const AstroObjectData *dataIn);

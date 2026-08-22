@@ -3,21 +3,13 @@
     Astruino Logger
 */
 
-#include "AstroLogger.h"
-#include "AstroStrings.h"
-#include "AstroUtils.h"
+#include "Astruino.h"
 #include <stdio.h>
 #include <string.h>
 
 AstroLogger::AstroLogger()
-    : _sink(nullptr), _context(nullptr), _logLevel(Astro_LogLevel_All), _data(nullptr)
+    : _logLevel(Astro_LogLevel_All), _data(nullptr), _logSignal()
 { ; }
-
-void AstroLogger::setSink(LogSink sink, void *context)
-{
-    _sink = sink;
-    _context = context;
-}
 
 void AstroLogger::setSubData(AstroLoggerSubData *data)
 {
@@ -37,18 +29,35 @@ Astro_LogLevel AstroLogger::getLogLevel() const
 
 void AstroLogger::log(Astro_LogLevel level, int64_t timestamp, const char *prefix, const char *message)
 {
-    if (!_sink || getLogLevel() == Astro_LogLevel_None || level < getLogLevel()) { return; }
+    if (getLogLevel() == Astro_LogLevel_None || level < getLogLevel()) { return; }
+
     AstroLogEvent event;
     event.level = level;
     event.timestamp = timestamp;
     snprintf(event.prefix, sizeof(event.prefix), "%s", prefix ? prefix : "");
     snprintf(event.message, sizeof(event.message), "%s", message ? message : "");
-    _sink(_context, event);
+    _logSignal.fire(event);
 }
 
-void AstroLogger::logMessage(int64_t timestamp, const char *message) { log(Astro_LogLevel_Info, timestamp, "[INFO] ", message); }
-void AstroLogger::logWarning(int64_t timestamp, const char *message) { log(Astro_LogLevel_Warnings, timestamp, "[WARN] ", message); }
-void AstroLogger::logError(int64_t timestamp, const char *message) { log(Astro_LogLevel_Errors, timestamp, "[ERROR] ", message); }
+Signal<const AstroLogEvent, ASTRO_DEFAULT_MAXSIZE> &AstroLogger::getLogSignal()
+{
+    return _logSignal;
+}
+
+void AstroLogger::logMessage(int64_t timestamp, const char *message)
+{
+    log(Astro_LogLevel_Info, timestamp, "[INFO] ", message);
+}
+
+void AstroLogger::logWarning(int64_t timestamp, const char *message)
+{
+    log(Astro_LogLevel_Warnings, timestamp, "[WARN] ", message);
+}
+
+void AstroLogger::logError(int64_t timestamp, const char *message)
+{
+    log(Astro_LogLevel_Errors, timestamp, "[ERROR] ", message);
+}
 
 void AstroLogger::logField(int64_t timestamp, const char *fieldName, double value, const char *units)
 {
@@ -62,7 +71,7 @@ void AstroLogger::logEnvironment(int64_t timestamp, double ambientC, double humi
                                  double opticsC, double cameraSensorC, double cameraBodyC,
                                  float dewHeaterPower, float cameraCoolingPower, float cameraFanPower)
 {
-    const AstroString envReport = SFP(AStr_EnvironmentReport);
+    AstroString envReport = SFP(AStr_EnvironmentReport);
     logMessage(timestamp, envReport.c_str());
     logField(timestamp, "Ambient temperature", ambientC, "C");
     logField(timestamp, "Humidity", humidity, "%");
@@ -76,33 +85,30 @@ void AstroLogger::logEnvironment(int64_t timestamp, double ambientC, double humi
 }
 
 AstroLoggerSubData::AstroLoggerSubData()
-    : logLevel(Astro_LogLevel_All), logFilePrefix{0}, logToSDCard(false), logToWiFiStorage(false)
+    : AstroSubData(0), logLevel(Astro_LogLevel_All), logFilePrefix{0},
+      logToSDCard(false), logToWiFiStorage(false)
 {
     snprintf(logFilePrefix, sizeof(logFilePrefix), "logs/astro");
 }
 
-bool AstroLoggerSubData::toJSON(char *bufferOut, size_t bufferSize) const
+void AstroLoggerSubData::toJSONObject(JsonObject &objectOut) const
 {
-    if (!bufferOut || !bufferSize) { return false; }
-    int written = snprintf(bufferOut, bufferSize,
-        "{\"logLevel\":%d,\"logFilePrefix\":\"%s\",\"logToSDCard\":%s,\"logToWiFiStorage\":%s}",
-        (int)logLevel, logFilePrefix, logToSDCard ? "true" : "false", logToWiFiStorage ? "true" : "false");
-    return written >= 0 && (size_t)written < bufferSize;
+    AstroSubData::toJSONObject(objectOut);
+    objectOut["logLevel"] = (int)logLevel;
+    objectOut["logFilePrefix"] = logFilePrefix;
+    objectOut["logToSDCard"] = logToSDCard;
+    objectOut["logToWiFiStorage"] = logToWiFiStorage;
 }
 
-bool AstroLoggerSubData::fromJSON(const char *jsonIn)
+void AstroLoggerSubData::fromJSONObject(JsonObjectConst &objectIn)
 {
-    if (!jsonIn) { return false; }
-    long levelIn;
-    char prefixIn[ASTRO_PREFIX_MAXSIZE] = {0};
-    bool sdIn, wifiIn;
-    if (!astroJSONGetLong(jsonIn, "logLevel", &levelIn) ||
-        !astroJSONGetString(jsonIn, "logFilePrefix", prefixIn, sizeof(prefixIn)) ||
-        !astroJSONGetBool(jsonIn, "logToSDCard", &sdIn) ||
-        !astroJSONGetBool(jsonIn, "logToWiFiStorage", &wifiIn)) { return false; }
-    logLevel = (Astro_LogLevel)levelIn;
-    snprintf(logFilePrefix, sizeof(logFilePrefix), "%s", prefixIn);
-    logToSDCard = sdIn;
-    logToWiFiStorage = wifiIn;
-    return true;
+    AstroSubData::fromJSONObject(objectIn);
+    logLevel = (Astro_LogLevel)(objectIn["logLevel"] | (int)logLevel);
+    const char *prefix = objectIn["logFilePrefix"] | nullptr;
+    if (prefix) {
+        strncpy(logFilePrefix, prefix, ASTRO_PREFIX_MAXSIZE - 1);
+        logFilePrefix[ASTRO_PREFIX_MAXSIZE - 1] = '\0';
+    }
+    logToSDCard = objectIn["logToSDCard"] | logToSDCard;
+    logToWiFiStorage = objectIn["logToWiFiStorage"] | logToWiFiStorage;
 }

@@ -44,7 +44,7 @@ extern DateTime localTime(time_t unixTime);
 #endif
 
 // This will return a non-zero millis time value, so that 0 time values can be reserved for other use.
-inline millis_t nzMillis() { return millis() ?: 1; }
+inline millis_t nzMillis() { millis_t now = millis(); return now ? now : 1; }
 
 // Debug assertion helpers used by ASTRO_SOFT_ASSERT / ASTRO_HARD_ASSERT when enabled.
 extern void astroSoftAssert(bool condition, const AstroString &message, const char *file, const char *function, int line);
@@ -111,15 +111,6 @@ extern bool checkPinIsAnalogOutput(pintype_t pin);
 // Direction helpers.
 extern Astro_DirectionMode directionFromSignedValue(double value);
 extern double signedValueFromDirection(Astro_DirectionMode direction, double magnitude = 1.0);
-
-// JSON field helpers
-// These helpers perform key-based extraction from the compact JSON emitted by Astruino data objects.
-// Field order is intentionally ignored so serialized objects remain stable when fields are rearranged.
-extern bool astroJSONGetString(const char *jsonIn, const char *key, char *valueOut, size_t valueSize);
-extern bool astroJSONGetLong(const char *jsonIn, const char *key, long *valueOut);
-extern bool astroJSONGetUnsignedLong(const char *jsonIn, const char *key, unsigned long *valueOut);
-extern bool astroJSONGetDouble(const char *jsonIn, const char *key, double *valueOut);
-extern bool astroJSONGetBool(const char *jsonIn, const char *key, bool *valueOut);
 
 #include "AstroUtils.hpp"
 

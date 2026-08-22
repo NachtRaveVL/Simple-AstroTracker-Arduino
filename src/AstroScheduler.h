@@ -8,6 +8,7 @@
 
 #include "AstroCamera.h"
 #include "AstroCover.h"
+#include "AstroData.h"
 #include "AstroLogger.h"
 #include "AstroMounts.h"
 #include "AstroThermal.h"
@@ -27,10 +28,10 @@ struct AstroSchedulerConfig {
 
 // Scheduler Serialization Sub Data
 // A part of ASYS system data, retaining the same settings used by the runtime scheduler.
-struct AstroSchedulerSubData : public AstroSchedulerConfig {
+struct AstroSchedulerSubData : public AstroSchedulerConfig, public AstroSubData {
     AstroSchedulerSubData();
-    bool toJSON(char *bufferOut, size_t bufferSize) const;
-    bool fromJSON(const char *jsonIn);
+    void toJSONObject(JsonObject &objectOut) const;
+    void fromJSONObject(JsonObjectConst &objectIn);
 };
 
 // Scheduler
@@ -52,24 +53,26 @@ public:
     void unresolveAny(AstroObject *object);
 
     inline Astro_SchedulerStage getStage() const { return _stage; }
-    inline bool inNighttimeMode() const { return _stage >= Astro_SchedulerStage_Deploying && _stage <= Astro_SchedulerStage_Observing; }
+    inline bool inNighttimeMode() const
+        { return _stage >= Astro_SchedulerStage_Deploying && _stage <= Astro_SchedulerStage_Observing; }
 
 protected:
-    SharedPtr<AstroMount> _mount;                          // Managed mount
-    SharedPtr<AstroCover> _cover;                          // Managed cover
+    SharedPtr<AstroMount> _mount;                           // Managed mount
+    SharedPtr<AstroCover> _cover;                           // Managed cover
     SharedPtr<AstroCameraTrigger> _device;                  // Observation device
-    AstroThermalBalancer *_thermal;                        // Thermal balancer, not owned
+    AstroThermalBalancer *_thermal;                         // Thermal balancer, not owned
     AstroTriggerAttachment _safetyTrigger;                  // Observing safety trigger attachment
-    AstroLogger *_logger;                                  // System logger, not owned
-    Astro_TargetId _targetId;                              // Active observation target
-    AstroSchedulerConfig _config;                          // Active scheduler configuration
-    Astro_SchedulerStage _stage;                           // Current scheduler stage
-    int64_t _stageStart;                                   // Stage start timestamp
-    int64_t _settleStart;                                  // Alignment settle start timestamp
-    int64_t _lastEnvReport;                                // Last environment report timestamp
+    AstroLogger *_logger;                                   // System logger, not owned
+    Astro_TargetId _targetId;                               // Active observation target
+    AstroSchedulerConfig _config;                           // Active scheduler configuration
+    Astro_SchedulerStage _stage;                            // Current scheduler stage
+    int64_t _stageStart;                                    // Stage start timestamp
+    int64_t _settleStart;                                   // Alignment settle start timestamp
+    int64_t _lastEnvReport;                                 // Last environment report timestamp
 
     void enterStage(Astro_SchedulerStage stage, int64_t unixTime);
-    void reportEnvironment(int64_t unixTime, const AstroThermalReadings &readings, const AstroThermalOutputs &outputs);
+    void reportEnvironment(int64_t unixTime, const AstroThermalReadings &readings,
+                           const AstroThermalOutputs &outputs);
 };
 
 #endif // /ifndef AstroScheduler_H

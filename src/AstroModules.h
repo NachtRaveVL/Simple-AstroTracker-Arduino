@@ -13,26 +13,12 @@ struct AstroCalibrationData;
 #include "AstroInlines.hh"
 #include "AstroObject.h"
 
-// Module Base
-// Base lifecycle for optional hardware or service modules.
-class AstroModule {
-public:
-    AstroModule();
-    virtual ~AstroModule() { ; }
-
-    virtual bool begin();
-    virtual void update();
-
-    inline bool isInitialized() const { return _initialized; }
-
-protected:
-    bool _initialized;                                      // Module initialization state
-};
-
 // Calibrations Storage
 // Stores user calibration data, which calibrates sensor output into usable values.
 class AstroCalibrations {
 public:
+    ~AstroCalibrations();
+    void clearUserCalibrationData();
     // Adds/updates user calibration data to the store, returning success flag.
     bool setUserCalibrationData(const AstroCalibrationData *calibrationData);
 
@@ -52,7 +38,7 @@ protected:
 // Object Registration Storage
 // Stores objects in the main system store, which is used for SharedPtr<> lookups and
 // stable attachment resolution in the same manner as the sibling controller libraries.
-class AstroObjectRegistration : public AstroCalibrations {
+class AstroObjectRegistration {
 public:
     // Adds object to system, returning success.
     bool registerObject(SharedPtr<AstroObject> object);

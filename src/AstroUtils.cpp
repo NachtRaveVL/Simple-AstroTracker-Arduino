@@ -177,7 +177,6 @@ Astro_MeasurementMode measurementModeFromString(const AstroString &value)
     }
     return Astro_MeasurementMode_Undefined;
 }
-
 AstroString actuatorTypeToString(Astro_ActuatorType value, bool excludeSpecial)
 {
     switch (value) {
@@ -796,104 +795,6 @@ bool astroConvertUnits(double valueIn, Astro_UnitsType unitsIn, Astro_UnitsType 
             break;
     }
 
-    return false;
-}
-
-static const char *astroJSONFindValue(const char *jsonIn, const char *key)
-{
-    if (!jsonIn || !key || !*key) { return nullptr; }
-
-    const size_t keyLength = strlen(key);
-    const char *cursor = jsonIn;
-    while ((cursor = strchr(cursor, '"'))) {
-        ++cursor;
-        if (strncmp(cursor, key, keyLength) == 0 && cursor[keyLength] == '"') {
-            cursor += keyLength + 1;
-            while (*cursor && isspace((unsigned char)*cursor)) { ++cursor; }
-            if (*cursor != ':') { continue; }
-            ++cursor;
-            while (*cursor && isspace((unsigned char)*cursor)) { ++cursor; }
-            return cursor;
-        }
-        while (*cursor && *cursor != '"') { ++cursor; }
-        if (*cursor) { ++cursor; }
-    }
-    return nullptr;
-}
-
-bool astroJSONGetString(const char *jsonIn, const char *key, char *valueOut, size_t valueSize)
-{
-    if (!valueOut || !valueSize) { return false; }
-    valueOut[0] = '\0';
-
-    const char *value = astroJSONFindValue(jsonIn, key);
-    if (!value || *value != '"') { return false; }
-    ++value;
-
-    size_t outIndex = 0;
-    while (*value && *value != '"') {
-        char next = *value++;
-        if (next == '\\' && *value) {
-            switch (*value++) {
-                case '"': next = '"'; break;
-                case '\\': next = '\\'; break;
-                case 'n': next = '\n'; break;
-                case 'r': next = '\r'; break;
-                case 't': next = '\t'; break;
-                default: return false;
-            }
-        }
-        if (outIndex + 1 >= valueSize) { return false; }
-        valueOut[outIndex++] = next;
-    }
-    if (*value != '"') { return false; }
-    valueOut[outIndex] = '\0';
-    return true;
-}
-
-bool astroJSONGetLong(const char *jsonIn, const char *key, long *valueOut)
-{
-    if (!valueOut) { return false; }
-    const char *value = astroJSONFindValue(jsonIn, key);
-    if (!value) { return false; }
-    char *end = nullptr;
-    long parsed = strtol(value, &end, 10);
-    if (end == value) { return false; }
-    *valueOut = parsed;
-    return true;
-}
-
-bool astroJSONGetUnsignedLong(const char *jsonIn, const char *key, unsigned long *valueOut)
-{
-    if (!valueOut) { return false; }
-    const char *value = astroJSONFindValue(jsonIn, key);
-    if (!value || *value == '-') { return false; }
-    char *end = nullptr;
-    unsigned long parsed = strtoul(value, &end, 10);
-    if (end == value) { return false; }
-    *valueOut = parsed;
-    return true;
-}
-
-bool astroJSONGetDouble(const char *jsonIn, const char *key, double *valueOut)
-{
-    if (!valueOut) { return false; }
-    const char *value = astroJSONFindValue(jsonIn, key);
-    if (!value) { return false; }
-    char *end = nullptr;
-    double parsed = strtod(value, &end);
-    if (end == value) { return false; }
-    *valueOut = parsed;
-    return true;
-}
-
-bool astroJSONGetBool(const char *jsonIn, const char *key, bool *valueOut)
-{
-    if (!valueOut) { return false; }
-    const char *value = astroJSONFindValue(jsonIn, key);
-    if (!value) { return false; }
-    if (strncmp(value, "true", 4) == 0 || *value == '1') { *valueOut = true; return true; }
-    if (strncmp(value, "false", 5) == 0 || *value == '0') { *valueOut = false; return true; }
     return false;
 }
 

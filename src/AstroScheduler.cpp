@@ -5,17 +5,19 @@
 
 #include "Astruino.h"
 #include "AstroUtils.h"
-#include <stdio.h>
 
 AstroSchedulerConfig::AstroSchedulerConfig()
-    : deploySunAltitudeDegrees(ASTRO_SCH_DEPLOY_SUN_ALT_DEG), stowSunAltitudeDegrees(ASTRO_SCH_STOW_SUN_ALT_DEG),
-      alignmentToleranceDegrees(ASTRO_SCH_ALIGN_TOL_DEG), settleSeconds(ASTRO_SCH_SETTLE_SECS), reportIntervalSeconds(ASTRO_SCH_REPORT_INTERVAL_SECS)
+    : deploySunAltitudeDegrees(ASTRO_SCH_DEPLOY_SUN_ALT_DEG),
+      stowSunAltitudeDegrees(ASTRO_SCH_STOW_SUN_ALT_DEG),
+      alignmentToleranceDegrees(ASTRO_SCH_ALIGN_TOL_DEG),
+      settleSeconds(ASTRO_SCH_SETTLE_SECS),
+      reportIntervalSeconds(ASTRO_SCH_REPORT_INTERVAL_SECS)
 { ; }
 
 AstroScheduler::AstroScheduler()
-    : _mount(nullptr), _cover(nullptr), _device(nullptr), _thermal(nullptr), _safetyTrigger(nullptr), _logger(nullptr),
-      _targetId(Astro_Target_M42), _config(), _stage(Astro_SchedulerStage_DayStowed),
-      _stageStart(0), _settleStart(0), _lastEnvReport(0)
+    : _mount(nullptr), _cover(nullptr), _device(nullptr), _thermal(nullptr),
+      _safetyTrigger(nullptr), _logger(nullptr), _targetId(Astro_Target_M42), _config(),
+      _stage(Astro_SchedulerStage_DayStowed), _stageStart(0), _settleStart(0), _lastEnvReport(0)
 { ; }
 
 void AstroScheduler::setMount(SharedPtr<AstroMount> mount)
@@ -80,7 +82,8 @@ void AstroScheduler::enterStage(Astro_SchedulerStage stage, int64_t unixTime)
     }
 }
 
-void AstroScheduler::reportEnvironment(int64_t unixTime, const AstroThermalReadings &readings, const AstroThermalOutputs &outputs)
+void AstroScheduler::reportEnvironment(int64_t unixTime, const AstroThermalReadings &readings,
+                                       const AstroThermalOutputs &outputs)
 {
     if (!_logger || !_config.reportIntervalSeconds) { return; }
     if (_lastEnvReport && unixTime < _lastEnvReport + _config.reportIntervalSeconds) { return; }
@@ -198,7 +201,6 @@ void AstroScheduler::update()
             if (_mount) { _mount->park(); }
             if (_thermal) { _thermal->setMode(Astro_ThermalMode_SafeStowed); }
             if (_cover && (!_mount || _mount->isParked())) { _cover->close(); }
-
             if (safeToObserve && (!_mount || _mount->isParked()) && (!_cover || _cover->isClosed())) {
                 enterStage(Astro_SchedulerStage_DayStowed, unixTime);
             }
@@ -209,39 +211,30 @@ void AstroScheduler::update()
             if (_thermal) { _thermal->setMode(Astro_ThermalMode_SafeStowed); }
         } break;
 
-        default:
-            break;
+        default: break;
     }
 }
 
 AstroSchedulerSubData::AstroSchedulerSubData()
-    : AstroSchedulerConfig()
+    : AstroSchedulerConfig(), AstroSubData(0)
 { ; }
 
-bool AstroSchedulerSubData::toJSON(char *bufferOut, size_t bufferSize) const
+void AstroSchedulerSubData::toJSONObject(JsonObject &objectOut) const
 {
-    if (!bufferOut || !bufferSize) { return false; }
-    int written = snprintf(bufferOut, bufferSize,
-        "{\"deploySunAlt\":%.4f,\"stowSunAlt\":%.4f,\"alignTol\":%.5f,\"settleSecs\":%u,\"reportSecs\":%lu}",
-        deploySunAltitudeDegrees, stowSunAltitudeDegrees, alignmentToleranceDegrees,
-        (unsigned int)settleSeconds, (unsigned long)reportIntervalSeconds);
-    return written >= 0 && (size_t)written < bufferSize;
+    AstroSubData::toJSONObject(objectOut);
+    objectOut["deploySunAlt"] = deploySunAltitudeDegrees;
+    objectOut["stowSunAlt"] = stowSunAltitudeDegrees;
+    objectOut["alignTol"] = alignmentToleranceDegrees;
+    objectOut["settleSecs"] = settleSeconds;
+    objectOut["reportSecs"] = reportIntervalSeconds;
 }
 
-bool AstroSchedulerSubData::fromJSON(const char *jsonIn)
+void AstroSchedulerSubData::fromJSONObject(JsonObjectConst &objectIn)
 {
-    if (!jsonIn) { return false; }
-    double deployIn, stowIn, alignIn;
-    unsigned long settleIn, reportIn;
-    if (!astroJSONGetDouble(jsonIn, "deploySunAlt", &deployIn) ||
-        !astroJSONGetDouble(jsonIn, "stowSunAlt", &stowIn) ||
-        !astroJSONGetDouble(jsonIn, "alignTol", &alignIn) ||
-        !astroJSONGetUnsignedLong(jsonIn, "settleSecs", &settleIn) ||
-        !astroJSONGetUnsignedLong(jsonIn, "reportSecs", &reportIn)) { return false; }
-    deploySunAltitudeDegrees = deployIn;
-    stowSunAltitudeDegrees = stowIn;
-    alignmentToleranceDegrees = alignIn;
-    settleSeconds = (uint16_t)settleIn;
-    reportIntervalSeconds = (uint32_t)reportIn;
-    return true;
+    AstroSubData::fromJSONObject(objectIn);
+    deploySunAltitudeDegrees = objectIn["deploySunAlt"] | deploySunAltitudeDegrees;
+    stowSunAltitudeDegrees = objectIn["stowSunAlt"] | stowSunAltitudeDegrees;
+    alignmentToleranceDegrees = objectIn["alignTol"] | alignmentToleranceDegrees;
+    settleSeconds = objectIn["settleSecs"] | settleSeconds;
+    reportIntervalSeconds = objectIn["reportSecs"] | reportIntervalSeconds;
 }

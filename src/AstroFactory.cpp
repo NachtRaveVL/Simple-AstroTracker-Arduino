@@ -198,26 +198,47 @@ SharedPtr<AstroStepDirAxisDriver> AstroFactory::addMountAxisStepper(pintype_t st
         stepsPerDegree, maxStepsPerSecond));
 }
 
-SharedPtr<AstroThresholdTrigger> AstroFactory::addThresholdTrigger(SharedPtr<AstroSensor> sensor, double threshold,
-                                                                   bool triggerBelow, double tolerance, uint32_t stableTimeMs)
+SharedPtr<AstroMeasurementValueTrigger> AstroFactory::addThresholdTrigger(SharedPtr<AstroSensor> sensor, double threshold,
+                                                                            bool triggerBelow, double detriggerTolerance,
+                                                                            millis_t detriggerDelay)
 {
-    return sensor ? SharedPtr<AstroThresholdTrigger>(new AstroThresholdTrigger(sensor, threshold, triggerBelow, 0, tolerance, stableTimeMs)) : nullptr;
+    return sensor ? SharedPtr<AstroMeasurementValueTrigger>(
+        new AstroMeasurementValueTrigger(sensor, threshold, triggerBelow, 0, detriggerTolerance, detriggerDelay)) : nullptr;
 }
 
-SharedPtr<AstroRangeTrigger> AstroFactory::addRangeTrigger(SharedPtr<AstroSensor> sensor, double low, double high,
-                                                           bool triggerOutside, double tolerance, uint32_t stableTimeMs)
+SharedPtr<AstroMeasurementRangeTrigger> AstroFactory::addRangeTrigger(SharedPtr<AstroSensor> sensor, double low, double high,
+                                                                      bool triggerOutside, double detriggerTolerance,
+                                                                      millis_t detriggerDelay)
 {
-    return sensor ? SharedPtr<AstroRangeTrigger>(new AstroRangeTrigger(sensor, low, high, triggerOutside, 0, tolerance, stableTimeMs)) : nullptr;
+    return sensor ? SharedPtr<AstroMeasurementRangeTrigger>(
+        new AstroMeasurementRangeTrigger(sensor, low, high, triggerOutside, 0, detriggerTolerance, detriggerDelay)) : nullptr;
 }
 
 AstroObject *AstroFactory::newObjectFromData(const AstroObjectData *dataIn)
 {
-    if (!dataIn) { return nullptr; }
+    if (!dataIn || !dataIn->isObjectData()) { return nullptr; }
 
-    switch (dataIn->idType) {
-        case AstroIdentity::Actuator:
-            return dataIn->objType == Astro_ActuatorType_Focuser ? (AstroObject *)new AstroFocuser(dataIn) : (AstroObject *)new AstroActuator(dataIn);
-        case AstroIdentity::Sensor: return new AstroValueSensor(dataIn);
+    switch (dataIn->id.object.idType) {
+        case AstroIdentity::Actuator: {
+            const AstroActuatorData *actuatorData = static_cast<const AstroActuatorData *>(dataIn);
+            switch (dataIn->id.object.classType) {
+                case AstroActuator::Digital: return new AstroDigitalActuator(actuatorData);
+                case AstroActuator::RelayMotor: return new AstroRelayMotorActuator(actuatorData);
+                case AstroActuator::Analog: return new AstroAnalogActuator(actuatorData);
+                case AstroActuator::Focuser: return new AstroFocuser(actuatorData);
+                case AstroActuator::Base: return new AstroActuator(actuatorData);
+                default: return nullptr;
+            }
+        }
+        case AstroIdentity::Sensor: {
+            const AstroSensorData *sensorData = static_cast<const AstroSensorData *>(dataIn);
+            switch (dataIn->id.object.classType) {
+                case AstroSensor::Value: return new AstroValueSensor(sensorData);
+                case AstroSensor::Digital: return new AstroDigitalSensor(sensorData);
+                case AstroSensor::Analog: return new AstroAnalogSensor(sensorData);
+                default: return nullptr;
+            }
+        }
         case AstroIdentity::Mount: return new AstroMount(dataIn);
         case AstroIdentity::Rail: return new AstroRail(dataIn);
         case AstroIdentity::Cover: return new AstroCover(dataIn);

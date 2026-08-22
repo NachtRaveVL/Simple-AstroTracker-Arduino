@@ -5,71 +5,53 @@
 
 #include "Astruino.h"
 
-AstroModule::AstroModule()
-    : _initialized(false)
-{ ; }
-
-bool AstroModule::begin()
+AstroCalibrations::~AstroCalibrations()
 {
-    _initialized = true;
-    return true;
+    clearUserCalibrationData();
 }
 
-void AstroModule::update()
-{ ; }
+void AstroCalibrations::clearUserCalibrationData()
+{
+    for (auto iter = _calibrationData.begin(); iter != _calibrationData.end(); ++iter) {
+        if (iter->second) { delete iter->second; }
+    }
+    _calibrationData.clear();
+}
 
 const AstroCalibrationData *AstroCalibrations::getUserCalibrationData(akey_t key) const
 {
     auto iter = _calibrationData.find(key);
-    if (iter != _calibrationData.end()) {
-        return iter->second;
-    }
-    return nullptr;
+    return iter != _calibrationData.end() ? iter->second : nullptr;
 }
 
 bool AstroCalibrations::setUserCalibrationData(const AstroCalibrationData *calibrationData)
 {
-    ASTRO_SOFT_ASSERT(calibrationData, "Invalid calibration data");
+    ASTRO_SOFT_ASSERT(calibrationData && calibrationData->ownerName[0], "Invalid calibration data");
+    if (!calibrationData || !calibrationData->ownerName[0]) { return false; }
 
-    if (calibrationData) {
-        akey_t key = astroStringHash(calibrationData->ownerName);
-        auto iter = _calibrationData.find(key);
-        bool retVal = false;
-
-        if (iter == _calibrationData.end()) {
-            auto calibData = new AstroCalibrationData();
-
-            ASTRO_SOFT_ASSERT(calibData, "Calibration allocation failure");
-            if (calibData) {
-                *calibData = *calibrationData;
-                _calibrationData[key] = calibData;
-                retVal = (_calibrationData.find(key) != _calibrationData.end());
-            }
-        } else {
-            *(iter->second) = *calibrationData;
-            retVal = true;
-        }
-
-        return retVal;
+    akey_t key = astroStringHash(calibrationData->ownerName);
+    auto iter = _calibrationData.find(key);
+    if (iter == _calibrationData.end()) {
+        AstroCalibrationData *copy = new AstroCalibrationData(*calibrationData);
+        ASTRO_SOFT_ASSERT(copy, "Calibration allocation failure");
+        if (!copy) { return false; }
+        _calibrationData[key] = copy;
+    } else {
+        *(iter->second) = *calibrationData;
     }
-    return false;
+    return true;
 }
 
 bool AstroCalibrations::dropUserCalibrationData(const AstroCalibrationData *calibrationData)
 {
     ASTRO_HARD_ASSERT(calibrationData, "Invalid calibration data");
     if (!calibrationData) { return false; }
-
     akey_t key = astroStringHash(calibrationData->ownerName);
     auto iter = _calibrationData.find(key);
-
-    if (iter != _calibrationData.end()) {
-        if (iter->second) { delete iter->second; }
-        _calibrationData.erase(iter);
-        return true;
-    }
-
-    return false;
+    if (iter == _calibrationData.end()) { return false; }
+    if (iter->second) { delete iter->second; }
+    _calibrationData.erase(iter);
+    return true;
 }
 
 bool AstroObjectRegistration::registerObject(SharedPtr<AstroObject> object)
