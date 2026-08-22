@@ -6,7 +6,7 @@
 #ifndef AstroStrings_H
 #define AstroStrings_H
 
-#include "AstroCompat.h"
+#include "Astruino.h"
 
 // Library String Enumeration
 // Identifies common library strings that are stored in program Flash when built-in data is enabled.

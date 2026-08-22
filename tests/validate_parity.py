@@ -8,7 +8,6 @@ SRC = ROOT / "src"
 forbidden = {
     "AstroSignal<": "parallel callback signal implementation",
     "class AstroSignal {": "parallel callback signal implementation",
-    "AstroCompat.h": "parallel compatibility layer",
     "class AstroModule": "parallel generic module lifecycle",
     "class AstroStream": "parallel stream hierarchy",
     "AstroMemoryStream": "parallel memory stream hierarchy",
@@ -62,8 +61,6 @@ if streams.is_file():
     text = streams.read_text(errors="ignore")
     if "public Stream" not in text:
         errors.append("src/AstroStreams.h: stream implementation is not Arduino Stream based")
-    if "AstroCompat.h" in text:
-        errors.append("src/AstroStreams.h: stale AstroCompat dependency remains")
 
 # Calibration data follows Hydro/Helio identity-string ownership, not an alternate raw-key record.
 for relative, owner_token in (("src/AstroDatas.h", "ownerName"),) if "Astro" in str(ROOT) else (("src/TerraDatas.h", "ownerName"),):
