@@ -4,57 +4,63 @@
 */
 
 #include "Astruino.h"
+#include "Astroduino.h"
+#include "AstroCoreLogic.h"
 
 AstroDLinkObject::AstroDLinkObject()
-    : _key(akey_none), _obj(nullptr), _keyString()
+    : _key(akey_none), _obj(nullptr), _keyStr(nullptr)
 { ; }
 
-AstroDLinkObject::AstroDLinkObject(const AstroDLinkObject &object)
-    : _key(object._key), _obj(object._obj), _keyString(object._keyString)
-{ ; }
-
-AstroDLinkObject &AstroDLinkObject::operator=(const AstroDLinkObject &rhs)
+AstroDLinkObject::AstroDLinkObject(const AstroDLinkObject &obj)
+    : _key(obj._key), _obj(obj._obj), _keyStr(nullptr)
 {
-    if (this != &rhs) {
-        _key = rhs._key;
-        _obj = rhs._obj;
-        _keyString = rhs._keyString;
+    if (obj._keyStr) {
+        auto len = strnlen(obj._keyStr, ASTRO_NAME_MAXSIZE);
+        if (len) {
+            _keyStr = (const char *)malloc(len + 1);
+            strncpy((char *)_keyStr, obj._keyStr, len + 1);
+        }
     }
-    return *this;
+}
+
+AstroDLinkObject::~AstroDLinkObject()
+{
+    if (_keyStr) { free((void *)_keyStr); }
 }
 
 void AstroDLinkObject::unresolve()
 {
-    if (_obj && !_keyString.length()) { _keyString = _obj->getKeyString(); }
+    if (_obj && !_keyStr) {
+        auto id = _obj->getId();
+        auto len = id.keyString.length();
+        if (len) {
+            _keyStr = (const char *)malloc(len + 1);
+            strncpy((char *)_keyStr, id.keyString.c_str(), len + 1);
+        }
+    }
+    ASTRO_HARD_ASSERT(!_obj || _key == _obj->getKey(), SFP(AStr_Err_OperationFailure));
     _obj = nullptr;
 }
 
 SharedPtr<AstroObjInterface> AstroDLinkObject::resolveObject()
 {
     if (_obj || !isSet()) { return _obj; }
-    if (Astruino::_activeInstance) {
-        _obj = static_pointer_cast<AstroObjInterface>(Astruino::_activeInstance->_objects[_key]);
+    if (Astroduino::_activeInstance) {
+        _obj = static_pointer_cast<AstroObjInterface>(Astroduino::_activeInstance->_objects[_key]);
     }
-    if (_obj) { _keyString = AstroString(); }
+    if (_obj && _keyStr) {
+        free((void *)_keyStr); _keyStr = nullptr;
+    }
     return _obj;
 }
 
-AstroIdentity AstroDLinkObject::getId() const
-{
-    return _obj ? _obj->getId() : (_keyString.length() ? AstroIdentity(_keyString.c_str()) : AstroIdentity(_key));
-}
 
-AstroString AstroDLinkObject::getKeyString() const
-{
-    return _keyString.length() ? _keyString : (_obj ? _obj->getKeyString() : AstroString());
-}
-
-AstroAttachment::AstroAttachment(AstroObjInterface *parent)
-    : AstroSubObject(parent), _obj()
+AstroAttachment::AstroAttachment(AstroObjInterface *parent, aposi_t subIndex)
+    : AstroSubObject(parent), _obj(), _subIndex(subIndex)
 { ; }
 
 AstroAttachment::AstroAttachment(const AstroAttachment &attachment)
-    : AstroSubObject(attachment._parent), _obj()
+    : AstroSubObject(attachment._parent), _obj(), _subIndex(attachment._subIndex)
 {
     initObject(attachment._obj);
 }
@@ -62,112 +68,189 @@ AstroAttachment::AstroAttachment(const AstroAttachment &attachment)
 AstroAttachment::~AstroAttachment()
 {
     if (isResolved() && _obj->isObject() && _parent && _parent->isObject()) {
-        _obj.get<AstroObject>()->removeLinkage(static_cast<AstroObject *>(_parent));
+        _obj.get<AstroObject>()->removeLinkage((AstroObject *)_parent);
     }
 }
 
 void AstroAttachment::attachObject()
 {
-    if (resolve() && _obj->isObject() && _parent && _parent->isObject()) {
-        _obj.get<AstroObject>()->addLinkage(static_cast<AstroObject *>(_parent));
+    if (resolve() && _obj->isObject() && _parent && _parent->isObject()) { // purposeful resolve in front
+        _obj.get<AstroObject>()->addLinkage((AstroObject *)_parent);
     }
 }
 
 void AstroAttachment::detachObject()
 {
     if (isResolved() && _obj->isObject() && _parent && _parent->isObject()) {
-        _obj.get<AstroObject>()->removeLinkage(static_cast<AstroObject *>(_parent));
+        _obj.get<AstroObject>()->removeLinkage((AstroObject *)_parent);
     }
+    // note: used to set _obj to nullptr here, but found that it's best not to -> avoids additional operator= calls during typical detach scenarios
 }
 
 void AstroAttachment::updateIfNeeded(bool poll)
 {
-    (void)poll;
-}
-
-void AstroAttachment::unresolve()
-{
-    detachObject();
-    _obj.unresolve();
+    // intended to be overridden by derived classes, but not an error if left not implemented
 }
 
 void AstroAttachment::setParent(AstroObjInterface *parent)
 {
     if (_parent != parent) {
-        detachObject();
+        if (isResolved() && _obj->isObject() && _parent && _parent->isObject()) { _obj.get<AstroObject>()->removeLinkage((AstroObject *)_parent); }
+
         _parent = parent;
-        if (isResolved()) { attachObject(); }
+
+        if (isResolved() && _obj->isObject() && _parent && _parent->isObject()) { _obj.get<AstroObject>()->addLinkage((AstroObject *)_parent); }
     }
 }
 
-SharedPtr<AstroObjInterface> AstroAttachment::getSharedPtrFor(const AstroObjInterface *object) const
+SharedPtr<AstroObjInterface> AstroAttachment::getSharedPtrFor(const AstroObjInterface *obj) const
 {
-    return object->getKey() == getKey() ? _obj._obj : AstroSubObject::getSharedPtrFor(object);
+    return obj->getKey() == getKey() ? _obj._obj : AstroSubObject::getSharedPtrFor(obj);
 }
 
-AstroActuatorAttachment::AstroActuatorAttachment(AstroObjInterface *parent)
-    : AstroAttachment(parent), _actHandle(), _actSetup()
+
+AstroActuatorAttachment::AstroActuatorAttachment(AstroObjInterface *parent, aposi_t subIndex)
+    : AstroSignalAttachment<AstroActuator *, ASTRO_ACTUATOR_SIGNAL_SLOTS>(parent, subIndex, &AstroActuator::getActivationSignal),
+       _actHandle(), _actSetup(), _updateSlot(nullptr), _rateMultiplier(1.0f), _calledLastUpdate(false)
 { ; }
 
 AstroActuatorAttachment::AstroActuatorAttachment(const AstroActuatorAttachment &attachment)
-    : AstroAttachment(attachment), _actHandle(), _actSetup(attachment._actSetup)
+    : AstroSignalAttachment<AstroActuator *, ASTRO_ACTUATOR_SIGNAL_SLOTS>(attachment),
+      _actHandle(attachment._actHandle), _actSetup(attachment._actSetup),
+      _updateSlot(attachment._updateSlot ? attachment._updateSlot->clone() : nullptr),
+      _rateMultiplier(attachment._rateMultiplier), _calledLastUpdate(false)
 { ; }
+
+AstroActuatorAttachment::~AstroActuatorAttachment()
+{
+    if (_updateSlot) { delete _updateSlot; _updateSlot = nullptr; }
+}
 
 void AstroActuatorAttachment::updateIfNeeded(bool poll)
 {
-    (void)poll;
-    if (_actHandle.isActive()) { _actHandle.elapseTo(); }
+    if (_actHandle.isValid()) {
+        if (isActivated()) {
+            _actHandle.elapseTo();
+            if (_updateSlot) { (*_updateSlot)(this); }
+            _calledLastUpdate = _actHandle.isDone();
+        } else if (_actHandle.isDone() && !_calledLastUpdate) {
+            if (_updateSlot) { (*_updateSlot)(this); }
+            _calledLastUpdate = true;
+        }
+    }
 }
 
 void AstroActuatorAttachment::setupActivation(float value, millis_t duration, bool force)
 {
-    setupActivation(AstroActivation(value > FLT_EPSILON ? Astro_DirectionMode_Forward :
-                                    value < -FLT_EPSILON ? Astro_DirectionMode_Reverse : Astro_DirectionMode_Stop,
-                                    fabsf(value), duration,
-                                    force ? Astro_ActivationFlags_Forced : Astro_ActivationFlags_None));
+    if (resolve()) {
+        value = get()->calibrationInvTransform(value);
+
+        if (get()->isMotorType()) {
+            // Keep direction selection tolerant of floating-point noise around a stopped command.
+            int direction = helioDirectionForOffset(value, FLT_EPSILON);
+            setupActivation(AstroActivation(direction > 0 ? Astro_DirectionMode_Forward : direction < 0 ? Astro_DirectionMode_Reverse : Astro_DirectionMode_Stop,
+                                            fabsf(value), duration, (force ? Astro_ActivationFlags_Forced : Astro_ActivationFlags_None)));
+            return;
+        }
+    }
+
+    setupActivation(AstroActivation(Astro_DirectionMode_Forward, value, duration, (force ? Astro_ActivationFlags_Forced : Astro_ActivationFlags_None)));
 }
 
 void AstroActuatorAttachment::enableActivation()
 {
     if (!_actHandle.actuator && _actSetup.isValid() && resolve()) {
-        _actHandle.activation = _actSetup;
+        if (_actHandle.isDone()) { applySetup(); } // repeats existing setup
+        _calledLastUpdate = false;
         _actHandle = getObject();
-        get()->resolveActivations();
     }
 }
 
-AstroSensorAttachment::AstroSensorAttachment(AstroObjInterface *parent, uint8_t measurementRow)
-    : AstroAttachment(parent), _measurement(), _measurementRow(measurementRow),
-      _convertParam(0.0), _needsMeasurement(true)
-{ ; }
+void AstroActuatorAttachment::setUpdateSlot(const Slot<AstroActuatorAttachment *> &updateSlot)
+{
+    if (!_updateSlot || !_updateSlot->operator==(&updateSlot)) {
+        if (_updateSlot) { delete _updateSlot; _updateSlot = nullptr; }
+        _updateSlot = updateSlot.clone();
+    }
+}
+
+void AstroActuatorAttachment::applySetup()
+{
+    if (_actSetup.isValid()) {
+        if (isFPEqual(_rateMultiplier, 1.0f)) {
+            _actHandle.activation = _actSetup;
+        } else {
+            _actHandle.activation.direction = _actSetup.direction;
+            _actHandle.activation.flags = _actSetup.flags;
+
+            if (resolve() && get()->isAnyBinaryClass()) { // Duration based change for rate multiplier
+                _actHandle.activation.intensity = _actSetup.intensity;
+                if (!_actHandle.isUntimed()) {
+                    _actHandle.activation.duration = _actSetup.duration * _rateMultiplier;
+                } else { // cannot directly use rate multiplier
+                    _actHandle.activation.duration = _actSetup.duration;
+                }
+            } else { // Intensity based change for rate multiplier
+                _actHandle.activation.intensity = _actSetup.intensity * _rateMultiplier;
+                _actHandle.activation.duration = _actSetup.duration;
+            }
+        }
+
+        if (isActivated() && resolve()) { get()->setNeedsUpdate(); }
+    }
+}
+
+
+AstroSensorAttachment::AstroSensorAttachment(AstroObjInterface *parent, aposi_t subIndex, uint8_t measurementRow)
+    : AstroSignalAttachment<const AstroMeasurement *, ASTRO_SENSOR_SIGNAL_SLOTS>(parent, subIndex, &AstroSensor::getMeasurementSignal),
+      _measurementRow(measurementRow), _convertParam(FLT_UNDEF), _needsMeasurement(true)
+{
+    setHandleMethod(&AstroSensorAttachment::handleMeasurement, this);
+}
 
 AstroSensorAttachment::AstroSensorAttachment(const AstroSensorAttachment &attachment)
-    : AstroAttachment(attachment), _measurement(attachment._measurement),
-      _measurementRow(attachment._measurementRow), _convertParam(attachment._convertParam),
-      _needsMeasurement(attachment._needsMeasurement)
+    : AstroSignalAttachment<const AstroMeasurement *, ASTRO_SENSOR_SIGNAL_SLOTS>(attachment),
+      _measurement(attachment._measurement), _measurementRow(attachment._measurementRow),
+      _convertParam(attachment._convertParam), _needsMeasurement(attachment._needsMeasurement)
+{
+    setHandleSlot(*attachment._handleSlot);
+}
+
+AstroSensorAttachment::~AstroSensorAttachment()
 { ; }
 
 void AstroSensorAttachment::attachObject()
 {
-    AstroAttachment::attachObject();
+    AstroSignalAttachment<const AstroMeasurement *, ASTRO_SENSOR_SIGNAL_SLOTS>::attachObject();
+
+    if (_handleSlot) { (*_handleSlot)(get()->getMeasurement()); }
+    else { handleMeasurement(get()->getMeasurement()); }
+}
+
+void AstroSensorAttachment::detachObject()
+{
+    AstroSignalAttachment<const AstroMeasurement *, ASTRO_SENSOR_SIGNAL_SLOTS>::detachObject();
+
     setNeedsMeasurement();
 }
 
 void AstroSensorAttachment::updateIfNeeded(bool poll)
 {
-    if (!resolve()) { return; }
-    if (poll || _needsMeasurement || !get()->getMeasurement().isSet()) {
-        get()->poll((int64_t)unixNow(), 1);
+    if ((poll || _needsMeasurement) && resolve()) {
+        if (_handleSlot) { (*_handleSlot)(get()->getMeasurement()); }
+        else { handleMeasurement(get()->getMeasurement()); }
+
+        get()->takeMeasurement((poll || _needsMeasurement)); // purposeful recheck
     }
-    setMeasurement(getAsSingleMeasurement(&get()->getMeasurement(), _measurementRow));
 }
 
 void AstroSensorAttachment::setMeasurement(AstroSingleMeasurement measurement)
 {
-    if (_measurement.units != Astro_UnitsType_Undefined && measurement.units != _measurement.units) {
-        measurement.toUnits(_measurement.units, _convertParam);
-    }
+    auto outUnits = definedUnitsElse(getMeasurementUnits(), measurement.units);
     _measurement = measurement;
+    _measurement.setMinFrame(1);
+
+    convertUnits(&_measurement, outUnits, _convertParam);
     _needsMeasurement = false;
 }
 
@@ -175,64 +258,58 @@ void AstroSensorAttachment::setMeasurementRow(uint8_t measurementRow)
 {
     if (_measurementRow != measurementRow) {
         _measurementRow = measurementRow;
+
         setNeedsMeasurement();
-        bumpRevisionIfNeeded();
     }
 }
 
-void AstroSensorAttachment::setMeasurementUnits(Astro_UnitsType units, double convertParam)
+void AstroSensorAttachment::setMeasurementUnits(Astro_UnitsType units, float convertParam)
 {
     if (_measurement.units != units || !isFPEqual(_convertParam, convertParam)) {
-        _measurement.units = units;
         _convertParam = convertParam;
+        convertUnits(&_measurement, units, _convertParam);
+
         setNeedsMeasurement();
-        bumpRevisionIfNeeded();
     }
 }
 
-AstroAxisDriverAttachment::AstroAxisDriverAttachment(AstroObjInterface *parent, aposi_t axisIndex)
-    : AstroSubObject(parent), _driver(), _axisIndex(axisIndex)
+void AstroSensorAttachment::handleMeasurement(const AstroMeasurement *measurement)
+{
+    if (measurement && measurement->frame) {
+        setMeasurement(getAsSingleMeasurement(measurement, _measurementRow));
+    }
+}
+
+
+AstroTriggerAttachment::AstroTriggerAttachment(AstroObjInterface *parent, aposi_t subIndex)
+    : AstroSignalAttachment<Astro_TriggerState, ASTRO_TRIGGER_SIGNAL_SLOTS>(parent, subIndex, &AstroTrigger::getTriggerSignal)
 { ; }
 
-void AstroAxisDriverAttachment::setTargetDegrees(double targetDegrees)
-{
-    if (_driver) { _driver->setTargetDegrees(targetDegrees); }
-}
-
-void AstroAxisDriverAttachment::stop()
-{
-    if (_driver) { _driver->stop(); }
-}
-
-double AstroAxisDriverAttachment::getTargetDegrees() const
-{
-    return _driver ? _driver->getTargetDegrees() : 0.0;
-}
-
-AstroTriggerAttachment::AstroTriggerAttachment(AstroObjInterface *parent)
-    : AstroSubObject(parent), _trigger()
+AstroTriggerAttachment::AstroTriggerAttachment(const AstroTriggerAttachment &attachment)
+    : AstroSignalAttachment<Astro_TriggerState, ASTRO_TRIGGER_SIGNAL_SLOTS>(attachment)
 { ; }
 
-void AstroTriggerAttachment::setObject(SharedPtr<AstroTrigger> trigger)
+AstroTriggerAttachment::~AstroTriggerAttachment()
+{ ; }
+
+void AstroTriggerAttachment::updateIfNeeded(bool poll)
 {
-    _trigger = trigger;
-    if (_trigger) { _trigger->setParent(parentForTrigger()); }
-    bumpRevisionIfNeeded();
+    if (poll && resolve()) { get()->update(); }
 }
 
-bool AstroTriggerAttachment::isTriggered(bool poll)
-{
-    if (_trigger && poll) { _trigger->update(); }
-    return _trigger && _trigger->isTriggered();
-}
 
-SharedPtr<AstroCameraTrigger> AstroObservationDeviceAttachment::getObject()
-{
-    return AstroAttachment::getObject<AstroCameraTrigger>();
-}
+AstroDriverAttachment::AstroDriverAttachment(AstroObjInterface *parent, aposi_t subIndex)
+    : AstroSignalAttachment<Astro_DrivingState, ASTRO_DRIVER_SIGNAL_SLOTS>(parent, subIndex, &AstroDriver::getDrivingSignal)
+{ ; }
 
-AstroObservationDevice *AstroObservationDeviceAttachment::get()
+AstroDriverAttachment::AstroDriverAttachment(const AstroDriverAttachment &attachment)
+    : AstroSignalAttachment<Astro_DrivingState, ASTRO_DRIVER_SIGNAL_SLOTS>(attachment)
+{ ; }
+
+AstroDriverAttachment::~AstroDriverAttachment()
+{ ; }
+
+void AstroDriverAttachment::updateIfNeeded(bool poll)
 {
-    auto object = getObject();
-    return object ? static_cast<AstroObservationDevice *>(object.get()) : nullptr;
+    if (poll && resolve()) { get()->update(); }
 }
