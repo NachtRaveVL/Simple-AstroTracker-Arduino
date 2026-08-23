@@ -163,28 +163,27 @@ typedef typeof(LOW)                     ard_pinstatus_t;    // Arduino pin statu
 // The following sizes apply to all architectures
 #define ASTRO_PREFIX_MAXSIZE            16                  // Prefix names maximum size (for logging/publishing)
 #define ASTRO_NAME_MAXSIZE              24                  // Naming character maximum size (system name, target name, etc.)
+#define ASTRO_TARGET_NAME_MAXSIZE       32                  // Target display name maximum size
+#define ASTRO_TARGET_ID_MAXSIZE         16                  // Target catalog/object identifier maximum size
 #define ASTRO_POS_MAXSIZE               32                  // Position indicies maximum size (max # of objs of same type)
 #define ASTRO_URL_MAXSIZE               64                  // URL string maximum size (max url length)
 #define ASTRO_JSON_DOC_SYSSIZE          256                 // JSON document chunk data bytes for reading in main system data (serialization buffer size)
 #define ASTRO_JSON_DOC_DEFSIZE          192                 // Default JSON document chunk data bytes (serialization buffer size)
 #define ASTRO_STRING_BUFFER_SIZE        32                  // Size in bytes of string serialization buffers
 #define ASTRO_WIFISTREAM_BUFFER_SIZE    128                 // Size in bytes of WiFi serialization buffers
+#define ASTRO_ACTIVATION_HANDLE_SLOTS   8                   // Maximum simultaneous activation requests per actuator
 // The following sizes only apply to architectures that do not have STL support (AVR/SAM)
 #define ASTRO_DEFAULT_MAXSIZE           8                   // Default maximum array/map size
 #define ASTRO_ACTUATOR_SIGNAL_SLOTS     4                   // Maximum number of slots for actuator's activation signal
 #define ASTRO_SENSOR_SIGNAL_SLOTS       6                   // Maximum number of slots for sensor's measurement signal
 #define ASTRO_TRIGGER_SIGNAL_SLOTS      4                   // Maximum number of slots for trigger's state signal
-#define ASTRO_BALANCER_SIGNAL_SLOTS     2                   // Maximum number of slots for balancer's state signal
-#define ASTRO_BALANCER_STALE_FRAMES     3                   // Maximum sensor frames balancers will act on without a fresh reading
 #define ASTRO_LOG_SIGNAL_SLOTS          2                   // Maximum number of slots for system log signal
 #define ASTRO_PUBLISH_SIGNAL_SLOTS      2                   // Maximum number of slots for data publish signal
-#define ASTRO_RESERVOIR_SIGNAL_SLOTS    2                   // Maximum number of slots for filled/empty signal
 #define ASTRO_RAIL_SIGNAL_SLOTS         8                   // Maximum number of slots for rail capacity signal
 #define ASTRO_SYS_OBJECTS_MAXSIZE       16                  // Maximum array size for system objects (max # of objects in system)
+#define ASTRO_TARGETS_TARGETSLIB_MAXSIZE 8                  // Maximum array size for targets library objects (max # of different kinds of targets)
 #define ASTRO_CAL_CALIBS_MAXSIZE        8                   // Maximum array size for calibration store objects (max # of different custom calibrations)
 #define ASTRO_OBJ_LINKS_MAXSIZE         8                   // Maximum array size for object linkage list, per obj (max # of linked objects)
-#define ASTRO_BAL_ACTUATORS_MAXSIZE     8                   // Maximum array size for balancer actuators list (max # of actuators used)
-#define ASTRO_SCH_REQACTS_MAXSIZE       4                   // Maximum array size for scheduler required actuators list (max # of actuators active per process stage)
 #define ASTRO_SYS_ONEWIRES_MAXSIZE      2                   // Maximum array size for pin OneWire list (max # of OneWire comm pins)
 #define ASTRO_SYS_PINLOCKS_MAXSIZE      2                   // Maximum array size for pin locks list (max # of locks)
 #define ASTRO_SYS_PINMUXERS_MAXSIZE     2                   // Maximum array size for pin muxers list (max # of muxers)
@@ -195,8 +194,27 @@ typedef typeof(LOW)                     ard_pinstatus_t;    // Arduino pin statu
 #define ASTRO_DATA_LOOP_INTERVAL        2000                // Default run interval of data loop, in milliseconds (customizable later)
 #define ASTRO_MISC_LOOP_INTERVAL        250                 // Run interval of misc loop, in milliseconds
 
-#define ASTRO_ACT_PUMPCALC_UPDATEMS     250                 // Minimum time millis needing to pass before a pump reports/writes changed volume to reservoir (reduces error accumulation)
-#define ASTRO_ACT_PUMPCALC_MINFLOWRATE  0.05f               // What percentage of continuous flow rate an instantaneous flow rate sensor must achieve before it is used in pump/volume calculations (reduces near-zero error jitters)
+#define ASTRO_TARGETS_LINKS_BASESIZE    1                   // Base array size for target's linkage list
+
+#define ASTRO_MOUNT_AXIS_RATE_DEGPS     8.0                 // Default simulated/limited mount axis rate, in degrees per second
+#define ASTRO_MOUNT_SIDEREAL_RATE_DEGPS 0.0041780746        // Sidereal tracking rate, in degrees per second
+#define ASTRO_MOUNT_GUIDE_RATE          0.5                 // Default pulse-guide rate as a multiple of sidereal
+
+#define ASTRO_COVER_TRAVEL_RATE         0.2f                // Default normalized cover travel rate per second
+#define ASTRO_COVER_TRAVEL_TIMEOUT_SECS 120.0               // Default cover movement timeout, in seconds
+
+#define ASTRO_SCH_DEPLOY_SUN_ALT_DEG    -6.0                // Sun altitude below which nighttime deployment may begin
+#define ASTRO_SCH_STOW_SUN_ALT_DEG      -3.0                // Sun altitude above which morning stow begins
+#define ASTRO_SCH_ALIGN_TOL_DEG         0.35                // Default mount alignment tolerance, in degrees
+#define ASTRO_SCH_SETTLE_SECS           5                   // Default stable alignment time before observation
+#define ASTRO_SCH_REPORT_INTERVAL_SECS  (8UL * 60UL * 60UL) // Default environment report interval, in seconds
+#define ASTRO_SCH_CAMERA_STABLE_DEG     2.0                 // Allowed camera temperature error before observing, in degrees C
+
+#define ASTRO_THERMAL_DEW_MARGIN_C      3.0                 // Default optics margin above dew point, in degrees C
+#define ASTRO_THERMAL_OPTICS_MAX_C      4.0                 // Maximum optics target above ambient, in degrees C
+#define ASTRO_THERMAL_CAMERA_TARGET_C   -10.0               // Default requested cooled-camera sensor target, in degrees C
+#define ASTRO_THERMAL_CAMERA_RAMP_CPM   2.0                 // Default camera cooling/warming ramp, in degrees C per minute
+#define ASTRO_THERMAL_ELECTRONICS_MIN_C -5.0                // Default minimum electronics/body temperature, in degrees C
 
 #define ASTRO_MUXERS_SHARED_ADDR_BUS    false               // Pin muxer channel selects should disable all pin muxers due to using same address bus (true), or not (false)
 
@@ -333,6 +351,194 @@ enum Astro_DHTType : signed char {
     Astro_DHTType_AM2301 = AM2301                           // AM2301 (alias of DHT21)
 };
 
+// Target Type
+// Common astronomical targets. Controls which catalog/ephemeris entry a target object uses.
+enum Astro_TargetType : unsigned char {
+    Astro_TargetType_Sun,                                   // Sun
+    Astro_TargetType_Moon,                                  // Moon
+    Astro_TargetType_Mercury,                               // Mercury
+    Astro_TargetType_Venus,                                 // Venus
+    Astro_TargetType_Mars,                                  // Mars
+    Astro_TargetType_Jupiter,                               // Jupiter
+    Astro_TargetType_Saturn,                                // Saturn
+    Astro_TargetType_Uranus,                                // Uranus
+    Astro_TargetType_Neptune,                               // Neptune
+    Astro_TargetType_M1,                                    // M1
+    Astro_TargetType_M2,                                    // M2
+    Astro_TargetType_M3,                                    // M3
+    Astro_TargetType_M4,                                    // M4
+    Astro_TargetType_M5,                                    // M5
+    Astro_TargetType_M6,                                    // M6
+    Astro_TargetType_M7,                                    // M7
+    Astro_TargetType_M8,                                    // M8
+    Astro_TargetType_M9,                                    // M9
+    Astro_TargetType_M10,                                   // M10
+    Astro_TargetType_M11,                                   // M11
+    Astro_TargetType_M12,                                   // M12
+    Astro_TargetType_M13,                                   // M13
+    Astro_TargetType_M14,                                   // M14
+    Astro_TargetType_M15,                                   // M15
+    Astro_TargetType_M16,                                   // M16
+    Astro_TargetType_M17,                                   // M17
+    Astro_TargetType_M18,                                   // M18
+    Astro_TargetType_M19,                                   // M19
+    Astro_TargetType_M20,                                   // M20
+    Astro_TargetType_M21,                                   // M21
+    Astro_TargetType_M22,                                   // M22
+    Astro_TargetType_M23,                                   // M23
+    Astro_TargetType_M24,                                   // M24
+    Astro_TargetType_M25,                                   // M25
+    Astro_TargetType_M26,                                   // M26
+    Astro_TargetType_M27,                                   // M27
+    Astro_TargetType_M28,                                   // M28
+    Astro_TargetType_M29,                                   // M29
+    Astro_TargetType_M30,                                   // M30
+    Astro_TargetType_M31,                                   // M31
+    Astro_TargetType_M32,                                   // M32
+    Astro_TargetType_M33,                                   // M33
+    Astro_TargetType_M34,                                   // M34
+    Astro_TargetType_M35,                                   // M35
+    Astro_TargetType_M36,                                   // M36
+    Astro_TargetType_M37,                                   // M37
+    Astro_TargetType_M38,                                   // M38
+    Astro_TargetType_M39,                                   // M39
+    Astro_TargetType_M40,                                   // M40
+    Astro_TargetType_M41,                                   // M41
+    Astro_TargetType_M42,                                   // M42
+    Astro_TargetType_M43,                                   // M43
+    Astro_TargetType_M44,                                   // M44
+    Astro_TargetType_M45,                                   // M45
+    Astro_TargetType_M46,                                   // M46
+    Astro_TargetType_M47,                                   // M47
+    Astro_TargetType_M48,                                   // M48
+    Astro_TargetType_M49,                                   // M49
+    Astro_TargetType_M50,                                   // M50
+    Astro_TargetType_M51,                                   // M51
+    Astro_TargetType_M52,                                   // M52
+    Astro_TargetType_M53,                                   // M53
+    Astro_TargetType_M54,                                   // M54
+    Astro_TargetType_M55,                                   // M55
+    Astro_TargetType_M56,                                   // M56
+    Astro_TargetType_M57,                                   // M57
+    Astro_TargetType_M58,                                   // M58
+    Astro_TargetType_M59,                                   // M59
+    Astro_TargetType_M60,                                   // M60
+    Astro_TargetType_M61,                                   // M61
+    Astro_TargetType_M62,                                   // M62
+    Astro_TargetType_M63,                                   // M63
+    Astro_TargetType_M64,                                   // M64
+    Astro_TargetType_M65,                                   // M65
+    Astro_TargetType_M66,                                   // M66
+    Astro_TargetType_M67,                                   // M67
+    Astro_TargetType_M68,                                   // M68
+    Astro_TargetType_M69,                                   // M69
+    Astro_TargetType_M70,                                   // M70
+    Astro_TargetType_M71,                                   // M71
+    Astro_TargetType_M72,                                   // M72
+    Astro_TargetType_M73,                                   // M73
+    Astro_TargetType_M74,                                   // M74
+    Astro_TargetType_M75,                                   // M75
+    Astro_TargetType_M76,                                   // M76
+    Astro_TargetType_M77,                                   // M77
+    Astro_TargetType_M78,                                   // M78
+    Astro_TargetType_M79,                                   // M79
+    Astro_TargetType_M80,                                   // M80
+    Astro_TargetType_M81,                                   // M81
+    Astro_TargetType_M82,                                   // M82
+    Astro_TargetType_M83,                                   // M83
+    Astro_TargetType_M84,                                   // M84
+    Astro_TargetType_M85,                                   // M85
+    Astro_TargetType_M86,                                   // M86
+    Astro_TargetType_M87,                                   // M87
+    Astro_TargetType_M88,                                   // M88
+    Astro_TargetType_M89,                                   // M89
+    Astro_TargetType_M90,                                   // M90
+    Astro_TargetType_M91,                                   // M91
+    Astro_TargetType_M92,                                   // M92
+    Astro_TargetType_M93,                                   // M93
+    Astro_TargetType_M94,                                   // M94
+    Astro_TargetType_M95,                                   // M95
+    Astro_TargetType_M96,                                   // M96
+    Astro_TargetType_M97,                                   // M97
+    Astro_TargetType_M98,                                   // M98
+    Astro_TargetType_M99,                                   // M99
+    Astro_TargetType_M100,                                  // M100
+    Astro_TargetType_M101,                                  // M101
+    Astro_TargetType_M102,                                  // M102
+    Astro_TargetType_M103,                                  // M103
+    Astro_TargetType_M104,                                  // M104
+    Astro_TargetType_M105,                                  // M105
+    Astro_TargetType_M106,                                  // M106
+    Astro_TargetType_M107,                                  // M107
+    Astro_TargetType_M108,                                  // M108
+    Astro_TargetType_M109,                                  // M109
+    Astro_TargetType_M110,                                  // M110
+    Astro_TargetType_Sirius,                                // Sirius
+    Astro_TargetType_Canopus,                               // Canopus
+    Astro_TargetType_Arcturus,                              // Arcturus
+    Astro_TargetType_Vega,                                  // Vega
+    Astro_TargetType_Capella,                               // Capella
+    Astro_TargetType_RigelKentaurus,                        // Rigel Kentaurus
+    Astro_TargetType_Procyon,                               // Procyon
+    Astro_TargetType_Betelgeuse,                            // Betelgeuse
+    Astro_TargetType_Achernar,                              // Achernar
+    Astro_TargetType_Hadar,                                 // Hadar
+    Astro_TargetType_Altair,                                // Altair
+    Astro_TargetType_Acrux,                                 // Acrux
+    Astro_TargetType_Aldebaran,                             // Aldebaran
+    Astro_TargetType_Spica,                                 // Spica
+    Astro_TargetType_Antares,                               // Antares
+    Astro_TargetType_Pollux,                                // Pollux
+    Astro_TargetType_Fomalhaut,                             // Fomalhaut
+    Astro_TargetType_Deneb,                                 // Deneb
+    Astro_TargetType_Regulus,                               // Regulus
+    Astro_TargetType_Polaris,                               // Polaris
+    Astro_TargetType_Castor,                                // Castor
+    Astro_TargetType_Bellatrix,                             // Bellatrix
+    Astro_TargetType_Alnilam,                               // Alnilam
+    Astro_TargetType_Alnitak,                               // Alnitak
+    Astro_TargetType_Mizar,                                 // Mizar
+    Astro_TargetType_Dubhe,                                 // Dubhe
+    Astro_TargetType_CustomTarget1,                         // Custom target 1
+    Astro_TargetType_CustomTarget2,                         // Custom target 2
+    Astro_TargetType_CustomTarget3,                         // Custom target 3
+    Astro_TargetType_CustomTarget4,                         // Custom target 4
+    Astro_TargetType_CustomTarget5,                         // Custom target 5
+    Astro_TargetType_CustomTarget6,                         // Custom target 6
+    Astro_TargetType_CustomTarget7,                         // Custom target 7
+    Astro_TargetType_CustomTarget8,                         // Custom target 8
+
+    Astro_TargetType_Count,                                 // Placeholder
+    Astro_TargetType_CustomTargetCount = 8,                 // Placeholder
+    Astro_TargetType_Undefined = 0xff                       // Placeholder
+};
+
+// Target Class
+// Broad astronomical object classification used by target catalog metadata.
+enum Astro_TargetClass : signed char {
+    Astro_TargetClass_Star,                                 // Star
+    Astro_TargetClass_OpenCluster,                          // Open cluster
+    Astro_TargetClass_GlobularCluster,                      // Globular cluster
+    Astro_TargetClass_Nebula,                               // Nebula
+    Astro_TargetClass_PlanetaryNebula,                      // Planetary nebula
+    Astro_TargetClass_Galaxy,                               // Galaxy
+    Astro_TargetClass_SolarSystem,                          // Solar system object
+    Astro_TargetClass_Other,                                // Other target class
+
+    Astro_TargetClass_Count,                                // Placeholder
+    Astro_TargetClass_Unknown = -1                          // Placeholder
+};
+
+// System Run Mode
+// Specifies how mount target positions are determined and controlled.
+enum Astro_SystemMode : signed char {
+    Astro_SystemMode_Tracking,                              // Astronomical position tracking from time/location and target coordinates
+    Astro_SystemMode_Balancing,                             // Sensor-feedback balancing/correction mode
+    Astro_SystemMode_Manual,                                // User/external code controls mount targets directly
+
+    Astro_SystemMode_Count,                                 // Placeholder
+    Astro_SystemMode_Undefined = -1                         // Placeholder
+};
 
 // Measurement Units Mode
 // Specifies the standard of measurement style that units will use.
@@ -360,7 +566,7 @@ enum Astro_DisplayOutputMode : signed char {
     Astro_DisplayOutputMode_SSD1305_x64Ada,                 // Adafruit SSD1305 128x64 OLED, using U8g2 (i2c or SPI)
     Astro_DisplayOutputMode_SSD1306,                        // SSD1306 128x64 OLED, using U8g2 (i2c or SPI)
     Astro_DisplayOutputMode_SH1106,                         // SH1106 128x64 OLED, using U8g2 (i2c or SPI)
-    Astro_DisplayOutputMode_CustomOLED,                     // Custom OLED, using U8g2 (i2c or SPI, note: custom device/size defined statically by HYDRO_UI_CUSTOM_OLED_I2C / HYDRO_UI_CUSTOM_OLED_SPI)
+    Astro_DisplayOutputMode_CustomOLED,                     // Custom OLED, using U8g2 (i2c or SPI, note: custom device/size defined statically by ASTRO_UI_CUSTOM_OLED_I2C / ASTRO_UI_CUSTOM_OLED_SPI)
     Astro_DisplayOutputMode_SSD1607,                        // SSD1607 200x200 OLED, using U8g2 (SPI only)
     Astro_DisplayOutputMode_IL3820,                         // IL3820 296x128 OLED, using U8g2 (SPI only)
     Astro_DisplayOutputMode_IL3820_V2,                      // IL3820 V2 296x128 OLED, using U8g2 (SPI only)
@@ -399,6 +605,48 @@ enum Astro_ControlInputMode : signed char {
     Astro_ControlInputMode_Undefined = -1                   // Placeholder
 };
 
+// Actuator Type
+// Control actuator type. Specifies the various controllable equipment and their usage.
+enum Astro_ActuatorType : signed char {
+    Astro_ActuatorType_MountAxis,                           // Mount axis
+    Astro_ActuatorType_Cover,                               // Cover
+    Astro_ActuatorType_DewHeater,                           // Dew heater
+    Astro_ActuatorType_CameraCooler,                        // Camera cooler
+    Astro_ActuatorType_Fan,                                 // Fan
+    Astro_ActuatorType_Focuser,                             // Focuser
+
+    Astro_ActuatorType_Count,                               // Placeholder
+    Astro_ActuatorType_Undefined = -1                       // Placeholder
+};
+
+// Sensor Type
+// Sensor device type. Specifies the various sensors and the kinds of things they measure.
+enum Astro_SensorType : signed char {
+    Astro_SensorType_Temperature,                           // Temperature sensor
+    Astro_SensorType_Humidity,                              // Humidity sensor
+    Astro_SensorType_Position,                              // Position sensor
+    Astro_SensorType_LimitSwitch,                           // Limit switch sensor
+    Astro_SensorType_Rain,                                  // Rain/wet sensor
+    Astro_SensorType_WindSpeed,                             // Wind speed sensor
+    Astro_SensorType_Light,                                 // Light sensor
+    Astro_SensorType_Voltage,                               // Voltage sensor
+    Astro_SensorType_Current,                               // Current sensor
+    Astro_SensorType_CameraTemperature,                     // Camera temperature sensor
+
+    Astro_SensorType_Count,                                 // Placeholder
+    Astro_SensorType_Undefined = -1                         // Placeholder
+};
+
+// Mount Type
+// Telescope/tracker mount geometry.
+enum Astro_MountType : signed char {
+    Astro_MountType_Equatorial,                             // Equatorial mount
+    Astro_MountType_AltAz,                                  // Altitude/azimuth mount
+    Astro_MountType_SingleAxis,                             // Single-axis sidereal tracker
+
+    Astro_MountType_Count,                                  // Placeholder
+    Astro_MountType_Unknown = -1                            // Placeholder
+};
 
 // Power Rail
 // Common power rails. Specifies an isolated operational power rail unit.
@@ -473,36 +721,74 @@ enum Astro_TriggerState : signed char {
     Astro_TriggerState_Undefined = -1                       // Placeholder
 };
 
+// Thermal Control Mode
+// Selects thermal-balancing goals for storage, observing, or safe stow.
+enum Astro_ThermalMode : signed char {
+    Astro_ThermalMode_DayStorage,                           // Day storage
+    Astro_ThermalMode_NightObserving,                       // Night observing
+    Astro_ThermalMode_SafeStowed,                           // Safe stowed
+
+    Astro_ThermalMode_Count,                                // Placeholder
+    Astro_ThermalMode_Undefined = -1                        // Placeholder
+};
+
+// Scheduler Stage
+// Current stage of the automatic nighttime observation sequence.
+enum Astro_SchedulerStage : signed char {
+    Astro_SchedulerStage_DayStowed,                         // Day stowed
+    Astro_SchedulerStage_Deploying,                         // Deploying
+    Astro_SchedulerStage_Cooling,                           // Cooling
+    Astro_SchedulerStage_Slewing,                           // Slewing
+    Astro_SchedulerStage_Settling,                          // Settling
+    Astro_SchedulerStage_Observing,                         // Observing
+    Astro_SchedulerStage_Warming,                           // Warming
+    Astro_SchedulerStage_Stowing,                           // Stowing
+    Astro_SchedulerStage_SafeStowed,                        // Safe stowed
+    Astro_SchedulerStage_Fault,                             // Hardware or motion fault requiring intervention
+
+    Astro_SchedulerStage_Count,                             // Placeholder
+    Astro_SchedulerStage_Undefined = -1                     // Placeholder
+};
+
+// Units Category
+// Unit of measurement category. Specifies the kind of unit.
+enum Astro_UnitsCategory : signed char {
+    Astro_UnitsCategory_Raw,                                // Raw/dimensionless unit
+    Astro_UnitsCategory_Angle,                              // Angle based unit
+    Astro_UnitsCategory_Distance,                           // Distance/position based unit
+    Astro_UnitsCategory_Percentile,                         // Percentile based unit
+    Astro_UnitsCategory_Speed,                              // Speed/travel based unit
+    Astro_UnitsCategory_Temperature,                        // Temperature based unit
+    Astro_UnitsCategory_Humidity,                           // Humidity based unit
+    Astro_UnitsCategory_Power,                              // Power based unit
+    Astro_UnitsCategory_Voltage,                            // Voltage based unit
+    Astro_UnitsCategory_Current,                            // Current based unit
+
+    Astro_UnitsCategory_Count,                              // Placeholder
+    Astro_UnitsCategory_Undefined = -1                      // Placeholder
+};
+
 // Units Type
 // Unit of measurement type. Specifies the unit type associated with a measured value.
-// Note: Rate units may only be in per minute, use PER_X_TO_PER_Y defines to convert.
+// Note: Rate units may only be in per second, use PER_X_TO_PER_Y defines to convert.
 enum Astro_UnitsType : signed char {
     Astro_UnitsType_Raw_1,                                  // Normalized raw value mode [0,1=aRef]
-    Astro_UnitsType_Percentile_100,                         // Percentile mode [0,100]
-    Astro_UnitsType_Alkalinity_pH_14,                       // pH value alkalinity mode [0,14]
-    Astro_UnitsType_Concentration_EC_5,                     // Siemens electrical conductivity concentration mode [0,5] (aka mS/cm)
-    Astro_UnitsType_Concentration_PPM_500,                  // Parts-per-million 500 concentration mode [0,2500] (NaCl-based, common for US)
-    Astro_UnitsType_Concentration_PPM_640,                  // Parts-per-million 640 concentration mode [0,3200] (common for EU)
-    Astro_UnitsType_Concentration_PPM_700,                  // Parts-per-million 700 concentration mode [0,3500] (KCl-based, common for AU)
-    Astro_UnitsType_Distance_Feet,                          // Feet distance mode
+    Astro_UnitsType_Angle_Degrees_360,                      // Degrees angle mode [0,%360)
+    Astro_UnitsType_Angle_Radians_2pi,                      // Radians angle mode [0,%2pi)
     Astro_UnitsType_Distance_Meters,                        // Meters distance mode
-    Astro_UnitsType_LiqDilution_MilliLiterPerGallon,        // Milli liter per gallon dilution mode
-    Astro_UnitsType_LiqDilution_MilliLiterPerLiter,         // Milli liter per liter dilution mode
-    Astro_UnitsType_LiqFlowRate_GallonsPerMin,              // Gallons per minute liquid flow rate mode
-    Astro_UnitsType_LiqFlowRate_LitersPerMin,               // Liters per minute liquid flow rate mode
-    Astro_UnitsType_LiqVolume_Gallons,                      // Gallons liquid volume mode
-    Astro_UnitsType_LiqVolume_Liters,                       // Liters liquid volume mode
-    Astro_UnitsType_Power_Amperage,                         // Amperage current power mode
-    Astro_UnitsType_Power_Wattage,                          // Wattage power mode
+    Astro_UnitsType_Distance_Feet,                          // Feet distance mode
+    Astro_UnitsType_Percentile_100,                         // Percentile mode [0,100]
+    Astro_UnitsType_Speed_MetersPerSec,                     // Meters per second speed mode
+    Astro_UnitsType_Speed_FeetPerSec,                       // Feet per second speed mode
     Astro_UnitsType_Temperature_Celsius,                    // Celsius temperature mode
     Astro_UnitsType_Temperature_Fahrenheit,                 // Fahrenheit temperature mode
     Astro_UnitsType_Temperature_Kelvin,                     // Kelvin temperature mode
-    Astro_UnitsType_Weight_Kilograms,                       // Kilograms weight mode
-    Astro_UnitsType_Weight_Pounds,                          // Pounds weight mode
+    Astro_UnitsType_Humidity_RH,                            // Relative humidity percent mode
+    Astro_UnitsType_Power_Wattage,                          // Wattage power mode
+    Astro_UnitsType_Voltage_Volts,                          // Voltage mode
+    Astro_UnitsType_Current_Amperage,                       // Amperage current mode
 
     Astro_UnitsType_Count,                                  // Placeholder
-    Astro_UnitsType_Concentration_TDS = Astro_UnitsType_Concentration_EC_5, // Standard TDS concentration mode alias
-    Astro_UnitsType_Concentration_PPM = Astro_UnitsType_Concentration_PPM_500, // Standard PPM concentration mode alias
     Astro_UnitsType_Power_JoulesPerSecond = Astro_UnitsType_Power_Wattage, // Joules per second power mode alias
     Astro_UnitsType_Undefined = -1                          // Placeholder
 };
@@ -524,7 +810,6 @@ struct AstroData;
 struct AstroSubData;
 struct AstroCalibrationData;
 struct AstroTargetsLibData;
-struct AstroCustomAdditiveData;
 struct AstroObjectData;
 struct AstroSystemData;
 struct AstroPin;
@@ -544,6 +829,8 @@ class AstroTriggerAttachment;
 class AstroTrigger;
 class AstroActuator;
 class AstroSensor;
+class AstroTarget;
+class AstroMount;
 class AstroRail;
 
 // System sketches setup enums (for non-zero resolution)
