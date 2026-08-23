@@ -28,16 +28,34 @@ inline Astro_UnitsType AstroMeasurementUnitsInterface::getBaseUnits(uint8_t meas
     return baseUnits(getMeasurementUnits(measurementRow));
 }
 
-
-inline void AstroActuatorObjectInterface::setContinuousPowerUsage(float contPowerUsage, Astro_UnitsType contPowerUsageUnits)
+inline void AstroMeasurementUnitsInterfaceStorageSingle::setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t measurementRow)
 {
-    setContinuousPowerUsage(AstroSingleMeasurement(contPowerUsage, contPowerUsageUnits));
+    if (measurementRow < 1) { _measurementUnits[measurementRow] = measurementUnits; }
 }
 
-
-inline void AstroMotorObjectInterface::setContinuousSpeed(float contSpeed, Astro_UnitsType contSpeedUnits)
+inline Astro_UnitsType AstroMeasurementUnitsInterfaceStorageSingle::getMeasurementUnits(uint8_t measurementRow) const
 {
-    setContinuousSpeed(AstroSingleMeasurement(contSpeed, contSpeedUnits));
+    return measurementRow < 1 ? _measurementUnits[measurementRow] : Astro_UnitsType_Undefined;
+}
+
+inline void AstroMeasurementUnitsInterfaceStorageDouble::setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t measurementRow)
+{
+    if (measurementRow < 2) { _measurementUnits[measurementRow] = measurementUnits; }
+}
+
+inline Astro_UnitsType AstroMeasurementUnitsInterfaceStorageDouble::getMeasurementUnits(uint8_t measurementRow) const
+{
+    return measurementRow < 2 ? _measurementUnits[measurementRow] : Astro_UnitsType_Undefined;
+}
+
+inline void AstroMeasurementUnitsInterfaceStorageTriple::setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t measurementRow)
+{
+    if (measurementRow < 3) { _measurementUnits[measurementRow] = measurementUnits; }
+}
+
+inline Astro_UnitsType AstroMeasurementUnitsInterfaceStorageTriple::getMeasurementUnits(uint8_t measurementRow) const
+{
+    return measurementRow < 3 ? _measurementUnits[measurementRow] : Astro_UnitsType_Undefined;
 }
 
 
@@ -66,21 +84,15 @@ inline SharedPtr<U> AstroParentSensorAttachmentInterface::getParentSensor()
 }
 
 template <class U>
-inline void AstroParentMountAttachmentInterface::setParentMount(U panel, aposi_t axisIndex)
+inline void AstroParentMountAttachmentInterface::setParentMount(U mount)
 {
-    getParentMountAttachment().setObject(panel);
-    getParentMountAttachment().setParentSubIndex(axisIndex);
+    getParentMountAttachment().setObject(mount);
 }
 
 template <class U>
 inline SharedPtr<U> AstroParentMountAttachmentInterface::getParentMount()
 {
     return getParentMountAttachment().AstroAttachment::getObject<U>();
-}
-
-inline aposi_t AstroParentMountAttachmentInterface::getParentMountAxisIndex()
-{
-    getParentMountAttachment().getParentSubIndex();
 }
 
 template <class U>
@@ -110,16 +122,68 @@ inline SharedPtr<U> AstroSensorAttachmentInterface::getSensor(bool poll)
 }
 
 template <class U>
-inline void AstroAngleSensorAttachmentInterface::setAngleSensor(U sensor)
+inline void AstroTemperatureSensorAttachmentInterface::setTemperatureSensor(U sensor)
 {
-    getAngleSensorAttachment().setObject(sensor);
+    getTemperatureSensorAttachment().setObject(sensor);
 }
 
 template <class U>
-inline SharedPtr<U> AstroAngleSensorAttachmentInterface::getAngleSensor(bool poll)
+inline SharedPtr<U> AstroTemperatureSensorAttachmentInterface::getTemperatureSensor(bool poll)
 {
-    getAngleSensorAttachment().updateIfNeeded(poll);
-    return getAngleSensorAttachment().AstroAttachment::getObject<U>();
+    getTemperatureSensorAttachment().updateIfNeeded(poll);
+    return getTemperatureSensorAttachment().AstroAttachment::getObject<U>();
+}
+
+template <class U>
+inline void AstroHumiditySensorAttachmentInterface::setHumiditySensor(U sensor)
+{
+    getHumiditySensorAttachment().setObject(sensor);
+}
+
+template <class U>
+inline SharedPtr<U> AstroHumiditySensorAttachmentInterface::getHumiditySensor(bool poll)
+{
+    getHumiditySensorAttachment().updateIfNeeded(poll);
+    return getHumiditySensorAttachment().AstroAttachment::getObject<U>();
+}
+
+template <class U>
+inline void AstroWindSpeedSensorAttachmentInterface::setWindSpeedSensor(U sensor)
+{
+    getWindSpeedSensorAttachment().setObject(sensor);
+}
+
+template <class U>
+inline SharedPtr<U> AstroWindSpeedSensorAttachmentInterface::getWindSpeedSensor(bool poll)
+{
+    getWindSpeedSensorAttachment().updateIfNeeded(poll);
+    return getWindSpeedSensorAttachment().AstroAttachment::getObject<U>();
+}
+
+template <class U>
+inline void AstroRainSensorAttachmentInterface::setRainSensor(U sensor)
+{
+    getRainSensorAttachment().setObject(sensor);
+}
+
+template <class U>
+inline SharedPtr<U> AstroRainSensorAttachmentInterface::getRainSensor(bool poll)
+{
+    getRainSensorAttachment().updateIfNeeded(poll);
+    return getRainSensorAttachment().AstroAttachment::getObject<U>();
+}
+
+template <class U>
+inline void AstroLightSensorAttachmentInterface::setLightSensor(U sensor)
+{
+    getLightSensorAttachment().setObject(sensor);
+}
+
+template <class U>
+inline SharedPtr<U> AstroLightSensorAttachmentInterface::getLightSensor(bool poll)
+{
+    getLightSensorAttachment().updateIfNeeded(poll);
+    return getLightSensorAttachment().AstroAttachment::getObject<U>();
 }
 
 template <class U>
@@ -136,19 +200,6 @@ inline SharedPtr<U> AstroPositionSensorAttachmentInterface::getPositionSensor(bo
 }
 
 template <class U>
-inline void AstroPowerProductionSensorAttachmentInterface::setPowerProductionSensor(U sensor)
-{
-    getPowerProductionSensorAttachment().setObject(sensor);
-}
-
-template <class U>
-inline SharedPtr<U> AstroPowerProductionSensorAttachmentInterface::getPowerProductionSensor(bool poll)
-{
-    getPowerProductionSensorAttachment().updateIfNeeded(poll);
-    return getPowerProductionSensorAttachment().AstroAttachment::getObject<U>();
-}
-
-template <class U>
 inline void AstroPowerUsageSensorAttachmentInterface::setPowerUsageSensor(U sensor)
 {
     getPowerUsageSensorAttachment().setObject(sensor);
@@ -161,97 +212,48 @@ inline SharedPtr<U> AstroPowerUsageSensorAttachmentInterface::getPowerUsageSenso
     return getPowerUsageSensorAttachment().AstroAttachment::getObject<U>();
 }
 
-template <class U>
-inline void AstroSpeedSensorAttachmentInterface::setSpeedSensor(U sensor)
+inline void AstroAxisDriverAttachmentInterface::setAxisDriver(SharedPtr<AstroAxisDriver> driver)
 {
-    getSpeedSensorAttachment().setObject(sensor);
+    getAxisDriverAttachment().setObject(driver);
 }
 
-template <class U>
-inline SharedPtr<U> AstroSpeedSensorAttachmentInterface::getSpeedSensor(bool poll)
+inline SharedPtr<AstroAxisDriver> AstroAxisDriverAttachmentInterface::getAxisDriver()
 {
-    getSpeedSensorAttachment().updateIfNeeded(poll);
-    return getSpeedSensorAttachment().AstroAttachment::getObject<U>();
+    return getAxisDriverAttachment().getObject();
 }
 
-template <class U>
-inline void AstroTemperatureSensorAttachmentInterface::setTemperatureSensor(U sensor)
-{
-    getTemperatureSensorAttachment().setObject(sensor);
-}
-
-template <class U>
-inline SharedPtr<U> AstroTemperatureSensorAttachmentInterface::getTemperatureSensor(bool poll)
-{
-    getTemperatureSensorAttachment().updateIfNeeded(poll);
-    return getTemperatureSensorAttachment().AstroAttachment::getObject<U>();
-}
-
-template <class U>
-inline void AstroWindSpeedSensorAttachmentInterface::setWindSpeedSensor(U sensor)
-{
-    getWindSpeedSensorAttachment().setObject(sensor);
-}
-
-template <class U>
-inline SharedPtr<U> AstroWindSpeedSensorAttachmentInterface::getWindSpeedSensor(bool poll)
-{
-    getWindSpeedSensorAttachment().updateIfNeeded(poll);
-    return getWindSpeedSensorAttachment().AstroAttachment::getObject<U>();
-}
-
-
-template <class U>
-inline void AstroTriggerAttachmentInterface::setTrigger(U trigger)
+inline void AstroTriggerAttachmentInterface::setTrigger(SharedPtr<AstroTrigger> trigger)
 {
     getTriggerAttachment().setObject(trigger);
 }
 
-template <class U>
-inline SharedPtr<U> AstroTriggerAttachmentInterface::getTrigger(bool poll)
+inline SharedPtr<AstroTrigger> AstroTriggerAttachmentInterface::getTrigger(bool poll)
 {
-    getTriggerAttachment().updateIfNeeded(poll);
-    return getTriggerAttachment().AstroAttachment::getObject<U>();
+    if (poll) { getTriggerAttachment().isTriggered(true); }
+    return getTriggerAttachment().getObject();
 }
 
-template <class U>
-inline void AstroMinimumTriggerAttachmentInterface::setMinimumTrigger(U trigger)
-{
-    getMinimumTriggerAttachment().setObject(trigger);
-}
-
-template <class U>
-inline SharedPtr<U> AstroMinimumTriggerAttachmentInterface::getMinimumTrigger(bool poll)
-{
-    getMinimumTriggerAttachment().updateIfNeeded(poll);
-    return getMinimumTriggerAttachment().AstroAttachment::getObject<U>();
-}
-
-template <class U>
-inline void AstroMaximumTriggerAttachmentInterface::setMaximumTrigger(U trigger)
-{
-    getMaximumTriggerAttachment().setObject(trigger);
-}
-
-template <class U>
-inline SharedPtr<U> AstroMaximumTriggerAttachmentInterface::getMaximumTrigger(bool poll)
-{
-    getMaximumTriggerAttachment().updateIfNeeded(poll);
-    return getMaximumTriggerAttachment().AstroAttachment::getObject<U>();
-}
-
-template <class U>
-inline void AstroLimitTriggerAttachmentInterface::setLimitTrigger(U trigger)
+inline void AstroLimitTriggerAttachmentInterface::setLimitTrigger(SharedPtr<AstroTrigger> trigger)
 {
     getLimitTriggerAttachment().setObject(trigger);
 }
 
-template <class U>
-inline SharedPtr<U> AstroLimitTriggerAttachmentInterface::getLimitTrigger(bool poll)
+inline SharedPtr<AstroTrigger> AstroLimitTriggerAttachmentInterface::getLimitTrigger(bool poll)
 {
-    getLimitTriggerAttachment().updateIfNeeded(poll);
-    return getLimitTriggerAttachment().AstroAttachment::getObject<U>();
+    if (poll) { getLimitTriggerAttachment().isTriggered(true); }
+    return getLimitTriggerAttachment().getObject();
+}
+
+template <class U>
+inline void AstroObservationDeviceAttachmentInterface::setObservationDevice(SharedPtr<U> device)
+{
+    getObservationDeviceAttachment().setObject(device);
+}
+
+template <class U>
+inline SharedPtr<U> AstroObservationDeviceAttachmentInterface::getObservationDevice()
+{
+    return reinterpret_pointer_cast<U>(getObservationDeviceAttachment().getObject());
 }
 
 #endif // /ifndef AstroInterfaces_HPP
-

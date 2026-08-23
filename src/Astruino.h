@@ -222,7 +222,6 @@ template<class T, class U> inline SharedPtr<T> reinterpret_pointer_cast(const Sh
 inline millis_t nzMillis();
 
 #include "AstroStrings.h"
-#include "AstroCoordinates.h"
 #include "AstroInlines.hh"
 #include "AstroCallback.hh"
 #include "AstroCoreLogic.h"
@@ -244,16 +243,59 @@ inline millis_t nzMillis();
 #include "AstroRails.h"
 #include "AstroModules.h"
 #include "AstroCamera.h"
-#include "AstroCover.h"
 #include "AstroThermal.h"
 #include "AstroTargets.h"
-#include "AstroEphemeris.h"
 #include "AstroTargetsLibrary.h"
 #include "AstroScheduler.h"
 #include "AstroLogger.h"
 #include "AstroPublisher.h"
 #include "AstroFactory.h"
 #include "AstroInterfaces.hpp"
+
+// Equipment Cover
+// Generic open/close mechanism for telescope caps, roof panels, dome shutters, or similar enclosures.
+// Cover control is part of the base Astruino system rather than a registered object family.
+// Optional open/closed limit sensors override simulated travel so scheduler state reflects real hardware.
+class AstroCover : public AstroSubObject {
+public:
+    AstroCover();
+
+    void open();
+    void close();
+    void stop();
+    void update();
+    virtual void unresolveAny(AstroObject *object) override;
+    void setTravelRate(float fractionPerSecond);
+    void setTravelTimeout(double seconds);
+    void setPosition(float position);
+    template<class U> inline void setActuator(U actuator) { _actuator.setObject(actuator); }
+    template<class U> inline void setOpenSensor(U sensor) { _openSensor.setObject(sensor); _openLimitActive = false; }
+    template<class U> inline void setClosedSensor(U sensor) { _closedSensor.setObject(sensor); _closedLimitActive = false; }
+    void clearFault();
+
+    bool isOpen() const;
+    bool isClosed() const;
+    bool isMoving() const;
+    inline bool isFaulted() const { return _faulted; }
+    inline float getPosition() const { return _position; }
+
+protected:
+    float _position;                                        // Current normalized position
+    float _target;                                          // Target normalized position
+    float _travelRate;                                      // Normalized travel rate per second
+    double _travelTimeout;                                  // Maximum continuous travel time, in seconds
+    double _travelElapsed;                                  // Current movement elapsed time, in seconds
+    bool _openLimitActive;                                  // Last open-limit sensor state
+    bool _closedLimitActive;                                // Last closed-limit sensor state
+    bool _faulted;                                          // Cover fault state flag
+    AstroActuatorAttachment _actuator;                      // Attached actuator
+    AstroSensorAttachment _openSensor;                      // Optional open-limit sensor attachment
+    AstroSensorAttachment _closedSensor;                    // Optional closed-limit sensor attachment
+    millis_t _lastUpdate;                                   // Last update time, in milliseconds
+
+    bool pollLimitSensor(AstroSensorAttachment &sensor, bool *activeOut);
+    void applyActuatorPower(float power);
+};
 
 // Astruino Controller
 // Main controller interface for DIY astronomical tracking systems. Networking, GPS,
@@ -292,7 +334,7 @@ public:
 
     // Sets the fixed observer/location used for astronomical calculations.
     void setObserver(const AstroObserver &observer);
-    inline const AstroObserver &getObserver() const { return _systemData.observer; }
+    inline const AstroObserver &getObserver() const { return _mount->getObserver(); }
 
     // Removes object from system, returning success.
     bool unregisterObject(SharedPtr<AstroObject> object);
@@ -308,7 +350,7 @@ public:
     inline bool isSuspended() const { return _suspended; }
 
     inline AstroMount &getMount() { return *_mount; }
-    inline AstroCover &getCover() { return *_cover; }
+    inline AstroCover &getCover() { return _cover; }
     inline AstroCameraTrigger &getCamera() { return *_camera; }
     inline AstroThermalBalancer &getThermalBalancer() { return _thermal; }
     inline AstroScheduler &getScheduler() { return scheduler; }
@@ -334,7 +376,7 @@ protected:
 
     AstroSystemData _systemData;                            // Serialized controller setup data
     SharedPtr<AstroMount> _mount;                           // Primary telescope/tracker mount
-    SharedPtr<AstroCover> _cover;                           // Observatory/enclosure cover
+    AstroCover _cover;                                      // Observatory/enclosure cover
     SharedPtr<AstroCameraTrigger> _camera;                  // Default observation trigger device
     AstroThermalBalancer _thermal;                          // Environmental/thermal balancer
     const Astro_RTCType _rtcType;                           // RTC device type

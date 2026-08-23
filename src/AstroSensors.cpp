@@ -5,6 +5,24 @@
 
 #include "Astruino.h"
 
+AstroSensor *newSensorObjectFromData(const AstroSensorData *dataIn)
+{
+    if (!dataIn) { return nullptr; }
+
+    switch (dataIn->id.object.classType) {
+        case (aid_t)AstroSensor::Value:
+            return new AstroValueSensor(dataIn);
+        case (aid_t)AstroSensor::Callback:
+            return new AstroCallbackSensor(dataIn);
+        case (aid_t)AstroSensor::Digital:
+            return new AstroDigitalSensor(dataIn);
+        case (aid_t)AstroSensor::Analog:
+            return new AstroAnalogSensor(dataIn);
+        default:
+            return nullptr;
+    }
+}
+
 AstroSensor::AstroSensor(Astro_SensorType sensorType, Astro_UnitsType units, aposi_t positionIndex, int classTypeIn)
     : AstroObject(AstroIdentity(sensorType, positionIndex)), classType((decltype(Value))classTypeIn),
       _sensorType(sensorType), _measurement(0.0, units, 0, aframe_none), _calibrationData(nullptr), _measurementSignal()
@@ -43,9 +61,7 @@ Signal<const AstroMeasurement *, ASTRO_DEFAULT_MAXSIZE> &AstroSensor::getMeasure
 { return _measurementSignal; }
 AstroData *AstroSensor::allocateData() const
 {
-    AstroSensorData *data = new AstroSensorData();
-    if (data) { data->id.object.classType = (aid_t)classType; }
-    return data;
+    return _allocateDataForObjType((aid_t)AstroIdentity::Sensor, (aid_t)classType);
 }
 
 void AstroSensor::saveToData(AstroData *dataOut) const
@@ -80,4 +96,29 @@ void AstroAnalogSensor::saveToData(AstroData *dataOut) const
 {
     AstroSensor::saveToData(dataOut);
     if (dataOut) { _inputPin.saveToData(&static_cast<AstroSensorData *>(dataOut)->inputPin); }
+}
+
+
+AstroSensorData::AstroSensorData()
+    : AstroObjectData(), measurementUnits(Astro_UnitsType_Undefined), inputPin()
+{
+    _size = sizeof(*this);
+}
+
+void AstroSensorData::toJSONObject(JsonObject &objectOut) const
+{
+    AstroObjectData::toJSONObject(objectOut);
+    objectOut["measurementUnits"] = (int)measurementUnits;
+    if (inputPin.isSet()) {
+        JsonObject pinObj = objectOut.createNestedObject("inputPin");
+        inputPin.toJSONObject(pinObj);
+    }
+}
+
+void AstroSensorData::fromJSONObject(JsonObjectConst &objectIn)
+{
+    AstroObjectData::fromJSONObject(objectIn);
+    measurementUnits = (Astro_UnitsType)(objectIn["measurementUnits"] | (int)measurementUnits);
+    JsonObjectConst pinObj = objectIn["inputPin"].as<JsonObjectConst>();
+    if (!pinObj.isNull()) { inputPin.fromJSONObject(pinObj); }
 }

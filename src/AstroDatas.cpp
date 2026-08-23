@@ -36,39 +36,50 @@ AstroData *_allocateDataForObjType(int8_t idType, int8_t classType)
     switch (idType) {
         case (aid_t)AstroIdentity::Actuator:
             switch (classType) {
-                case (aid_t)AstroActuator::Relay:
+                case (aid_t)AstroActuator::Base:
+                    return new AstroActuatorData();
+                case (aid_t)AstroActuator::Callback:
+                    return new AstroActuatorData();
+                case (aid_t)AstroActuator::Digital:
                     return new AstroActuatorData();
                 case (aid_t)AstroActuator::RelayMotor:
-                    return new AstroMotorActuatorData();
-                case (aid_t)AstroActuator::Variable:
                     return new AstroActuatorData();
-                case (aid_t)AstroActuator::VariableMotor:
-                    return new AstroMotorActuatorData();
+                case (aid_t)AstroActuator::Analog:
+                    return new AstroActuatorData();
+                case (aid_t)AstroActuator::Focuser:
+                    return new AstroActuatorData();
                 default: break;
             }
             break;
 
         case (aid_t)AstroIdentity::Sensor:
             switch (classType) {
-                case (aid_t)AstroSensor::Binary:
-                    return new AstroBinarySensorData();
+                case (aid_t)AstroSensor::Value:
+                    return new AstroSensorData();
+                case (aid_t)AstroSensor::Callback:
+                    return new AstroSensorData();
+                case (aid_t)AstroSensor::Digital:
+                    return new AstroSensorData();
                 case (aid_t)AstroSensor::Analog:
-                    return new AstroAnalogSensorData();
-                //case 2: // Digital (not instance-able)
-                case (aid_t)AstroSensor::DHT1W:
-                    return new AstroDHTTempHumiditySensorData();
+                    return new AstroSensorData();
                 default: break;
             }
             break;
 
-        case (aid_t)AstroIdentity::Panel:
+        case (aid_t)AstroIdentity::Target:
             switch (classType) {
-                case (aid_t)AstroPanel::Balancing:
-                    return new AstroBalancingPanelData();
-                case (aid_t)AstroPanel::Tracking:
-                    return new AstroTrackingPanelData();
-                case (aid_t)AstroPanel::Reflecting:
-                    return new AstroReflectingPanelData();
+                case (aid_t)AstroTarget::Static:
+                    return new AstroStaticTargetData();
+                case (aid_t)AstroTarget::Dynamic:
+                    return new AstroDynamicTargetData();
+                default: break;
+            }
+            break;
+
+        case (aid_t)AstroIdentity::Mount:
+            switch (classType) {
+                case (aid_t)AstroMount::Mount:
+                    return new AstroMountData();
                 default: break;
             }
             break;
@@ -79,6 +90,14 @@ AstroData *_allocateDataForObjType(int8_t idType, int8_t classType)
                     return new AstroSimpleRailData();
                 case (aid_t)AstroRail::Regulated:
                     return new AstroRegulatedRailData();
+                default: break;
+            }
+            break;
+
+        case (aid_t)AstroIdentity::ObservationDevice:
+            switch (classType) {
+                case (aid_t)AstroObservationDevice::CameraTrigger:
+                    return new AstroObservationDeviceData();
                 default: break;
             }
             break;

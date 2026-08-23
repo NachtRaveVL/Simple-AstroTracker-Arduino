@@ -41,12 +41,12 @@ public:
     AstroScheduler();
 
     void setMount(SharedPtr<AstroMount> mount);
-    void setCover(SharedPtr<AstroCover> cover);
+    void setCover(AstroCover *cover);
     void setObservationDevice(SharedPtr<AstroCameraTrigger> device);
     void setThermalBalancer(AstroThermalBalancer *thermal);
     void setSafetyTrigger(SharedPtr<AstroTrigger> trigger);
     void setLogger(AstroLogger *logger);
-    void setTarget(Astro_TargetId targetId);
+    void setTarget(Astro_TargetType targetType);
     void setConfig(const AstroSchedulerConfig &config);
 
     void update();
@@ -58,12 +58,12 @@ public:
 
 protected:
     SharedPtr<AstroMount> _mount;                           // Managed mount
-    SharedPtr<AstroCover> _cover;                           // Managed cover
+    AstroCover *_cover;                                     // Base-system cover, not owned
     SharedPtr<AstroCameraTrigger> _device;                  // Observation device
     AstroThermalBalancer *_thermal;                         // Thermal balancer, not owned
     AstroTriggerAttachment _safetyTrigger;                  // Observing safety trigger attachment
     AstroLogger *_logger;                                   // System logger, not owned
-    Astro_TargetId _targetId;                               // Active observation target
+    Astro_TargetType _targetType;                           // Active observation target
     AstroSchedulerConfig _config;                           // Active scheduler configuration
     Astro_SchedulerStage _stage;                            // Current scheduler stage
     int64_t _stageStart;                                    // Stage start timestamp

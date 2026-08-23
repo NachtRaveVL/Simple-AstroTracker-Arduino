@@ -22,6 +22,8 @@ AstroObject *newObjectFromData(const AstroData *dataIn)
                 return newMountObjectFromData((AstroMountData *)dataIn);
             case (aid_t)AstroIdentity::Rail:
                 return newRailObjectFromData((AstroRailData *)dataIn);
+            case (aid_t)AstroIdentity::ObservationDevice:
+                return newObservationDeviceObjectFromData((AstroObservationDeviceData *)dataIn);
             default: // Unable
                 return nullptr;
         }
@@ -49,6 +51,9 @@ akey_t AstroIdentity::regenKey()
         case Rail:
             keyString = railTypeToString(objTypeAs.railType, true);
             break;
+        case ObservationDevice:
+            keyString = F("ObservationDevice");
+            break;
         default: // Unable
             return key;
     }
@@ -67,6 +72,7 @@ String AstroIdentity::getDisplayString()
         case Target: return String(F("Target ")) + keyString;
         case Mount: return String(F("Mount ")) + keyString;
         case Rail: return String(F("Rail ")) + keyString;
+        case ObservationDevice: return String(F("Observation Device ")) + keyString;
         default: return String(F("Unknown ")) + keyString;
     }
 }

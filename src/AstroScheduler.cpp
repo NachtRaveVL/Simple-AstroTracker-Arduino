@@ -16,7 +16,7 @@ AstroSchedulerConfig::AstroSchedulerConfig()
 
 AstroScheduler::AstroScheduler()
     : _mount(nullptr), _cover(nullptr), _device(nullptr), _thermal(nullptr),
-      _safetyTrigger(nullptr), _logger(nullptr), _targetId(Astro_Target_M42), _config(),
+      _safetyTrigger(nullptr), _logger(nullptr), _targetType(Astro_TargetType_M42), _config(),
       _stage(Astro_SchedulerStage_DayStowed), _stageStart(0), _settleStart(0), _lastEnvReport(0)
 { ; }
 
@@ -25,7 +25,7 @@ void AstroScheduler::setMount(SharedPtr<AstroMount> mount)
     _mount = mount;
 }
 
-void AstroScheduler::setCover(SharedPtr<AstroCover> cover)
+void AstroScheduler::setCover(AstroCover *cover)
 {
     _cover = cover;
 }
@@ -50,10 +50,10 @@ void AstroScheduler::setLogger(AstroLogger *logger)
     _logger = logger;
 }
 
-void AstroScheduler::setTarget(Astro_TargetId targetId)
+void AstroScheduler::setTarget(Astro_TargetType targetType)
 {
-    _targetId = targetId;
-    if (_mount) { _mount->setTarget(targetId); }
+    _targetType = targetType;
+    if (_mount) { _mount->setTarget(targetType); }
 }
 
 void AstroScheduler::setConfig(const AstroSchedulerConfig &config)
@@ -65,7 +65,6 @@ void AstroScheduler::unresolveAny(AstroObject *object)
 {
     if (!object) { return; }
     if (_mount && _mount.get() == object) { _mount = nullptr; }
-    if (_cover && _cover.get() == object) { _cover = nullptr; }
     if (_device && _device.get() == object) { _device = nullptr; }
     if (_safetyTrigger.get()) { _safetyTrigger.get()->unresolveAny(object); }
 }
@@ -100,7 +99,7 @@ void AstroScheduler::update()
 
     AstroEquatorialCoordinates sunCoordinates;
     double sunAltitudeDegrees = 90.0;
-    if (getController() && astroResolveSolarSystemTarget(Astro_Target_Sun, unixTime, &sunCoordinates)) {
+    if (getController() && astroResolveSolarSystemTarget(Astro_TargetType_Sun, unixTime, &sunCoordinates)) {
         sunAltitudeDegrees = astroEquatorialToHorizontal(sunCoordinates, getController()->getObserver(), unixTime).altitudeDegrees;
     }
 
@@ -148,7 +147,7 @@ void AstroScheduler::update()
             if (!_thermal || _thermal->cameraStable(ASTRO_SCH_CAMERA_STABLE_DEG)) {
                 if (_mount) {
                     _mount->unpark();
-                    _mount->setTarget(_targetId);
+                    _mount->setTarget(_targetType);
                     _mount->track();
                 }
                 enterStage(Astro_SchedulerStage_Slewing, unixTime);

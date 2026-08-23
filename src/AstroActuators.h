@@ -6,17 +6,25 @@
 #ifndef AstroActuators_H
 #define AstroActuators_H
 
+struct AstroActuatorData;
+
 #include "AstroActivation.h"
 #include "AstroObject.h"
 #include "AstroPins.h"
+
+// Creates actuator object from passed actuator data (return ownership transfer - user code *must* delete returned object)
+extern AstroActuator *newActuatorObjectFromData(const AstroActuatorData *dataIn);
 
 // Actuator Base
 // Base class for controllable outputs such as motors, relays, heaters, and other equipment.
 class AstroActuator : public AstroObject, public AstroActuatorObjectInterface {
 public:
-    AstroActuator(Astro_ActuatorType actuatorType = Astro_ActuatorType_Generic,
-                  aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
-    AstroActuator(const AstroObjectData *dataIn);
+    const enum : signed char { Base, Callback, Digital, RelayMotor, Analog, Focuser, Unknown = -1 } classType; // Actuator class type (custom RTTI)
+
+    AstroActuator(Astro_ActuatorType actuatorType = Astro_ActuatorType_Undefined,
+                  aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG,
+                  int classTypeIn = Base); // Position index
+    AstroActuator(const AstroActuatorData *dataIn);
     virtual ~AstroActuator() { ; }
 
     virtual void setPower(float power) override;
@@ -39,7 +47,8 @@ protected:
     bool _needsUpdate;                                      // Stale flag for handle updates
     AstroActivationHandle *_handles[ASTRO_ACTIVATION_HANDLE_SLOTS]; // Activation handle slots
 
-    void resolveActivations();
+    virtual AstroData *allocateData() const override;
+    virtual void saveToData(AstroData *dataOut) override;
 };
 
 // Callback Actuator
@@ -49,10 +58,12 @@ public:
     typedef void (*WriteCallback)(void *context, float power);
 
     AstroCallbackActuator(WriteCallback callback = nullptr, void *context = nullptr,
-                          Astro_ActuatorType actuatorType = Astro_ActuatorType_Generic,
+                          Astro_ActuatorType actuatorType = Astro_ActuatorType_Undefined,
                           aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG)
-        : AstroActuator(actuatorType, positionIndex), _callback(callback), _context(context)
+        : AstroActuator(actuatorType, positionIndex, Callback), _callback(callback), _context(context)
     { ; }
+    AstroCallbackActuator(const AstroActuatorData *dataIn)
+        : AstroActuator(dataIn), _callback(nullptr), _context(nullptr) { ; }
 
     virtual void setPower(float power) override;
 
@@ -66,14 +77,17 @@ protected:
 class AstroDigitalActuator : public AstroActuator {
 public:
     AstroDigitalActuator(AstroDigitalPin outputPin = AstroDigitalPin(),
-                         Astro_ActuatorType actuatorType = Astro_ActuatorType_Generic,
+                         Astro_ActuatorType actuatorType = Astro_ActuatorType_Undefined,
                          aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
+    AstroDigitalActuator(const AstroActuatorData *dataIn);
 
     virtual void setPower(float power) override;
     inline const AstroDigitalPin &getOutputPin() const { return _outputPin; }
 
 protected:
     AstroDigitalPin _outputPin;                              // Output pin
+
+    virtual void saveToData(AstroData *dataOut) override;
 };
 
 // Relay Motor Actuator
@@ -83,8 +97,9 @@ class AstroRelayMotorActuator : public AstroActuator {
 public:
     AstroRelayMotorActuator(AstroDigitalPin forwardPin = AstroDigitalPin(),
                             AstroDigitalPin reversePin = AstroDigitalPin(),
-                            Astro_ActuatorType actuatorType = Astro_ActuatorType_Generic,
+                            Astro_ActuatorType actuatorType = Astro_ActuatorType_Undefined,
                             aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
+    AstroRelayMotorActuator(const AstroActuatorData *dataIn);
 
     virtual void setPower(float power) override;
     inline const AstroDigitalPin &getForwardPin() const { return _forwardPin; }
@@ -93,6 +108,8 @@ public:
 protected:
     AstroDigitalPin _forwardPin;                             // Forward/open output pin
     AstroDigitalPin _reversePin;                             // Reverse/close output pin
+
+    virtual void saveToData(AstroData *dataOut) override;
 };
 
 // Analog Actuator
@@ -100,14 +117,17 @@ protected:
 class AstroAnalogActuator : public AstroActuator {
 public:
     AstroAnalogActuator(AstroAnalogPin outputPin = AstroAnalogPin(),
-                        Astro_ActuatorType actuatorType = Astro_ActuatorType_Generic,
+                        Astro_ActuatorType actuatorType = Astro_ActuatorType_Undefined,
                         aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
+    AstroAnalogActuator(const AstroActuatorData *dataIn);
 
     virtual void setPower(float power) override;
     inline const AstroAnalogPin &getOutputPin() const { return _outputPin; }
 
 protected:
     AstroAnalogPin _outputPin;                               // Output pin
+
+    virtual void saveToData(AstroData *dataOut) override;
 };
 
 // Telescope Focuser
@@ -122,7 +142,7 @@ public:
 
     AstroFocuser(int32_t maximumPosition = 10000,
                  aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);
-    AstroFocuser(const AstroObjectData *dataIn, int32_t maximumPosition = 10000);
+    AstroFocuser(const AstroActuatorData *dataIn, int32_t maximumPosition = 10000);
 
     virtual void update() override;
     virtual void moveTo(int32_t position) override;
@@ -151,6 +171,21 @@ protected:
     StopCallback _stopCallback;                             // Stop/halt callback
     PositionCallback _positionCallback;                     // Optional position feedback callback
     void *_context;                                         // Callback context, not owned
+
+    virtual void saveToData(AstroData *dataOut) override;
+};
+
+// Actuator Serialization Data
+struct AstroActuatorData : public AstroObjectData {
+    Astro_EnableMode enableMode;                            // Activation enablement mode
+    AstroPinData outputPin;                                 // Primary output pin
+    AstroPinData outputPin2;                                // Secondary motor output pin
+    int32_t minimumPosition;                                // Minimum focuser position, in steps
+    int32_t maximumPosition;                                // Maximum focuser position, in steps
+
+    AstroActuatorData();
+    virtual void toJSONObject(JsonObject &objectOut) const override;
+    virtual void fromJSONObject(JsonObjectConst &objectIn) override;
 };
 
 #endif // /ifndef AstroActuators_H

@@ -5,30 +5,54 @@
 
 #include "Astruino.h"
 
+AstroMount *newMountObjectFromData(const AstroMountData *dataIn)
+{
+    if (!dataIn) { return nullptr; }
+
+    switch (dataIn->id.object.classType) {
+        case (aid_t)AstroMount::Mount:
+            return new AstroMount(dataIn);
+        default:
+            return nullptr;
+    }
+}
+
 AstroMount::AstroMount(Astro_MountType mountType, aposi_t positionIndex)
-    : AstroObject(AstroIdentity(mountType, positionIndex)), _mountType(mountType), _observer(), _targetId(Astro_Target_M42),
+    : AstroObject(AstroIdentity(mountType, positionIndex)), classType(Mount), _mountType(mountType), _observer(), _targetType(Astro_TargetType_M42),
       _primaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS), _secondaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS),
       _parkPrimary(0.0), _parkSecondary(0.0), _guidePrimary(0.0), _guideSecondary(0.0),
       _tracking(false), _parking(false), _parked(true), _limitHit(false), _primaryDriver(this, 0), _secondaryDriver(this, 1),
       _lastUpdate(0)
 { ; }
 
-AstroMount::AstroMount(const AstroObjectData *dataIn)
-    : AstroObject(dataIn), _mountType(dataIn ? (Astro_MountType)dataIn->objType : Astro_MountType_Unknown), _observer(), _targetId(Astro_Target_M42),
-      _primaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS), _secondaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS),
-      _parkPrimary(0.0), _parkSecondary(0.0), _guidePrimary(0.0), _guideSecondary(0.0),
-      _tracking(false), _parking(false), _parked(true), _limitHit(false), _primaryDriver(this, 0), _secondaryDriver(this, 1),
-      _lastUpdate(0)
-{ ; }
+AstroMount::AstroMount(const AstroMountData *dataIn)
+    : AstroObject(dataIn), classType(dataIn ? (decltype(Mount))dataIn->id.object.classType : Unknown),
+      _mountType(dataIn ? (Astro_MountType)dataIn->id.object.objType : Astro_MountType_Unknown), _observer(),
+      _targetType(dataIn ? dataIn->targetType : Astro_TargetType_M42),
+      _primaryAxis(dataIn ? dataIn->primaryAxisRate : ASTRO_MOUNT_AXIS_RATE_DEGPS),
+      _secondaryAxis(dataIn ? dataIn->secondaryAxisRate : ASTRO_MOUNT_AXIS_RATE_DEGPS),
+      _parkPrimary(dataIn ? dataIn->parkPrimary : 0.0), _parkSecondary(dataIn ? dataIn->parkSecondary : 0.0),
+      _guidePrimary(0.0), _guideSecondary(0.0), _tracking(false), _parking(false), _parked(true), _limitHit(false),
+      _primaryDriver(this, 0), _secondaryDriver(this, 1), _lastUpdate(0)
+{
+    if (dataIn) {
+        _primaryAxis.minimumDegrees = dataIn->primaryMinimum;
+        _primaryAxis.maximumDegrees = dataIn->primaryMaximum;
+        _primaryAxis.limitsEnabled = dataIn->primaryLimitsEnabled;
+        _secondaryAxis.minimumDegrees = dataIn->secondaryMinimum;
+        _secondaryAxis.maximumDegrees = dataIn->secondaryMaximum;
+        _secondaryAxis.limitsEnabled = dataIn->secondaryLimitsEnabled;
+    }
+}
 
 void AstroMount::setObserver(const AstroObserver &observer)
 {
     _observer = observer;
 }
 
-void AstroMount::setTarget(Astro_TargetId targetId)
+void AstroMount::setTarget(Astro_TargetType targetType)
 {
-    _targetId = targetId;
+    _targetType = targetType;
     clearGuideOffset();
 }
 
@@ -152,10 +176,10 @@ void AstroMount::updateTarget(int64_t unixTime, double elapsedSeconds)
         return;
     }
 
-    const AstroTargetData *target = astroLib.checkoutTargetData(_targetId);
+    const AstroTargetsLibData *target = AstroTargetsLib.checkoutTargetsData(_targetType);
     if (!target) { return; }
     AstroEquatorialCoordinates equatorial = target->getCoordinates(unixTime);
-    astroLib.returnTargetData(target);
+    AstroTargetsLib.returnTargetsData(target);
 
     if (_mountType == Astro_MountType_AltAzimuth) {
         AstroHorizontalCoordinates horizontal = astroEquatorialToHorizontal(equatorial, _observer, unixTime);
@@ -256,4 +280,80 @@ bool AstroMount::isAligned(double toleranceDegrees) const
     if (fabs(primaryDelta) > toleranceDegrees) { return false; }
     return _mountType == Astro_MountType_SingleAxis ||
            fabs(_secondaryAxis.targetDegrees - _secondaryAxis.positionDegrees) <= toleranceDegrees;
+}
+
+
+AstroData *AstroMount::allocateData() const
+{
+    return _allocateDataForObjType((aid_t)AstroIdentity::Mount, (aid_t)classType);
+}
+
+void AstroMount::saveToData(AstroData *dataOut)
+{
+    AstroObject::saveToData(dataOut);
+    if (!dataOut) { return; }
+
+    AstroMountData *mountData = static_cast<AstroMountData *>(dataOut);
+    mountData->id.object.classType = (aid_t)classType;
+    mountData->targetType = _targetType;
+    mountData->primaryAxisRate = _primaryAxis.maxRateDegreesPerSecond;
+    mountData->secondaryAxisRate = _secondaryAxis.maxRateDegreesPerSecond;
+    mountData->parkPrimary = _parkPrimary;
+    mountData->parkSecondary = _parkSecondary;
+    mountData->primaryMinimum = _primaryAxis.minimumDegrees;
+    mountData->primaryMaximum = _primaryAxis.maximumDegrees;
+    mountData->secondaryMinimum = _secondaryAxis.minimumDegrees;
+    mountData->secondaryMaximum = _secondaryAxis.maximumDegrees;
+    mountData->primaryLimitsEnabled = _primaryAxis.limitsEnabled;
+    mountData->secondaryLimitsEnabled = _secondaryAxis.limitsEnabled;
+}
+
+
+AstroMountData::AstroMountData()
+    : AstroObjectData(), targetType(Astro_TargetType_M42),
+      primaryAxisRate(ASTRO_MOUNT_AXIS_RATE_DEGPS), secondaryAxisRate(ASTRO_MOUNT_AXIS_RATE_DEGPS),
+      parkPrimary(0.0), parkSecondary(0.0), primaryMinimum(0.0), primaryMaximum(0.0),
+      secondaryMinimum(0.0), secondaryMaximum(0.0), primaryLimitsEnabled(false), secondaryLimitsEnabled(false)
+{
+    _size = sizeof(*this);
+    id.object.idType = (aid_t)AstroIdentity::Mount;
+    id.object.objType = (aid_t)Astro_MountType_Unknown;
+    id.object.posIndex = aposi_none;
+    id.object.classType = (aid_t)AstroMount::Mount;
+}
+
+void AstroMountData::toJSONObject(JsonObject &objectOut) const
+{
+    AstroObjectData::toJSONObject(objectOut);
+    objectOut["targetType"] = (int)targetType;
+    objectOut["primaryAxisRate"] = primaryAxisRate;
+    objectOut["secondaryAxisRate"] = secondaryAxisRate;
+    objectOut["parkPrimary"] = parkPrimary;
+    objectOut["parkSecondary"] = parkSecondary;
+    if (primaryLimitsEnabled) {
+        objectOut["primaryMinimum"] = primaryMinimum;
+        objectOut["primaryMaximum"] = primaryMaximum;
+        objectOut["primaryLimitsEnabled"] = primaryLimitsEnabled;
+    }
+    if (secondaryLimitsEnabled) {
+        objectOut["secondaryMinimum"] = secondaryMinimum;
+        objectOut["secondaryMaximum"] = secondaryMaximum;
+        objectOut["secondaryLimitsEnabled"] = secondaryLimitsEnabled;
+    }
+}
+
+void AstroMountData::fromJSONObject(JsonObjectConst &objectIn)
+{
+    AstroObjectData::fromJSONObject(objectIn);
+    targetType = (Astro_TargetType)(objectIn["targetType"] | (int)targetType);
+    primaryAxisRate = objectIn["primaryAxisRate"] | primaryAxisRate;
+    secondaryAxisRate = objectIn["secondaryAxisRate"] | secondaryAxisRate;
+    parkPrimary = objectIn["parkPrimary"] | parkPrimary;
+    parkSecondary = objectIn["parkSecondary"] | parkSecondary;
+    primaryMinimum = objectIn["primaryMinimum"] | primaryMinimum;
+    primaryMaximum = objectIn["primaryMaximum"] | primaryMaximum;
+    secondaryMinimum = objectIn["secondaryMinimum"] | secondaryMinimum;
+    secondaryMaximum = objectIn["secondaryMaximum"] | secondaryMaximum;
+    primaryLimitsEnabled = objectIn["primaryLimitsEnabled"] | primaryLimitsEnabled;
+    secondaryLimitsEnabled = objectIn["secondaryLimitsEnabled"] | secondaryLimitsEnabled;
 }

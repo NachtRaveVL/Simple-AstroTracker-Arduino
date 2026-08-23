@@ -15,7 +15,6 @@ class AstroAxisDriver;
 class AstroTrigger;
 class AstroCameraTrigger;
 class AstroObservationDevice;
-class AstroCover;
 class AstroFocuser;
 class AstroRTCInterface;
 
@@ -30,7 +29,15 @@ struct AstroIdentity;
 struct AstroMeasurement;
 struct AstroSingleMeasurement;
 
-#include "AstroDefines.h"
+#include "Astruino.h"
+
+// JSON Serializable Interface
+class AstroJSONSerializableInterface {
+public:
+    virtual ~AstroJSONSerializableInterface() { ; }
+    virtual void toJSONObject(JsonObject &objectOut) const = 0;
+    virtual void fromJSONObject(JsonObjectConst &objectIn) = 0;
+};
 
 // Object Interface
 // Common interface shared by system objects and sub-objects so that attachments and
@@ -128,7 +135,6 @@ protected:
 };
 
 // Measurement Units Interface
-// Uses virtual accessors so units may be stored locally or shadow another object.
 class AstroMeasurementUnitsInterface {
 public:
     virtual ~AstroMeasurementUnitsInterface() { ; }
@@ -139,8 +145,6 @@ public:
     inline Astro_UnitsType getBaseUnits(uint8_t measurementRow = 0) const;
 };
 
-// Measurement Units Storage
-// Provides fixed-size backing storage shared by single, double, and triple measurement interfaces.
 template <size_t N>
 class AstroMeasurementUnitsStorage {
 protected:
@@ -152,7 +156,6 @@ protected:
     }
 };
 
-// Single Measurement Units Interface + Storage
 class AstroMeasurementUnitsInterfaceStorageSingle : public AstroMeasurementUnitsInterface,
                                                     public AstroMeasurementUnitsStorage<1> {
 public:
@@ -164,7 +167,6 @@ protected:
         : AstroMeasurementUnitsStorage<1>(measurementUnits) { ; }
 };
 
-// Double Measurement Units Interface + Storage
 class AstroMeasurementUnitsInterfaceStorageDouble : public AstroMeasurementUnitsInterface,
                                                     public AstroMeasurementUnitsStorage<2> {
 public:
@@ -176,7 +178,6 @@ protected:
         : AstroMeasurementUnitsStorage<2>(measurementUnits) { ; }
 };
 
-// Triple Measurement Units Interface + Storage
 class AstroMeasurementUnitsInterfaceStorageTriple : public AstroMeasurementUnitsInterface,
                                                     public AstroMeasurementUnitsStorage<3> {
 public:
@@ -235,7 +236,7 @@ public:
 class AstroMountObjectInterface {
 public:
     virtual ~AstroMountObjectInterface() { ; }
-    virtual void setTarget(Astro_TargetId targetId) = 0;
+    virtual void setTarget(Astro_TargetType targetType) = 0;
     virtual void park() = 0;
     virtual void unpark() = 0;
     virtual void stow() = 0;
@@ -248,9 +249,8 @@ public:
 class AstroRailObjectInterface {
 public:
     virtual ~AstroRailObjectInterface() { ; }
-    virtual bool requestPower(double watts) = 0;
-    virtual void releasePower(double watts) = 0;
-    virtual double getAvailablePower() const = 0;
+    virtual bool canActivate(AstroActuator *actuator) = 0;
+    virtual float getCapacity(bool poll = false) = 0;
 };
 
 // Axis Driver Object Interface
@@ -279,7 +279,6 @@ public:
 };
 
 // Focuser Object Interface
-// Common absolute-position interface for telescope focus mechanisms.
 class AstroFocuserObjectInterface {
 public:
     virtual ~AstroFocuserObjectInterface() { ; }
@@ -317,15 +316,6 @@ public:
 
     template<class U> inline void setParentMount(U mount);
     template<class U = AstroMount> inline SharedPtr<U> getParentMount();
-};
-
-// Parent Cover Attachment Interface
-class AstroParentCoverAttachmentInterface {
-public:
-    virtual AstroAttachment &getParentCoverAttachment() = 0;
-
-    template<class U> inline void setParentCover(U cover);
-    template<class U = AstroCover> inline SharedPtr<U> getParentCover();
 };
 
 // Parent Rail Attachment Interface
@@ -400,6 +390,15 @@ public:
     template<class U = AstroSensor> inline SharedPtr<U> getPositionSensor(bool poll = false);
 };
 
+// Power Usage Sensor Attachment Interface
+class AstroPowerUsageSensorAttachmentInterface {
+public:
+    virtual AstroSensorAttachment &getPowerUsageSensorAttachment() = 0;
+
+    template<class U> inline void setPowerUsageSensor(U sensor);
+    template<class U = AstroSensor> inline SharedPtr<U> getPowerUsageSensor(bool poll = false);
+};
+
 // Axis Driver Attachment Interface
 class AstroAxisDriverAttachmentInterface {
 public:
@@ -416,6 +415,15 @@ public:
 
     inline void setTrigger(SharedPtr<AstroTrigger> trigger);
     inline SharedPtr<AstroTrigger> getTrigger(bool poll = false);
+};
+
+// Limit Trigger Attachment Interface
+class AstroLimitTriggerAttachmentInterface {
+public:
+    virtual AstroTriggerAttachment &getLimitTriggerAttachment() = 0;
+
+    inline void setLimitTrigger(SharedPtr<AstroTrigger> trigger);
+    inline SharedPtr<AstroTrigger> getLimitTrigger(bool poll = false);
 };
 
 // Observation Device Attachment Interface

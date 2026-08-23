@@ -6,17 +6,22 @@
 #ifndef AstroSensors_H
 #define AstroSensors_H
 
+struct AstroSensorData;
+
 #include "AstroDatas.h"
 #include "AstroMeasurements.h"
 #include "AstroObject.h"
 #include "AstroPins.h"
+
+// Creates sensor object from passed sensor data (return ownership transfer - user code *must* delete returned object)
+extern AstroSensor *newSensorObjectFromData(const AstroSensorData *dataIn);
 
 // Sensor Base
 // Base class for measurements supplied by pins, callbacks, or external sensor adapters.
 class AstroSensor : public AstroObject, public AstroSensorObjectInterface, public AstroMeasurementUnitsInterface {
 public:
     const enum : signed char { Value, Callback, Digital, Analog, Unknown = -1 } classType;
-    AstroSensor(Astro_SensorType sensorType = Astro_SensorType_Generic,
+    AstroSensor(Astro_SensorType sensorType = Astro_SensorType_Undefined,
                 Astro_UnitsType units = Astro_UnitsType_Undefined,
                 aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG,
                 int classTypeIn = Unknown);
@@ -63,7 +68,7 @@ protected:
 // Stores a user supplied scalar measurement.
 class AstroValueSensor : public AstroSensor {
 public:
-    AstroValueSensor(Astro_SensorType sensorType = Astro_SensorType_Generic,
+    AstroValueSensor(Astro_SensorType sensorType = Astro_SensorType_Undefined,
                      Astro_UnitsType units = Astro_UnitsType_Undefined,
                      aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG,
                      double value = 0.0)
@@ -84,10 +89,12 @@ public:
     typedef bool (*ReadCallback)(void *context, double *valueOut);
 
     AstroCallbackSensor(ReadCallback callback = nullptr, void *context = nullptr,
-                        Astro_SensorType sensorType = Astro_SensorType_Generic,
+                        Astro_SensorType sensorType = Astro_SensorType_Undefined,
                         Astro_UnitsType units = Astro_UnitsType_Undefined,
                         aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG)
         : AstroSensor(sensorType, units, positionIndex, Callback), _callback(callback), _context(context) { ; }
+    AstroCallbackSensor(const AstroSensorData *dataIn)
+        : AstroSensor(dataIn), _callback(nullptr), _context(nullptr) { ; }
     virtual bool readValue(double *valueOut) override { return _callback ? _callback(_context, valueOut) : false; }
 protected:
     ReadCallback _callback;                                // Callback function
@@ -99,7 +106,7 @@ protected:
 class AstroDigitalSensor : public AstroSensor {
 public:
     AstroDigitalSensor(AstroDigitalPin inputPin = AstroDigitalPin(),
-                       Astro_SensorType sensorType = Astro_SensorType_Generic,
+                       Astro_SensorType sensorType = Astro_SensorType_Undefined,
                        aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);
     AstroDigitalSensor(const AstroSensorData *dataIn);
     virtual bool readValue(double *valueOut) override;
@@ -112,7 +119,7 @@ protected:
 class AstroAnalogSensor : public AstroSensor {
 public:
     AstroAnalogSensor(AstroAnalogPin inputPin = AstroAnalogPin(),
-                      Astro_SensorType sensorType = Astro_SensorType_Generic,
+                      Astro_SensorType sensorType = Astro_SensorType_Undefined,
                       Astro_UnitsType units = Astro_UnitsType_Raw_1,
                       aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
 
@@ -122,6 +129,18 @@ public:
 protected:
     AstroAnalogPin _inputPin;                              // Input pin
     virtual void saveToData(AstroData *dataOut) const override;
+};
+
+
+// Sensor Serialization Data
+struct AstroSensorData : public AstroObjectData
+{
+    Astro_UnitsType measurementUnits;                       // Measurement units
+    AstroPinData inputPin;                                  // Input pin
+
+    AstroSensorData();
+    virtual void toJSONObject(JsonObject &objectOut) const override;
+    virtual void fromJSONObject(JsonObjectConst &objectIn) override;
 };
 
 #endif // /ifndef AstroSensors_H

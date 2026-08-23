@@ -6,49 +6,17 @@
 #ifndef AstroFactory_H
 #define AstroFactory_H
 
-#include "AstroCamera.h"
-#include "AstroCover.h"
-#include "AstroDrivers.h"
-#include "AstroMounts.h"
-#include "AstroRails.h"
-#include "AstroSensors.h"
-#include "AstroTriggers.h"
+class AstroFactory;
+
+#include "Astruino.h"
 
 // Object Factory
-// Centralizes common object creation so application sketches and deserialization code follow
-// the same construction rules. Objects created through these helpers are registered with the
-// controller, matching the shared-object lifecycle used by the sibling libraries.
+// Contains convenience methods that create the supported Astruino object families,
+// select the first available identity position, and register main objects with the controller.
 class AstroFactory {
 public:
-    // Generic actuator and sensor creation.
-    SharedPtr<AstroActuator> addActuator(Astro_ActuatorType actuatorType);
-    SharedPtr<AstroValueSensor> addSensor(Astro_SensorType sensorType,
-                                          Astro_UnitsType units = Astro_UnitsType_Undefined);
-    SharedPtr<AstroCallbackActuator> addCallbackActuator(AstroCallbackActuator::WriteCallback callback,
-                                                         Astro_ActuatorType actuatorType = Astro_ActuatorType_Generic,
-                                                         void *context = nullptr); // Context, not owned
-    SharedPtr<AstroCallbackSensor> addCallbackSensor(AstroCallbackSensor::ReadCallback callback,
-                                                     Astro_SensorType sensorType = Astro_SensorType_Generic,
-                                                     Astro_UnitsType units = Astro_UnitsType_Undefined,
-                                                     void *context = nullptr); // Context, not owned
 
-    // Pin-backed actuator creation.
-    SharedPtr<AstroDigitalActuator> addDigitalActuator(Astro_ActuatorType actuatorType,
-                                                       AstroDigitalPin outputPin);
-    SharedPtr<AstroRelayMotorActuator> addRelayMotorActuator(Astro_ActuatorType actuatorType,
-                                                             AstroDigitalPin forwardPin,
-                                                             AstroDigitalPin reversePin);
-    SharedPtr<AstroAnalogActuator> addAnalogActuator(Astro_ActuatorType actuatorType,
-                                                     AstroAnalogPin outputPin);
-
-    // Pin-backed sensor creation.
-    SharedPtr<AstroDigitalSensor> addDigitalSensor(Astro_SensorType sensorType,
-                                                   AstroDigitalPin inputPin);
-    SharedPtr<AstroAnalogSensor> addAnalogSensor(Astro_SensorType sensorType,
-                                                 AstroAnalogPin inputPin,
-                                                 Astro_UnitsType units = Astro_UnitsType_Raw_1);
-
-    // Convenience builders for common Astruino equipment.
+    // Convenience builders for common actuators (shared, nullptr return -> failure).
 
     // Creates a binary dew-heater output, typically driving a relay or MOSFET gate.
     SharedPtr<AstroDigitalActuator> addDewHeaterRelay(pintype_t outputPin,
@@ -66,21 +34,10 @@ public:
     // Creates a variable equipment/camera fan output.
     SharedPtr<AstroAnalogActuator> addFanPWM(pintype_t outputPin,
                                             uint8_t outputBitRes = 8);
-    // Creates a hobby-servo axis driver with the supplied angular travel range.
-    SharedPtr<AstroServoAxisDriver> addMountAxisServo(pintype_t outputPin,
-                                                      double minDegrees = 0.0,
-                                                      double maxDegrees = 180.0,
-                                                      uint8_t outputBitRes = 8);
-    // Creates a STEP/DIR telescope axis driver for common external stepper motor drivers.
-    SharedPtr<AstroStepDirAxisDriver> addMountAxisStepper(pintype_t stepPin,
-                                                          pintype_t directionPin,
-                                                          pintype_t enablePin = apin_none,
-                                                          double stepsPerDegree = 200.0,
-                                                          double maxStepsPerSecond = 800.0,
-                                                          bool reverseDirection = false,
-                                                          bool enableActiveLow = true);
     // Creates an absolute-step telescope focuser ready for a stepper or external driver callback.
     SharedPtr<AstroFocuser> addFocuser(int32_t maximumPosition = 10000);
+
+    // Convenience builders for common sensors (shared, nullptr return -> failure).
 
     // Creates a digital mount/cover endstop or home switch input.
     SharedPtr<AstroDigitalSensor> addLimitSwitch(pintype_t inputPin,
@@ -98,32 +55,50 @@ public:
     SharedPtr<AstroAnalogSensor> addPositionSensor(pintype_t inputPin,
                                                    uint8_t inputBitRes = 10);
 
-    // Mechanical/system object creation.
+    // Convenience builders for system objects (shared, nullptr return -> failure).
+
+    // Creates a catalog/ephemeris target object using the selected target type.
+    SharedPtr<AstroTarget> addTarget(Astro_TargetType targetType);
+    // Creates a mount object using the selected geometry.
     SharedPtr<AstroMount> addMount(Astro_MountType mountType);
-    SharedPtr<AstroRail> addRail(Astro_RailType railType);
-    SharedPtr<AstroCover> addCover();
+    // Creates a simple count-limited power rail.
+    SharedPtr<AstroSimpleRail> addSimplePowerRail(Astro_RailType railType,
+                                                  int maxActiveAtOnce = 2);
+    // Creates a sensor-regulated power rail.
+    SharedPtr<AstroRegulatedRail> addRegulatedPowerRail(Astro_RailType railType,
+                                                        float maxPower);
+    // Creates an observation trigger device.
     SharedPtr<AstroCameraTrigger> addCameraTrigger();
 
-    // Driver and trigger helpers.
+    // Driver and trigger helpers (sub-objects, not registered as main system objects).
+
+    // Creates a callback-backed mount axis driver.
     SharedPtr<AstroCallbackAxisDriver> addCallbackAxisDriver(AstroCallbackAxisDriver::TargetCallback targetCallback,
                                                              AstroCallbackAxisDriver::StopCallback stopCallback = nullptr,
                                                              void *context = nullptr); // Context, not owned
-    SharedPtr<AstroServoAxisDriver> addServoAxisDriver(AstroAnalogPin outputPin,
-                                                       double minDegrees = 0.0,
-                                                       double maxDegrees = 180.0); // Max degrees
+    // Creates a hobby-servo axis driver with the supplied angular travel range.
+    SharedPtr<AstroServoAxisDriver> addMountAxisServo(pintype_t outputPin,
+                                                      double minDegrees = 0.0,
+                                                      double maxDegrees = 180.0,
+                                                      uint8_t outputBitRes = 8);
+    // Creates a STEP/DIR telescope axis driver for common external stepper motor drivers.
+    SharedPtr<AstroStepDirAxisDriver> addMountAxisStepper(pintype_t stepPin,
+                                                          pintype_t directionPin,
+                                                          pintype_t enablePin = apin_none,
+                                                          double stepsPerDegree = 200.0,
+                                                          double maxStepsPerSecond = 800.0,
+                                                          bool reverseDirection = false,
+                                                          bool enableActiveLow = true);
+    // Creates a single-value measurement trigger.
     SharedPtr<AstroMeasurementValueTrigger> addThresholdTrigger(SharedPtr<AstroSensor> sensor,
                                                                  double threshold, bool triggerBelow = false,
                                                                  double detriggerTolerance = 0.0,
-                                                                 millis_t detriggerDelay = 0); // De-trigger tolerance/delay
+                                                                 millis_t detriggerDelay = 0);
+    // Creates a measurement-range trigger.
     SharedPtr<AstroMeasurementRangeTrigger> addRangeTrigger(SharedPtr<AstroSensor> sensor,
                                                              double low, double high, bool triggerOutside = true,
                                                              double detriggerTolerance = 0.0,
-                                                             millis_t detriggerDelay = 0); // De-trigger tolerance/delay
-
-    // Creates a concrete object from serialized object data (return ownership transfer - user code *must* delete returned object).
-    static AstroObject *newObjectFromData(const AstroObjectData *dataIn);
-    // Creates a pin implementation from serialized pin sub-data (return ownership transfer - user code *must* delete returned object).
-    static AstroPin *newPinFromData(const AstroPinData *dataIn);
+                                                             millis_t detriggerDelay = 0);
 };
 
 #endif // /ifndef AstroFactory_H
