@@ -191,87 +191,87 @@ typedef typeof(LOW)                     ard_pinstatus_t;    // Arduino pin statu
 #define ASTRO_SYS_PINEXPANDERS_MAXSIZE  2                   // Maximum array size for pin expanders list (max # of expanders)
 
 
-#define TERRA_CONTROL_LOOP_INTERVAL     100                 // Run interval of main control loop, in milliseconds
-#define TERRA_DATA_LOOP_INTERVAL        2000                // Default run interval of data loop, in milliseconds (customizable later)
-#define TERRA_MISC_LOOP_INTERVAL        250                 // Run interval of misc loop, in milliseconds
+#define ASTRO_CONTROL_LOOP_INTERVAL     100                 // Run interval of main control loop, in milliseconds
+#define ASTRO_DATA_LOOP_INTERVAL        2000                // Default run interval of data loop, in milliseconds (customizable later)
+#define ASTRO_MISC_LOOP_INTERVAL        250                 // Run interval of misc loop, in milliseconds
 
-#define TERRA_ACT_PUMPCALC_UPDATEMS     250                 // Minimum time millis needing to pass before a pump reports/writes changed volume to reservoir (reduces error accumulation)
-#define TERRA_ACT_PUMPCALC_MINFLOWRATE  0.05f               // What percentage of continuous flow rate an instantaneous flow rate sensor must achieve before it is used in pump/volume calculations (reduces near-zero error jitters)
+#define ASTRO_ACT_PUMPCALC_UPDATEMS     250                 // Minimum time millis needing to pass before a pump reports/writes changed volume to reservoir (reduces error accumulation)
+#define ASTRO_ACT_PUMPCALC_MINFLOWRATE  0.05f               // What percentage of continuous flow rate an instantaneous flow rate sensor must achieve before it is used in pump/volume calculations (reduces near-zero error jitters)
 
-#define TERRA_MUXERS_SHARED_ADDR_BUS    false               // Pin muxer channel selects should disable all pin muxers due to using same address bus (true), or not (false)
+#define ASTRO_MUXERS_SHARED_ADDR_BUS    false               // Pin muxer channel selects should disable all pin muxers due to using same address bus (true), or not (false)
 
-#define TERRA_NIGHT_START_HR            20                  // Hour of the day night starts (used if not able to calculate from location & time)
-#define TERRA_NIGHT_FINISH_HR           6                   // Hour of the day night finishes (used if not able to calculate from location & time)
+#define ASTRO_NIGHT_START_HR            20                  // Hour of the day night starts (used if not able to calculate from location & time)
+#define ASTRO_NIGHT_FINISH_HR           6                   // Hour of the day night finishes (used if not able to calculate from location & time)
 
-#define TERRA_POS_SEARCH_FROMBEG        -1                  // Search from beginning to end, 0 up to MAXSIZE-1
-#define TERRA_POS_SEARCH_FROMEND        TERRA_POS_MAXSIZE   // Search from end to beginning, MAXSIZE-1 down to 0
-#define TERRA_POS_EXPORT_BEGFROM        1                   // Whenever exported/user-facing position indexing starts at 1 or 0 (aka display offset)
+#define ASTRO_POS_SEARCH_FROMBEG        -1                  // Search from beginning to end, 0 up to MAXSIZE-1
+#define ASTRO_POS_SEARCH_FROMEND        ASTRO_POS_MAXSIZE   // Search from end to beginning, MAXSIZE-1 down to 0
+#define ASTRO_POS_EXPORT_BEGFROM        1                   // Whenever exported/user-facing position indexing starts at 1 or 0 (aka display offset)
 
-#define TERRA_RAILS_LINKS_BASESIZE      4                   // Base array size for rail's linkage list
-#define TERRA_RAILS_FRACTION_SATURATED  0.8f                // What fraction of maximum power is allowed to be used in canActivate() checks (aka maximum saturation point), used in addition to regulated rail's limitTrigger
+#define ASTRO_RAILS_LINKS_BASESIZE      4                   // Base array size for rail's linkage list
+#define ASTRO_RAILS_FRACTION_SATURATED  0.8f                // What fraction of maximum power is allowed to be used in canActivate() checks (aka maximum saturation point), used in addition to regulated rail's limitTrigger
 
-#define TERRA_SENSOR_BINARY_STABLE_MILLIS 100               // Minimum time a binary sensor input must remain changed before the new state is accepted, in milliseconds
-#define TERRA_SENSOR_ANALOGREAD_SAMPLES 5                   // Number of samples to take for any analogRead call inside of a sensor's takeMeasurement call, or 0 to disable sampling (note: bitRes.maxValue * # of samples must fit inside a uint32_t)
-#define TERRA_SENSOR_ANALOGREAD_DELAY   0                   // Delay time between samples, or 0 to disable delay, in milliseconds
+#define ASTRO_SENSOR_BINARY_STABLE_MILLIS 100               // Minimum time a binary sensor input must remain changed before the new state is accepted, in milliseconds
+#define ASTRO_SENSOR_ANALOGREAD_SAMPLES 5                   // Number of samples to take for any analogRead call inside of a sensor's takeMeasurement call, or 0 to disable sampling (note: bitRes.maxValue * # of samples must fit inside a uint32_t)
+#define ASTRO_SENSOR_ANALOGREAD_DELAY   0                   // Delay time between samples, or 0 to disable delay, in milliseconds
 
-#define TERRA_SYS_AUTOSAVE_INTERVAL     120                 // Default autosave interval, in minutes
-#define TERRA_SYS_I2CEEPROM_BASEADDR    0x50                // Base address of I2C EEPROM (bitwise or'ed with passed address)
-#define TERRA_SYS_ATWIFI_SERIALBAUD     115200              // Data baud rate for serial AT WiFi, in bps (older modules may need 9600)
-#define TERRA_SYS_ATWIFI_SERIALMODE     SERIAL_8N1          // Data transfer mode for serial AT WiFi (see SERIAL_* defines)
-#define TERRA_SYS_NMEAGPS_SERIALBAUD    9600                // Data baud rate for serial NMEA GPS, in bps (older modules may need 4800)
-#define TERRA_SYS_URLHTTP_PORT          80                  // Which default port to access when accessing HTTP resources
-#define TERRA_SYS_LEAVE_FILES_OPEN      !defined(__AVR__)   // If high access files should be left open to improve performance (true), or closed after use to reduce memory consumption (false)
-#define TERRA_SYS_FREERAM_LOWBYTES      1024                // How many bytes of free memory left spawns a handle low mem call to all objects
-#define TERRA_SYS_FREESPACE_INTERVAL    240                 // How many minutes should pass before checking attached file systems have enough disk space (performs cleanup if not)
-#define TERRA_SYS_FREESPACE_LOWSPACE    256                 // How many kilobytes of disk space remaining will force cleanup of oldest log/data files first
-#define TERRA_SYS_FREESPACE_DAYSBACK    180                 // How many days back log/data files are allowed to be stored up to (any beyond this are deleted during cleanup)
-#define TERRA_SYS_SUNRISESET_CALCITERS  3                   // # of iterations that sunrise/sunset calculations should run (higher # = more accurate but also more costly)
-#define TERRA_SYS_LATLONG_DISTSQRDTOL   0.25                // Squared difference in lat/long coords that needs to occur for it to be considered significant enough for system update
-#define TERRA_SYS_ALTITUDE_DISTTOL      0.5                 // Difference in altitude coords that needs to occur for it to be considered significant enough for system update
-#define TERRA_SYS_DELAYFINE_SPINMILLIS  20                  // How many milliseconds away from stop time fine delays can use yield() up to before using a blocking spin-lock (used for fine timing)
-#define TERRA_SYS_YIELD_AFTERMILLIS     20                  // How many milliseconds must pass by before system run loops call a yield() mid-loop, in order to allow finely-timed tasks a chance to run
-#define TERRA_SYS_DEBUGOUT_FLUSH_YIELD  false               // If debug output statements should flush and yield afterwards to force send through to serial monitor (mainly used for debugging)
-#define TERRA_SYS_MEM_LOGGING_ENABLE    false               // If system will periodically log memory remaining messages (mainly used for debugging)
-#define TERRA_SYS_DRY_RUN_ENABLE        false               // Disables pins from actually enabling in order to simply simulate (mainly used for debugging)
+#define ASTRO_SYS_AUTOSAVE_INTERVAL     120                 // Default autosave interval, in minutes
+#define ASTRO_SYS_I2CEEPROM_BASEADDR    0x50                // Base address of I2C EEPROM (bitwise or'ed with passed address)
+#define ASTRO_SYS_ATWIFI_SERIALBAUD     115200              // Data baud rate for serial AT WiFi, in bps (older modules may need 9600)
+#define ASTRO_SYS_ATWIFI_SERIALMODE     SERIAL_8N1          // Data transfer mode for serial AT WiFi (see SERIAL_* defines)
+#define ASTRO_SYS_NMEAGPS_SERIALBAUD    9600                // Data baud rate for serial NMEA GPS, in bps (older modules may need 4800)
+#define ASTRO_SYS_URLHTTP_PORT          80                  // Which default port to access when accessing HTTP resources
+#define ASTRO_SYS_LEAVE_FILES_OPEN      !defined(__AVR__)   // If high access files should be left open to improve performance (true), or closed after use to reduce memory consumption (false)
+#define ASTRO_SYS_FREERAM_LOWBYTES      1024                // How many bytes of free memory left spawns a handle low mem call to all objects
+#define ASTRO_SYS_FREESPACE_INTERVAL    240                 // How many minutes should pass before checking attached file systems have enough disk space (performs cleanup if not)
+#define ASTRO_SYS_FREESPACE_LOWSPACE    256                 // How many kilobytes of disk space remaining will force cleanup of oldest log/data files first
+#define ASTRO_SYS_FREESPACE_DAYSBACK    180                 // How many days back log/data files are allowed to be stored up to (any beyond this are deleted during cleanup)
+#define ASTRO_SYS_SUNRISESET_CALCITERS  3                   // # of iterations that sunrise/sunset calculations should run (higher # = more accurate but also more costly)
+#define ASTRO_SYS_LATLONG_DISTSQRDTOL   0.25                // Squared difference in lat/long coords that needs to occur for it to be considered significant enough for system update
+#define ASTRO_SYS_ALTITUDE_DISTTOL      0.5                 // Difference in altitude coords that needs to occur for it to be considered significant enough for system update
+#define ASTRO_SYS_DELAYFINE_SPINMILLIS  20                  // How many milliseconds away from stop time fine delays can use yield() up to before using a blocking spin-lock (used for fine timing)
+#define ASTRO_SYS_YIELD_AFTERMILLIS     20                  // How many milliseconds must pass by before system run loops call a yield() mid-loop, in order to allow finely-timed tasks a chance to run
+#define ASTRO_SYS_DEBUGOUT_FLUSH_YIELD  false               // If debug output statements should flush and yield afterwards to force send through to serial monitor (mainly used for debugging)
+#define ASTRO_SYS_MEM_LOGGING_ENABLE    false               // If system will periodically log memory remaining messages (mainly used for debugging)
+#define ASTRO_SYS_DRY_RUN_ENABLE        false               // Disables pins from actually enabling in order to simply simulate (mainly used for debugging)
 
 #if defined(__APPLE__) || defined(__APPLE) || defined(__unix__) || defined(__unix)
-#define TERRA_BLDPATH_SEPARATOR         '/'                 // Path separator for nix-based build machines
+#define ASTRO_BLDPATH_SEPARATOR         '/'                 // Path separator for nix-based build machines
 #else
-#define TERRA_BLDPATH_SEPARATOR         '\\'                // Path separator for win-based build machines
+#define ASTRO_BLDPATH_SEPARATOR         '\\'                // Path separator for win-based build machines
 #endif
-#define TERRA_FSPATH_SEPARATOR          '/'                 // Path separator for filesystem paths (SD card/WiFiStorage)
-#define TERRA_URLPATH_SEPARATOR         '/'                 // Path separator for URL paths
+#define ASTRO_FSPATH_SEPARATOR          '/'                 // Path separator for filesystem paths (SD card/WiFiStorage)
+#define ASTRO_URLPATH_SEPARATOR         '/'                 // Path separator for URL paths
 
-#if TERRA_SYS_LEAVE_FILES_OPEN                              // How subsequent getters should be called when file left open
-#define TERRA_LOFS_BEGIN false
+#if ASTRO_SYS_LEAVE_FILES_OPEN                              // How subsequent getters should be called when file left open
+#define ASTRO_LOFS_BEGIN false
 #else
-#define TERRA_LOFS_BEGIN true
+#define ASTRO_LOFS_BEGIN true
 #endif
 
 #if !(defined(NO_GLOBAL_INSTANCES) || defined(NO_GLOBAL_SPI)) && (SPI_INTERFACES_COUNT > 0 || SPI_HOWMANY > 0)
-#define TERRA_USE_SPI                   &SPI
+#define ASTRO_USE_SPI                   &SPI
 #else
-#define TERRA_USE_SPI                   nullptr
+#define ASTRO_USE_SPI                   nullptr
 #endif
 #if !(defined(NO_GLOBAL_INSTANCES) || defined(NO_GLOBAL_SPI1)) && (SPI_INTERFACES_COUNT > 1 || SPI_HOWMANY > 1)
-#define TERRA_USE_SPI1                  &SPI1
+#define ASTRO_USE_SPI1                  &SPI1
 #else
-#define TERRA_USE_SPI1                  nullptr
+#define ASTRO_USE_SPI1                  nullptr
 #endif
 #if !(defined(NO_GLOBAL_INSTANCES) || defined(NO_GLOBAL_TWOWIRE)) && (WIRE_INTERFACES_COUNT > 0 || WIRE_HOWMANY > 0)
-#define TERRA_USE_WIRE                  &Wire
+#define ASTRO_USE_WIRE                  &Wire
 #else
-#define TERRA_USE_WIRE                  nullptr
+#define ASTRO_USE_WIRE                  nullptr
 #endif
 #if !(defined(NO_GLOBAL_INSTANCES) || defined(NO_GLOBAL_TWOWIRE1)) && (WIRE_INTERFACES_COUNT > 1 || WIRE_HOWMANY > 1)
-#define TERRA_USE_WIRE1                 &Wire1
+#define ASTRO_USE_WIRE1                 &Wire1
 #else
-#define TERRA_USE_WIRE1                 nullptr
+#define ASTRO_USE_WIRE1                 nullptr
 #endif
 #if !(defined(NO_GLOBAL_INSTANCES) || defined(NO_GLOBAL_SERIAL1)) && (SERIAL_HOWMANY > 1 || defined(HWSERIAL1) || defined(HAVE_HWSERIAL1) || defined(PIN_SERIAL1_RX) || defined(SERIAL2_RX) || defined(Serial1))
-#define TERRA_USE_SERIAL1               &Serial1
+#define ASTRO_USE_SERIAL1               &Serial1
 #else
-#define TERRA_USE_SERIAL1               nullptr
+#define ASTRO_USE_SERIAL1               nullptr
 #endif
 
 
