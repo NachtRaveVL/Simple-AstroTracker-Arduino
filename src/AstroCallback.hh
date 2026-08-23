@@ -6,8 +6,6 @@
 #ifndef AstroCallback_HH
 #define AstroCallback_HH
 
-#include "AstroCompat.h"
-
 template<class TArg, size_t Slots = 4>
 // Signal Callback Helper
 // Small fixed-slot callback signal used by the embedded object layer.

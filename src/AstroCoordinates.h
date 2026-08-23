@@ -6,7 +6,7 @@
 #ifndef AstroCoordinates_H
 #define AstroCoordinates_H
 
-#include "AstroCompat.h"
+#include "Astruino.h"
 
 // Equatorial Coordinates
 // Right ascension and declination coordinate pair.
