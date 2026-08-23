@@ -6,19 +6,6 @@
 #include "Astruino.h"
 #include <math.h>
 
-double astroNormalizeDegrees(double value)
-{
-    value = fmod(value, 360.0);
-    if (value < 0.0) { value += 360.0; }
-    return value;
-}
-
-double astroNormalizeSignedDegrees(double value)
-{
-    value = astroNormalizeDegrees(value);
-    return value > 180.0 ? value - 360.0 : value;
-}
-
 double astroJulianDate(int64_t unixTime)
 {
     return 2440587.5 + ((double)unixTime / 86400.0);
@@ -30,12 +17,12 @@ double astroGreenwichSiderealDegrees(int64_t unixTime)
     double t = (jd - 2451545.0) / 36525.0;
     double gmst = 280.46061837 + 360.98564736629 * (jd - 2451545.0) +
                   0.000387933 * t * t - (t * t * t) / 38710000.0;
-    return astroNormalizeDegrees(gmst);
+    return wrapBy360<double>(gmst);
 }
 
 double astroLocalSiderealDegrees(int64_t unixTime, double longitudeDegrees)
 {
-    return astroNormalizeDegrees(astroGreenwichSiderealDegrees(unixTime) + longitudeDegrees);
+    return wrapBy360<double>(astroGreenwichSiderealDegrees(unixTime) + longitudeDegrees);
 }
 
 AstroEquatorialCoordinates astroPrecessJ2000(const AstroEquatorialCoordinates &coordinates, int64_t unixTime)
@@ -63,13 +50,13 @@ AstroEquatorialCoordinates astroPrecessJ2000(const AstroEquatorialCoordinates &c
 
     astroConvertUnits(outRa, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &outRa);
     astroConvertUnits(outDec, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &outDec);
-    return AstroEquatorialCoordinates(astroNormalizeDegrees(outRa) / 15.0, outDec);
+    return AstroEquatorialCoordinates(wrapBy360<double>(outRa) / 15.0, outDec);
 }
 
 AstroHorizontalCoordinates astroEquatorialToHorizontal(const AstroEquatorialCoordinates &coordinates, const AstroObserver &observer, int64_t unixTime)
 {
     double localSidereal = astroLocalSiderealDegrees(unixTime, observer.longitudeDegrees);
-    double hourAngle = astroNormalizeSignedDegrees(localSidereal - coordinates.rightAscensionHours * 15.0);
+    double hourAngle = wrapBy180Neg180<double>(localSidereal - coordinates.rightAscensionHours * 15.0);
     double declination = coordinates.declinationDegrees;
     double latitude = observer.latitudeDegrees;
     astroConvertUnits(hourAngle, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &hourAngle);
@@ -81,7 +68,7 @@ AstroHorizontalCoordinates astroEquatorialToHorizontal(const AstroEquatorialCoor
 
     astroConvertUnits(altitude, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &altitude);
     astroConvertUnits(azimuth, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &azimuth);
-    return AstroHorizontalCoordinates(altitude, astroNormalizeDegrees(azimuth));
+    return AstroHorizontalCoordinates(altitude, wrapBy360<double>(azimuth));
 }
 
 struct AstroOrbitalElements {
@@ -100,7 +87,7 @@ static double daysFromJ2000(int64_t unixTime)
 
 static double solveEccentricAnomaly(double meanAnomalyDegrees, double eccentricity)
 {
-    double m = astroNormalizeDegrees(meanAnomalyDegrees);
+    double m = wrapBy360<double>(meanAnomalyDegrees);
     astroConvertUnits(m, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &m);
     double e = m + eccentricity * sin(m) * (1.0 + eccentricity * cos(m));
     for (int i = 0; i < 6; ++i) {
@@ -165,7 +152,7 @@ static AstroEquatorialCoordinates eclipticToEquatorial(double x, double y, doubl
     double dec = atan2(ze, sqrt(xe * xe + ye * ye));
     astroConvertUnits(ra, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &ra);
     astroConvertUnits(dec, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &dec);
-    return AstroEquatorialCoordinates(astroNormalizeDegrees(ra) / 15.0, dec);
+    return AstroEquatorialCoordinates(wrapBy360<double>(ra) / 15.0, dec);
 }
 
 static AstroEquatorialCoordinates resolveSun(double d)
@@ -189,13 +176,13 @@ static AstroEquatorialCoordinates resolveMoon(double d)
     double x, y, z, r, lon;
     orbitalXYZ(moon, &x, &y, &z, &r, &lon);
 
-    double lMoon = astroNormalizeDegrees(moon.node + moon.perihelion + moon.anomaly);
+    double lMoon = wrapBy360<double>(moon.node + moon.perihelion + moon.anomaly);
     AstroOrbitalElements sun = sunElements(d);
-    double lSun = astroNormalizeDegrees(sun.perihelion + sun.anomaly);
-    double mm = astroNormalizeDegrees(moon.anomaly);
-    double ms = astroNormalizeDegrees(sun.anomaly);
-    double dd = astroNormalizeDegrees(lMoon - lSun);
-    double ff = astroNormalizeDegrees(lMoon - moon.node);
+    double lSun = wrapBy360<double>(sun.perihelion + sun.anomaly);
+    double mm = wrapBy360<double>(moon.anomaly);
+    double ms = wrapBy360<double>(sun.anomaly);
+    double dd = wrapBy360<double>(lMoon - lSun);
+    double ff = wrapBy360<double>(lMoon - moon.node);
     astroConvertUnits(mm, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &mm);
     astroConvertUnits(ms, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &ms);
     astroConvertUnits(dd, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &dd);

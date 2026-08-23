@@ -163,8 +163,6 @@ extern double astroGreenwichSiderealDegrees(int64_t unixTime);
 extern double astroLocalSiderealDegrees(int64_t unixTime, double longitudeDegrees);
 extern AstroEquatorialCoordinates astroPrecessJ2000(const AstroEquatorialCoordinates &coordinates, int64_t unixTime);
 extern AstroHorizontalCoordinates astroEquatorialToHorizontal(const AstroEquatorialCoordinates &coordinates, const AstroObserver &observer, int64_t unixTime);
-extern double astroNormalizeDegrees(double degrees);
-extern double astroNormalizeSignedDegrees(double degrees);
 
 // Resolves a moving built-in solar-system target into equatorial coordinates for the supplied UTC time.
 // Uses lightweight orbital approximations intended for practical DIY pointing/tracking.

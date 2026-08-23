@@ -68,7 +68,7 @@ void AstroMount::setAxisPosition(uint8_t axisIndex, double positionDegrees)
     if (!axis) { return; }
 
     axis->positionDegrees = (_mountType == Astro_MountType_AltAzimuth && axisIndex == 0)
-        ? astroNormalizeDegrees(positionDegrees) : positionDegrees;
+        ? wrapBy360<double>(positionDegrees) : positionDegrees;
 
     if (!_parking && !_tracking) { _parked = isAtParkPosition(); }
 }
@@ -183,11 +183,11 @@ void AstroMount::updateTarget(int64_t unixTime, double elapsedSeconds)
 
     if (_mountType == Astro_MountType_AltAzimuth) {
         AstroHorizontalCoordinates horizontal = astroEquatorialToHorizontal(equatorial, _observer, unixTime);
-        applyAxisTarget(0, astroNormalizeDegrees(horizontal.azimuthDegrees + _guidePrimary));
+        applyAxisTarget(0, wrapBy360<double>(horizontal.azimuthDegrees + _guidePrimary));
         applyAxisTarget(1, horizontal.altitudeDegrees + _guideSecondary);
     } else {
         double localSidereal = astroLocalSiderealDegrees(unixTime, _observer.longitudeDegrees);
-        applyAxisTarget(0, astroNormalizeSignedDegrees(localSidereal - equatorial.rightAscensionHours * 15.0 + _guidePrimary));
+        applyAxisTarget(0, wrapBy180Neg180<double>(localSidereal - equatorial.rightAscensionHours * 15.0 + _guidePrimary));
         applyAxisTarget(1, equatorial.declinationDegrees + _guideSecondary);
     }
 }
@@ -195,7 +195,7 @@ void AstroMount::updateTarget(int64_t unixTime, double elapsedSeconds)
 bool AstroMount::isAtParkPosition(double toleranceDegrees) const
 {
     double primaryDelta = _parkPrimary - _primaryAxis.positionDegrees;
-    if (_mountType == Astro_MountType_AltAzimuth) { primaryDelta = astroNormalizeSignedDegrees(primaryDelta); }
+    if (_mountType == Astro_MountType_AltAzimuth) { primaryDelta = wrapBy180Neg180<double>(primaryDelta); }
 
     if (fabs(primaryDelta) > toleranceDegrees) { return false; }
     return _mountType == Astro_MountType_SingleAxis ||
@@ -226,14 +226,14 @@ void AstroMount::moveAxis(AstroAxisState *axis, double elapsedSeconds, bool wrap
     if (!axis || elapsedSeconds <= 0.0 || axis->maxRateDegreesPerSecond <= 0.0) { return; }
 
     double delta = axis->targetDegrees - axis->positionDegrees;
-    if (wrappedAxis) { delta = astroNormalizeSignedDegrees(delta); }
+    if (wrappedAxis) { delta = wrapBy180Neg180<double>(delta); }
     double maxStep = axis->maxRateDegreesPerSecond * elapsedSeconds;
 
     if (fabs(delta) <= maxStep) {
         axis->positionDegrees = axis->targetDegrees;
     } else {
         axis->positionDegrees += delta > 0.0 ? maxStep : -maxStep;
-        if (wrappedAxis) { axis->positionDegrees = astroNormalizeDegrees(axis->positionDegrees); }
+        if (wrappedAxis) { axis->positionDegrees = wrapBy360<double>(axis->positionDegrees); }
     }
 }
 
@@ -275,7 +275,7 @@ void AstroMount::update()
 bool AstroMount::isAligned(double toleranceDegrees) const
 {
     double primaryDelta = _primaryAxis.targetDegrees - _primaryAxis.positionDegrees;
-    if (_mountType == Astro_MountType_AltAzimuth) { primaryDelta = astroNormalizeSignedDegrees(primaryDelta); }
+    if (_mountType == Astro_MountType_AltAzimuth) { primaryDelta = wrapBy180Neg180<double>(primaryDelta); }
 
     if (fabs(primaryDelta) > toleranceDegrees) { return false; }
     return _mountType == Astro_MountType_SingleAxis ||

@@ -91,6 +91,15 @@ extern Astro_UnitsType rateUnits(Astro_UnitsType units);
 extern bool astroConvertUnits(double valueIn, Astro_UnitsType unitsIn, Astro_UnitsType unitsOut,
                               double *valueOut, double convertParam = 0.0);
 
+// For wrapping of values to positive-only moduli range [0, +range), e.g. [0,360) [0,2pi) etc, used in horizontal coordinates and as default wrap mode
+template<typename T> inline T wrapBy(T value, T range) { value = value % range; return value >= 0 ? value : value + range; }
+// For wrapping of values to positive-and-negative-split moduli range [-range/2,+range/2), e.g. [-180,180) [-pi,pi] etc, used in vertical coordinates
+template<typename T> inline T wrapBySplit(T value, T range) { return wrapBy<T>(value + (range / 2), range) - (range / 2); }
+// For wrapping of degree angle values to [0,360)
+template<typename T> inline T wrapBy360(T value) { return wrapBy<T>(value, 360); }
+// For wrapping of degree angle values to [-180,180)
+template<typename T> inline T wrapBy180Neg180(T value) { return wrapBySplit<T>(value, 360); }
+
 
 // Common formatting/string helpers
 extern akey_t stringHash(const AstroString &stringIn);
