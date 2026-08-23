@@ -3,9 +3,122 @@
     Astruino Targets
 */
 
-#include "AstroTargets.h"
+#include "Astruino.h"
+#include "AstroCoreLogic.h"
 #include "AstroEphemeris.h"
-#include <string.h>
+
+AstroTarget *newTargetObjectFromData(const AstroTargetData *dataIn)
+{
+    if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
+
+    if (dataIn && dataIn->isObjectData()) {
+        switch (dataIn->id.object.classType) {
+            case (aid_t)AstroTarget::Static:
+                return new AstroStaticTarget((const AstroStaticTargetData *)dataIn);
+            case (aid_t)AstroTarget::Dynamic:
+                return new AstroDynamicTarget((const AstroDynamicTargetData *)dataIn);
+            default: break;
+        }
+    }
+
+    return nullptr;
+}
+
+
+AstroTarget::AstroTarget(Astro_TargetType targetType, aposi_t targetIndex, Astro_SubstrateType substrateType, DateTime sowTime, int classTypeIn)
+    : AstroObject(AstroIdentity(targetType, targetIndex)), classType((typeof(classType))classTypeIn)
+{
+    allocateLinkages(ASTRO_TARGETS_LINKS_BASESIZE);
+
+    //todo call recalc
+}
+
+AstroTarget::AstroTarget(const AstroTargetData *dataIn)
+    : AstroObject(dataIn), classType((typeof(classType))(dataIn->id.object.classType)),
+      _substrateType(dataIn->substrateType), _sowTime(dataIn->sowTime), _feedReservoir(this),
+      _targetsData(nullptr), _growWeek(0), _feedingWeight(dataIn->feedingWeight),
+      _targetPhase(Astro_TargetPhase_Undefined), _feedingState(Astro_TriggerState_NotTriggered)
+{
+    allocateLinkages(ASTRO_TARGETS_LINKS_BASESIZE);
+
+    //todo call recalc
+}
+
+AstroTarget::~AstroTarget()
+{
+    if (_targetsData) { returnTargetsLibData(); }
+}
+
+void AstroTarget::update()
+{
+    AstroObject::update();
+
+    //todo
+}
+
+void AstroTarget::handleLowMemory()
+{
+    AstroObject::handleLowMemory();
+
+    returnTargetsLibData();
+}
+
+AstroData *AstroTarget::allocateData() const
+{
+    return _allocateDataForObjType((int8_t)_id.type, (int8_t)classType);
+}
+
+void AstroTarget::saveToData(AstroData *dataOut)
+{
+    AstroObject::saveToData(dataOut);
+
+    dataOut->id.object.classType = (int8_t)classType;
+    // todo
+}
+
+void AstroTarget::checkoutTargetsLibData()
+{
+    if (!_targetsData) {
+        _targetsData = astroTargetsLib.checkoutTargetsData(_id.objTypeAs.targetType);
+    }
+}
+
+void AstroTarget::returnTargetsLibData()
+{
+    if (_targetsData) {
+        astroTargetsLib.returnTargetsData(_targetsData); _targetsData = nullptr;
+    }
+}
+
+void AstroTarget::handleCustomTargetUpdated(Astro_TargetType targetType)
+{
+    if (getTargetType() == targetType) {
+        returnTargetsLibData(); // forces re-checkout
+        //todo call recalc
+
+        if (getScheduler()) {
+            getScheduler()->setNeedsScheduling();
+        }
+    }
+}
+
+
+AstroStaticTarget::AstroStaticTarget(Astro_TargetType targetType, aposi_t targetIndex, int classType)
+    : AstroTarget(targetType, targetIndex, classType)
+{ ; }
+
+AstroStaticTarget::AstroStaticTarget(const AstroStaticTargetData *dataIn)
+    : AstroTarget(dataIn)
+{ ; }
+
+void AstroStaticTarget::saveToData(AstroData *dataOut)
+{
+    AstroTarget::saveToData(dataOut);
+
+    // todo: stuff like ((AstroStaticTargetData *)dataOut)->lastFeedingTime = _lastFeedingTime;
+}
+
 
 AstroTargetData::AstroTargetData()
     : AstroData('A','T','L','D'), targetId(Astro_Target_Undefined), targetClass(Astro_TargetClass_Unknown),
