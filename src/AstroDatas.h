@@ -33,14 +33,14 @@ struct AstroSystemData : public AstroData {
     Astro_MeasurementMode measureMode;                      // System measurement mode
     Astro_DisplayOutputMode dispOutMode;                    // System display output mode
     Astro_ControlInputMode ctrlInMode;                      // System control input mode 
-    char systemName[HELIO_NAME_MAXSIZE];                    // System name
+    char systemName[ASTRO_NAME_MAXSIZE];                    // System name
     int16_t timeZoneOffset;                                 // Timezone offset from UTC, in whole hours
     uint16_t pollingInterval;                               // Sensor polling interval, in milliseconds
     Astro_Autosave autosaveEnabled;                         // Autosave enabled
     Astro_Autosave autosaveFallback;                        // Autosave fallback
     uint16_t autosaveInterval;                              // Autosave interval, in minutes
-    char wifiSSID[HELIO_NAME_MAXSIZE];                      // WiFi SSID
-    uint8_t wifiPassword[HELIO_NAME_MAXSIZE];               // WiFi password (xor encrypted)
+    char wifiSSID[ASTRO_NAME_MAXSIZE];                      // WiFi SSID
+    uint8_t wifiPassword[ASTRO_NAME_MAXSIZE];               // WiFi password (xor encrypted)
     uint32_t wifiPasswordSeed;                              // Seed for WiFi password one-time pad
     uint8_t macAddress[6];                                  // Ethernet MAC address
     double latitude;                                        // System latitude
@@ -64,7 +64,7 @@ struct AstroSystemData : public AstroData {
 // for storing custom user curve/offset correction/mapping data.
 // See setFrom* methods to set calibrated data in various formats.
 struct AstroCalibrationData : public AstroData {
-    char ownerName[HELIO_NAME_MAXSIZE];                     // Owner object name this calibration belongs to (actuator/sensor)
+    char ownerName[ASTRO_NAME_MAXSIZE];                     // Owner object name this calibration belongs to (actuator/sensor)
     Astro_UnitsType calibrationUnits;                       // Calibration output units
     float multiplier, offset;                               // Ax + B value transform coefficients
 

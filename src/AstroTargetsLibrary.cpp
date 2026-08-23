@@ -153,8 +153,8 @@ bool AstroTargetsLibrary::updateHasUserTargets()
 
 void AstroTargetsLibrary::updateTargetsOfType(Astro_TargetType targetType)
 {
-    if (Hydruino::_activeInstance) {
-        for (auto iter = Hydruino::_activeInstance->_objects.begin(); iter != Hydruino::_activeInstance->_objects.end(); ++iter) {
+    if (Astruino::_activeInstance) {
+        for (auto iter = Astruino::_activeInstance->_objects.begin(); iter != Astruino::_activeInstance->_objects.end(); ++iter) {
             if (iter->second->isTargetType()) {
                 auto target = static_pointer_cast<AstroTarget>(iter->second);
                 if (target->getTargetType() == targetType) {

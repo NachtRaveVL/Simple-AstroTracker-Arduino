@@ -6,13 +6,13 @@
 #ifndef AstroScheduler_H
 #define AstroScheduler_H
 
-#include "AstroCamera.h"
-#include "AstroCover.h"
-#include "AstroData.h"
-#include "AstroLogger.h"
-#include "AstroMounts.h"
-#include "AstroThermal.h"
-#include "AstroTriggers.h"
+class AstroScheduler;
+struct AstroSchedulerSubData;
+struct AstroProcess;
+struct AstroFeeding;
+struct AstroLighting;
+
+#include "Astruino.h"
 
 // Scheduler Configuration
 // Runtime scheduling thresholds used to control deploy, observing, and stow sequences.

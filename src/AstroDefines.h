@@ -515,7 +515,7 @@ enum Astro_UnitsType : signed char {
 #define PER_HR_TO_PER_MIN(t)        ((t) / (SECS_PER_MIN))  // Per hour to per minutes
 
 // Common forward decls
-class Hydruino;
+class Astruino;
 class AstroScheduler;
 class AstroLogger;
 class AstroPublisher;

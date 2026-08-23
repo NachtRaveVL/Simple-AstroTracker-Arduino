@@ -187,7 +187,7 @@ The optional tcMenu UI layer can use the same display and input libraries across
 * **BSP LCD / BSP Touch** support can use the included ChromaArt/BSP adapter layer on supported STM32/mbed targets. This is an advanced hardware-specific path.
 * **ST7789 custom TFT / TFT_eSPI** setups use statically configured screen dimensions and require a rebuild when those values change.
 
-Astruino-specific menus and overview screens are still TODO work. The shared tcMenu adapter files are already present so the project-specific UI can be built on the same plumbing as Hydruino and Helioduino.
+Astruino-specific menus and overview screens are still TODO work. The shared tcMenu adapter files are already present so the project-specific UI can be built on the same plumbing as Astruino and Helioduino.
 
 ### Initialization
 

@@ -9,7 +9,7 @@
 class AstroTargetsLibrary;
 struct AstroTargetsLibraryBook;
 
-#include "Hydruino.h"
+#include "Astruino.h"
 
 // Targets Library
 // Target data is vast and most microcontrollers don't have the memory to load all the target
@@ -59,7 +59,7 @@ protected:
     bool updateHasUserTargets();
     void updateTargetsOfType(Astro_TargetType targetType);
 
-    friend class Hydruino;
+    friend class Astruino;
 };
 
 // Targets Library Book

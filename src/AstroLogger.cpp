@@ -254,7 +254,7 @@ void AstroLogger::notifyDateChanged()
 
 void AstroLogger::cleanupOldestLogs(bool force)
 {
-    // TODO: Old data cleanup. #17 in Hydruino.
+    // TODO: Old data cleanup. #17 in Astruino.
 }
 
 
