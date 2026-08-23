@@ -167,8 +167,8 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr[] PROGMEM = "Equatorial";
             return flashStr;
         }
-        case AStr_AltAz: {
-            static const char flashStr[] PROGMEM = "AltAz";
+        case AStr_AltAzimuth: {
+            static const char flashStr[] PROGMEM = "AltAzimuth";
             return flashStr;
         }
         case AStr_SingleAxis: {

@@ -37,7 +37,7 @@ enum Astro_String : uint16_t {
     AStr_Current,                            // "Current"
     AStr_CameraTemperature,                  // "CameraTemperature"
     AStr_Equatorial,                         // "Equatorial"
-    AStr_AltAz,                              // "AltAz"
+    AStr_AltAzimuth,                         // "AltAzimuth"
     AStr_SingleAxis,                         // "SingleAxis"
     AStr_DC3V3,                              // "DC3V3"
     AStr_DC5V,                               // "DC5V"
@@ -121,7 +121,7 @@ enum Astro_String : uint16_t {
     AStr_Colon,                              // ": "
     AStr_Blank2,                             // "  "
 
-    AStr_Count                                      // String count
+    AStr_Count                               // String count
 };
 
 // Blank string pointer used when no Flash string is available.

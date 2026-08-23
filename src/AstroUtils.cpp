@@ -287,7 +287,7 @@ AstroString mountTypeToString(Astro_MountType value, bool excludeSpecial)
 {
     switch (value) {
         case Astro_MountType_Equatorial: return SFP(AStr_Equatorial);
-        case Astro_MountType_AltAz: return SFP(AStr_AltAz);
+        case Astro_MountType_AltAzimuth: return SFP(AStr_AltAzimuth);
         case Astro_MountType_SingleAxis: return SFP(AStr_SingleAxis);
         case Astro_MountType_Count: return !excludeSpecial ? SFP(AStr_Enum_Count) : AstroString();
         case Astro_MountType_Unknown: break;
@@ -299,7 +299,7 @@ Astro_MountType mountTypeFromString(const AstroString &value)
 {
     switch (value.length() > 0 ? value[0] : '\0') {
         case 'A':
-            return Astro_MountType_AltAz;
+            return Astro_MountType_AltAzimuth;
         case 'C':
             return Astro_MountType_Count;
         case 'E':

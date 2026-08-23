@@ -641,7 +641,7 @@ enum Astro_SensorType : signed char {
 // Telescope/tracker mount geometry.
 enum Astro_MountType : signed char {
     Astro_MountType_Equatorial,                             // Equatorial mount
-    Astro_MountType_AltAz,                                  // Altitude/azimuth mount
+    Astro_MountType_AltAzimuth,                             // Altitude/azimuth mount
     Astro_MountType_SingleAxis,                             // Single-axis sidereal tracker
 
     Astro_MountType_Count,                                  // Placeholder
