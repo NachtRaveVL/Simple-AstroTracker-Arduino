@@ -40,7 +40,7 @@ struct AstroData : public AstroJSONSerializableInterface {
     uint8_t _version;                                       // Version # of data container
     int8_t _revision;                                       // Revision # of stored data (uses -vals for modified flag)
 
-    inline bool isStandardData() const { return id.chars[0] == 'H'; }
+    inline bool isStandardData() const { return id.chars[0] == 'A'; }
     inline bool isSystemData() const { return isStandardData() && id.chars[1] == 'S' && id.chars[2] == 'Y' && id.chars[3] == 'S'; }
     inline bool isCalibrationData() const { return isStandardData() && id.chars[1] == 'C' && id.chars[2] == 'A' && id.chars[3] == 'L'; }
     inline bool isTargetsLibData() const { return isStandardData() && id.chars[1] == 'C' && id.chars[2] == 'L' && id.chars[3] == 'D'; }
