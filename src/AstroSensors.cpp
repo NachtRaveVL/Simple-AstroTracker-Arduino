@@ -7,20 +7,24 @@
 
 AstroSensor *newSensorObjectFromData(const AstroSensorData *dataIn)
 {
-    if (!dataIn) { return nullptr; }
+    if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
 
-    switch (dataIn->id.object.classType) {
-        case (aid_t)AstroSensor::Value:
-            return new AstroValueSensor(dataIn);
-        case (aid_t)AstroSensor::Callback:
-            return new AstroCallbackSensor(dataIn);
-        case (aid_t)AstroSensor::Digital:
-            return new AstroDigitalSensor(dataIn);
-        case (aid_t)AstroSensor::Analog:
-            return new AstroAnalogSensor(dataIn);
-        default:
-            return nullptr;
+    if (dataIn && dataIn->isObjectData() && dataIn->id.object.idType == (aid_t)AstroIdentity::Sensor) {
+        switch (dataIn->id.object.classType) {
+            case (aid_t)AstroSensor::Value:
+                return new AstroValueSensor(dataIn);
+            case (aid_t)AstroSensor::Callback:
+                return new AstroCallbackSensor(dataIn);
+            case (aid_t)AstroSensor::Digital:
+                return new AstroDigitalSensor(dataIn);
+            case (aid_t)AstroSensor::Analog:
+                return new AstroAnalogSensor(dataIn);
+            default: break;
+        }
     }
+
+    return nullptr;
 }
 
 AstroSensor::AstroSensor(Astro_SensorType sensorType, Astro_UnitsType units, aposi_t positionIndex, int classTypeIn)

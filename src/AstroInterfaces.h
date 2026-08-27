@@ -220,8 +220,17 @@ protected:
 class AstroActuatorObjectInterface {
 public:
     virtual ~AstroActuatorObjectInterface() { ; }
-    virtual void setPower(float power) = 0;
-    virtual float getPower() const = 0;
+    virtual bool getCanEnable() = 0;
+    virtual float getDriveIntensity() const = 0;
+    virtual bool isEnabled(float tolerance = 0.0f) const = 0;
+
+    virtual void setContinuousPowerUsage(AstroSingleMeasurement contPowerUsage) = 0;
+    virtual const AstroSingleMeasurement &getContinuousPowerUsage() = 0;
+    inline void setContinuousPowerUsage(float contPowerUsage, Astro_UnitsType contPowerUsageUnits = Astro_UnitsType_Undefined);
+
+protected:
+    virtual void _enableActuator(float intensity = 1.0f) = 0;
+    virtual void _disableActuator() = 0;
 };
 
 // Sensor Object Interface

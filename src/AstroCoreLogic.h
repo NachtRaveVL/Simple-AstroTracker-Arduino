@@ -169,11 +169,4 @@ extern AstroHorizontalCoordinates astroEquatorialToHorizontal(const AstroEquator
 extern bool astroResolveSolarSystemTarget(Astro_TargetType targetType, int64_t unixTime,
                                           AstroEquatorialCoordinates *coordinatesOut);
 
-// Returns true when value lies within +/- tolerance of the requested target.
-inline bool astroWithinTolerance(double value, double target, double tolerance)
-{
-    double delta = value - target;                          // Signed target offset
-    return delta >= -tolerance && delta <= tolerance;
-}
-
 #endif // /ifndef AstroCoreLogic_H

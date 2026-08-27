@@ -7,14 +7,18 @@
 
 AstroObject *newObservationDeviceObjectFromData(const AstroObservationDeviceData *dataIn)
 {
-    if (!dataIn) { return nullptr; }
+    if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
 
-    switch (dataIn->id.object.classType) {
-        case (aid_t)AstroObservationDevice::CameraTrigger:
-            return new AstroCameraTrigger(dataIn);
-        default:
-            return nullptr;
+    if (dataIn && dataIn->isObjectData() && dataIn->id.object.idType == (aid_t)AstroIdentity::ObservationDevice) {
+        switch (dataIn->id.object.classType) {
+            case (aid_t)AstroObservationDevice::CameraTrigger:
+                return new AstroCameraTrigger(dataIn);
+            default: break;
+        }
     }
+
+    return nullptr;
 }
 
 AstroCameraTrigger::AstroCameraTrigger(TriggerCallback callback, void *context, aposi_t positionIndex)

@@ -7,14 +7,18 @@
 
 AstroMount *newMountObjectFromData(const AstroMountData *dataIn)
 {
-    if (!dataIn) { return nullptr; }
+    if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
 
-    switch (dataIn->id.object.classType) {
-        case (aid_t)AstroMount::Mount:
-            return new AstroMount(dataIn);
-        default:
-            return nullptr;
+    if (dataIn && dataIn->isObjectData() && dataIn->id.object.idType == (aid_t)AstroIdentity::Mount) {
+        switch (dataIn->id.object.classType) {
+            case (aid_t)AstroMount::Mount:
+                return new AstroMount(dataIn);
+            default: break;
+        }
     }
+
+    return nullptr;
 }
 
 AstroMount::AstroMount(Astro_MountType mountType, aposi_t positionIndex)
