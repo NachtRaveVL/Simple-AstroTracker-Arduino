@@ -8,7 +8,7 @@
 
 AstroTrigger *newTriggerObjectFromSubData(const AstroTriggerSubData *dataIn)
 {
-    if (!dataIn) { return nullptr; }
+    if (!dataIn || !isValidType(dataIn->type)) { return nullptr; }
     switch (dataIn->type) {
         case AstroTrigger::MeasureValue: return new AstroMeasurementValueTrigger(dataIn);
         case AstroTrigger::MeasureRange: return new AstroMeasurementRangeTrigger(dataIn);
