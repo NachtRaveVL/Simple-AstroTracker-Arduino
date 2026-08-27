@@ -74,7 +74,7 @@ protected:
 
     Signal<Pair<uint8_t, const AstroDataColumn *>, ASTRO_PUBLISH_SIGNAL_SLOTS> _publishSignal; // Data publishing signal
 
-    friend class Astroduino;
+    friend class Astruino;
 
     void advancePollingFrame();
     friend void dataLoop();

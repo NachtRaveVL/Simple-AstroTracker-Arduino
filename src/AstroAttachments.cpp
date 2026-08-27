@@ -4,7 +4,7 @@
 */
 
 #include "Astruino.h"
-#include "Astroduino.h"
+#include "Astruino.h"
 #include "AstroCoreLogic.h"
 
 AstroDLinkObject::AstroDLinkObject()
@@ -45,8 +45,8 @@ void AstroDLinkObject::unresolve()
 SharedPtr<AstroObjInterface> AstroDLinkObject::resolveObject()
 {
     if (_obj || !isSet()) { return _obj; }
-    if (Astroduino::_activeInstance) {
-        _obj = static_pointer_cast<AstroObjInterface>(Astroduino::_activeInstance->_objects[_key]);
+    if (Astruino::_activeInstance) {
+        _obj = static_pointer_cast<AstroObjInterface>(Astruino::_activeInstance->_objects[_key]);
     }
     if (_obj && _keyStr) {
         free((void *)_keyStr); _keyStr = nullptr;

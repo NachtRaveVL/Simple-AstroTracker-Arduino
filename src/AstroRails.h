@@ -14,7 +14,7 @@ struct AstroRailData;
 struct AstroSimpleRailData;
 struct AstroRegulatedRailData;
 
-#include "Astroduino.h"
+#include "Astruino.h"
 
 // Creates rail object from passed rail data (return ownership transfer - user code *must* delete returned object)
 extern AstroRail *newRailObjectFromData(const AstroRailData *dataIn);

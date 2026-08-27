@@ -112,14 +112,14 @@ struct AstroDigitalPin : public AstroPin, public AstroDigitalInputPinInterface, 
                     ard_pinmode_t pinMode,                  // Arduino pin mode (e.g. INPUT, OUTPUT, determines activeLow trigger state)
                     int8_t pinChannel = apinchnl_none);     // Pin channel select, else -127/none
     AstroDigitalPin(pintype_t pinNumber,                    // Digital pin number (e.g. D0, D1)
-                    Astro_PinMode pinMode,                  // Astroduino pin mode (determines activeLow trigger state)
+                    Astro_PinMode pinMode,                  // Astruino pin mode (determines activeLow trigger state)
                     int8_t pinChannel = apinchnl_none);     // Pin muxer/expander channel #, else -127/none
     AstroDigitalPin(pintype_t pinNumber,                    // Digital pin number (e.g. D0, D1)
                     ard_pinmode_t pinMode,                  // Arduino pin mode (e.g. INPUT, OUTPUT)
                     bool isActiveLow,                       // Explicit pin active-low trigger state boolean
                     int8_t pinChannel = apinchnl_none);     // Pin muxer/expander channel #, else -127/none
     AstroDigitalPin(pintype_t pinNumber,                    // Digital pin number (e.g. D0, D1)
-                    Astro_PinMode pinMode,                  // Astroduino pin mode
+                    Astro_PinMode pinMode,                  // Astruino pin mode
                     bool isActiveLow,                       // Explicit pin active-low trigger state boolean
                     int8_t pinChannel = apinchnl_none);     // Pin muxer/expander channel #, else -127/none
     AstroDigitalPin(const AstroPinData *dataIn);
@@ -156,7 +156,7 @@ struct AstroAnalogPin : public AstroPin, public AstroAnalogInputPinInterface, pu
 #endif
                    int8_t pinChannel = apinchnl_none);      // Pin muxer/expander channel #, else -127/none
     AstroAnalogPin(pintype_t pinNumber,                     // Analog pin number (e.g. A0, A1)
-                   Astro_PinMode pinMode,                   // Astroduino pin mode
+                   Astro_PinMode pinMode,                   // Astruino pin mode
                    uint8_t analogBitRes = 0,                // Bit resolution (0 for std DAC/ADC res by mode i/o)
 #ifdef ESP32
                    uint8_t pinPWMChannel = 1,               // PWM channel (0 reserved for buzzer)

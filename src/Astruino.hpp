@@ -38,7 +38,7 @@ inline DateTime Twilight::hourToLocalTime(double hour, bool isUTC)
 
 #ifdef ASTRO_USE_WIFI
 
-inline WiFiClass *Astroduino::getWiFi(bool begin)
+inline WiFiClass *Astruino::getWiFi(bool begin)
 {
     return getWiFi(getWiFiSSID(), getWiFiPassword(), begin);
 }
@@ -46,21 +46,21 @@ inline WiFiClass *Astroduino::getWiFi(bool begin)
 #endif
 #ifdef ASTRO_USE_ETHERNET
 
-inline EthernetClass *Astroduino::getEthernet(bool begin)
+inline EthernetClass *Astruino::getEthernet(bool begin)
 {
     return getEthernet(getMACAddress(), begin);
 }
 
 #endif
 
-inline void Astroduino::broadcastLowMemory()
+inline void Astruino::broadcastLowMemory()
 {
     for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
         iter->second->handleLowMemory();
     }
 }
 
-inline void Astroduino::performAutosave()
+inline void Astruino::performAutosave()
 {
     for (int autosave = 0; autosave < 2; ++autosave) {
         switch (autosave == 0 ? _systemData->autosaveEnabled : _systemData->autosaveFallback) {
@@ -93,12 +93,12 @@ inline void Astroduino::performAutosave()
     _lastAutosave = unixNow();
 }
 
-inline void Astroduino::notifyRTCTimeUpdated()
+inline void Astruino::notifyRTCTimeUpdated()
 {
     _rtcBattFail = false;
 }
 
-inline void Astroduino::broadcastDateChanged()
+inline void Astruino::broadcastDateChanged()
 {
     if (getSystemMode() == Astro_SystemMode_Tracking) {
         for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
@@ -114,13 +114,13 @@ inline void Astroduino::broadcastDateChanged()
     }
 }
 
-inline void Astroduino::notifySignificantTime(time_t time)
+inline void Astruino::notifySignificantTime(time_t time)
 {
     logger.updateInitTracking(time);
     _lastAutosave = isAutosaveEnabled() ? time : 0;
 }
 
-inline void Astroduino::notifySignificantLocation(Location loc)
+inline void Astruino::notifySignificantLocation(Location loc)
 {
     if (_systemData) { _systemData->bumpRevisionIfNeeded(); }
 }
@@ -128,12 +128,12 @@ inline void Astroduino::notifySignificantLocation(Location loc)
 
 inline AstroLoggerSubData *AstroLogger::loggerData() const
 {
-    return &Astroduino::_activeInstance->_systemData->logger;
+    return &Astruino::_activeInstance->_systemData->logger;
 }
 
 inline bool AstroLogger::hasLoggerData() const
 {
-    return Astroduino::_activeInstance && Astroduino::_activeInstance->_systemData;
+    return Astruino::_activeInstance && Astruino::_activeInstance->_systemData;
 }
 
 inline bool AstroLogger::isLoggingToSDCard() const
@@ -183,12 +183,12 @@ inline bool AstroLogger::isLoggingEnabled() const
 
 inline AstroPublisherSubData *AstroPublisher::publisherData() const
 {
-    return &Astroduino::_activeInstance->_systemData->publisher;
+    return &Astruino::_activeInstance->_systemData->publisher;
 }
 
 inline bool AstroPublisher::hasPublisherData() const
 {
-    return Astroduino::_activeInstance && Astroduino::_activeInstance->_systemData;
+    return Astruino::_activeInstance && Astruino::_activeInstance->_systemData;
 }
 
 inline bool AstroPublisher::isPublishingToSDCard() const
@@ -230,12 +230,12 @@ inline void AstroPublisher::setNeedsTabulation()
 
 inline AstroSchedulerSubData *AstroScheduler::schedulerData() const
 {
-    return &Astroduino::_activeInstance->_systemData->scheduler;
+    return &Astruino::_activeInstance->_systemData->scheduler;
 }
 
 inline bool AstroScheduler::hasSchedulerData() const
 {
-    return Astroduino::_activeInstance && Astroduino::_activeInstance->_systemData;
+    return Astruino::_activeInstance && Astruino::_activeInstance->_systemData;
 }
 
 #endif // /ifndef Astruino_HPP

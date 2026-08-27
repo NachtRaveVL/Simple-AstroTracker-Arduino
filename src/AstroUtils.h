@@ -12,7 +12,7 @@ template<typename ParameterType, int Slots> class SignalFireTask;
 template<class ObjectType, typename ParameterType> class MethodSlotCallTask;
 #endif
 
-#include "Astroduino.h"
+#include "Astruino.h"
 #include "AstroObject.h"
 #ifdef ASTRO_USE_MULTITASKING
 #include "BasicInterruptAbstraction.h"
@@ -145,7 +145,7 @@ extern void hardAssert(bool cond, String msg, const char *file, const char *func
 // Helpers & Misc
 
 // Returns the active controller instance. Not guaranteed to be non-null.
-inline Astroduino *getController();
+inline Astruino *getController();
 // Returns the active scheduler instance. Not guaranteed to be non-null.
 inline AstroScheduler *getScheduler();
 // Returns the active logger instance. Not guaranteed to be non-null.

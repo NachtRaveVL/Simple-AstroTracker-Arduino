@@ -67,7 +67,7 @@ protected:
 
 private:
     SharedPtr<AstroObjInterface> resolveObject();
-    friend class Astroduino;
+    friend class Astruino;
     friend class AstroAttachment;
 };
 

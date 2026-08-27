@@ -96,7 +96,7 @@ protected:
 
     Signal<const AstroLogEvent, ASTRO_LOG_SIGNAL_SLOTS> _logSignal; // Logging signal
 
-    friend class Astroduino;
+    friend class Astruino;
     
     void log(const AstroLogEvent &event);
 

@@ -14,7 +14,7 @@ struct AstroTripleMeasurement;
 
 struct AstroMeasurementData;
 
-#include "Astroduino.h"
+#include "Astruino.h"
 #include "AstroData.h"
 
 // Creates measurement object from passed trigger sub data (return ownership transfer - user code *must* delete returned object)

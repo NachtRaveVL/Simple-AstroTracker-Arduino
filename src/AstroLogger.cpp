@@ -28,7 +28,7 @@ AstroLogger::~AstroLogger()
         if (_logFileSD) {
             _logFileSD->close();
             delete _logFileSD; _logFileSD = nullptr;
-            Astroduino::_activeInstance->endSDCard();
+            Astruino::_activeInstance->endSDCard();
         }
         #ifdef ASTRO_USE_WIFI_STORAGE
             if (_logFileWS) {
@@ -44,7 +44,7 @@ bool AstroLogger::beginLoggingToSDCard(String logFilePrefix)
     ASTRO_SOFT_ASSERT(hasLoggerData(), SFP(AStr_Err_NotYetInitialized));
 
     if (hasLoggerData() && !loggerData()->logToSDCard) {
-        auto sd = Astroduino::_activeInstance->getSDCard();
+        auto sd = Astruino::_activeInstance->getSDCard();
 
         if (sd) {
             String logFilename = getYYMMDDFilename(logFilePrefix, SFP(AStr_txt));
@@ -58,20 +58,20 @@ bool AstroLogger::beginLoggingToSDCard(String logFilePrefix)
             if (logFile) {
                 #if !ASTRO_SYS_LEAVE_FILES_OPEN
                     logFile.close();
-                    Astroduino::_activeInstance->endSDCard(sd);
+                    Astruino::_activeInstance->endSDCard(sd);
                 #endif
 
                 strncpy(loggerData()->logFilePrefix, logFilePrefix.c_str(), 16);
                 loggerData()->logToSDCard = true;
                 _logFilename = logFilename;
-                Astroduino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+                Astruino::_activeInstance->_systemData->bumpRevisionIfNeeded();
 
                 return true;
             }
         }
 
         #if !ASTRO_SYS_LEAVE_FILES_OPEN
-            Astroduino::_activeInstance->endSDCard(sd);
+            Astruino::_activeInstance->endSDCard(sd);
         #endif
     }
 
@@ -100,7 +100,7 @@ bool AstroLogger::beginLoggingToWiFiStorage(String logFilePrefix)
             strncpy(loggerData()->logFilePrefix, logFilePrefix.c_str(), 16);
             loggerData()->logToWiFiStorage = true;
             _logFilename = logFilename;
-            Astroduino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+            Astruino::_activeInstance->_systemData->bumpRevisionIfNeeded();
 
             return true;
         }
@@ -154,7 +154,7 @@ void AstroLogger::log(const AstroLogEvent &event)
     #endif
 
     if (isLoggingToSDCard()) {
-        auto sd = Astroduino::_activeInstance->getSDCard(ASTRO_LOFS_BEGIN);
+        auto sd = Astruino::_activeInstance->getSDCard(ASTRO_LOFS_BEGIN);
 
         if (sd) {
             #if ASTRO_SYS_LEAVE_FILES_OPEN
@@ -179,7 +179,7 @@ void AstroLogger::log(const AstroLogEvent &event)
             }
 
             #if !ASTRO_SYS_LEAVE_FILES_OPEN
-                Astroduino::_activeInstance->endSDCard(sd);
+                Astruino::_activeInstance->endSDCard(sd);
             #endif
         }
     }
@@ -235,7 +235,7 @@ void AstroLogger::setLogLevel(Astro_LogLevel logLevel)
     ASTRO_SOFT_ASSERT(hasLoggerData(), SFP(AStr_Err_NotYetInitialized));
     if (hasLoggerData() && loggerData()->logLevel != logLevel) {
         loggerData()->logLevel = logLevel;
-        Astroduino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+        Astruino::_activeInstance->_systemData->bumpRevisionIfNeeded();
     }
 }
 

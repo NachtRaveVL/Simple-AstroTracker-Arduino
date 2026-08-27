@@ -49,7 +49,7 @@ bool AstroPublisher::beginPublishingToSDCard(String dataFilePrefix)
     ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
     if (hasPublisherData() && !publisherData()->pubToSDCard) {
-        auto sd = Astroduino::_activeInstance->getSDCard();
+        auto sd = Astruino::_activeInstance->getSDCard();
 
         if (sd) {
             String dataFilename = getYYMMDDFilename(dataFilePrefix, SFP(AStr_csv));
@@ -63,7 +63,7 @@ bool AstroPublisher::beginPublishingToSDCard(String dataFilePrefix)
             if (dataFile) {
                 #if !ASTRO_SYS_LEAVE_FILES_OPEN
                     dataFile.close();
-                    Astroduino::_activeInstance->endSDCard(sd);
+                    Astruino::_activeInstance->endSDCard(sd);
                 #endif
 
                 strncpy(publisherData()->dataFilePrefix, dataFilePrefix.c_str(), 16);
@@ -71,13 +71,13 @@ bool AstroPublisher::beginPublishingToSDCard(String dataFilePrefix)
                 _dataFilename = dataFilename;
                 
                 setNeedsTabulation();
-                Astroduino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+                Astruino::_activeInstance->_systemData->bumpRevisionIfNeeded();
 
                 return true;
             }
 
             #if !ASTRO_SYS_LEAVE_FILES_OPEN
-                Astroduino::_activeInstance->endSDCard(sd);
+                Astruino::_activeInstance->endSDCard(sd);
             #endif
         }
     }
@@ -109,7 +109,7 @@ bool AstroPublisher::beginPublishingToWiFiStorage(String dataFilePrefix)
             _dataFilename = dataFilename;
 
             setNeedsTabulation();
-            Astroduino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+            Astruino::_activeInstance->_systemData->bumpRevisionIfNeeded();
 
             return true;
         }
@@ -135,7 +135,7 @@ bool AstroPublisher::beginPublishingToMQTTClient(MQTTClient &client)
         _mqttClient->setClockSource(&mqttNow);
         if (!_mqttClient->connected()) {
             String unPw = String(F("public"));
-            _mqttClient->connect(Astroduino::_activeInstance->getSystemName().c_str(),
+            _mqttClient->connect(Astruino::_activeInstance->getSystemName().c_str(),
                                  unPw.c_str(), unPw.c_str());
         }
 
@@ -188,13 +188,13 @@ void AstroPublisher::advancePollingFrame()
 {
     ASTRO_HARD_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
-    auto pollingFrame = Astroduino::_activeInstance->getPollingFrame();
+    auto pollingFrame = Astruino::_activeInstance->getPollingFrame();
 
     if (pollingFrame && _pollingFrame != pollingFrame) {
         time_t timestamp = unixNow();
         _pollingFrame = pollingFrame;
 
-        if (Astroduino::_activeInstance->inOperationalMode()) {
+        if (Astruino::_activeInstance->inOperationalMode()) {
             #ifdef ASTRO_USE_MULTITASKING
                 scheduleObjectMethodCallOnce<AstroPublisher>(this, &AstroPublisher::publish, timestamp);
             #else
@@ -205,16 +205,16 @@ void AstroPublisher::advancePollingFrame()
 
     if (++pollingFrame == 0) { pollingFrame = 1; } // use only valid frame #
 
-    Astroduino::_activeInstance->_pollingFrame = pollingFrame;
+    Astruino::_activeInstance->_pollingFrame = pollingFrame;
 }
 
 void AstroPublisher::publishIfNeeded()
 {
-    if (_dataColumns && _columnSize && Astroduino::_activeInstance->isPollingFrameOld(_pollingFrame)) {
+    if (_dataColumns && _columnSize && Astruino::_activeInstance->isPollingFrameOld(_pollingFrame)) {
         bool allCurrent = true;
 
         for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
-            if (Astroduino::_activeInstance->isPollingFrameOld(_dataColumns[columnIndex].measurement.frame)) {
+            if (Astruino::_activeInstance->isPollingFrameOld(_dataColumns[columnIndex].measurement.frame)) {
                 allCurrent = false;
                 break;
             }
@@ -222,9 +222,9 @@ void AstroPublisher::publishIfNeeded()
 
         if (allCurrent) {
             time_t timestamp = unixNow();
-            _pollingFrame = Astroduino::_activeInstance->getPollingFrame();
+            _pollingFrame = Astruino::_activeInstance->getPollingFrame();
 
-            if (Astroduino::_activeInstance->inOperationalMode()) {
+            if (Astruino::_activeInstance->inOperationalMode()) {
                 #ifdef ASTRO_USE_MULTITASKING
                     scheduleObjectMethodCallOnce<AstroPublisher>(this, &AstroPublisher::publish, timestamp);
                 #else
@@ -238,7 +238,7 @@ void AstroPublisher::publishIfNeeded()
 void AstroPublisher::publish(time_t timestamp)
 {
     if (isPublishingToSDCard()) {
-        auto sd = Astroduino::_activeInstance->getSDCard(ASTRO_LOFS_BEGIN);
+        auto sd = Astruino::_activeInstance->getSDCard(ASTRO_LOFS_BEGIN);
 
         if (sd) {
             #if ASTRO_SYS_LEAVE_FILES_OPEN
@@ -265,7 +265,7 @@ void AstroPublisher::publish(time_t timestamp)
             }
 
             #if !ASTRO_SYS_LEAVE_FILES_OPEN
-                Astroduino::_activeInstance->endSDCard(sd);
+                Astruino::_activeInstance->endSDCard(sd);
             #endif
         }
     }
@@ -299,9 +299,9 @@ void AstroPublisher::publish(time_t timestamp)
 #ifdef ASTRO_USE_MQTT
 
     if (isPublishingToMQTTClient()) {
-        String systemName = Astroduino::_activeInstance->getSystemName();
+        String systemName = Astruino::_activeInstance->getSystemName();
         for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
-            auto sensor = (AstroSensor *)(Astroduino::_activeInstance->_objects[_dataColumns[columnIndex].sensorKey].get());
+            auto sensor = (AstroSensor *)(Astruino::_activeInstance->_objects[_dataColumns[columnIndex].sensorKey].get());
             if (sensor) {
                 String topic; topic.reserve(systemName.length() + 1 + sensor->getKeyString().length() + 1);
                 topic.concat(systemName);
@@ -329,7 +329,7 @@ void AstroPublisher::performTabulation()
     bool sameOrder = _dataColumns && _columnSize ? true : false;
     int columnSize = 0;
 
-    for (auto iter = Astroduino::_activeInstance->_objects.begin(); iter != Astroduino::_activeInstance->_objects.end(); ++iter) {
+    for (auto iter = Astruino::_activeInstance->_objects.begin(); iter != Astruino::_activeInstance->_objects.end(); ++iter) {
         if (iter->second->isSensorType()) {
             auto sensor = static_pointer_cast<AstroSensor>(iter->second);
             auto rowCount = getMeasurementRowCount(sensor->getMeasurement());
@@ -356,7 +356,7 @@ void AstroPublisher::performTabulation()
             if (_dataColumns) {
                 int columnIndex = 0;
 
-                for (auto iter = Astroduino::_activeInstance->_objects.begin(); iter != Astroduino::_activeInstance->_objects.end(); ++iter) {
+                for (auto iter = Astruino::_activeInstance->_objects.begin(); iter != Astruino::_activeInstance->_objects.end(); ++iter) {
                     if (iter->second->isSensorType()) {
                         auto sensor = static_pointer_cast<AstroSensor>(iter->second);
                         auto measurement = sensor->getMeasurement();
@@ -382,7 +382,7 @@ void AstroPublisher::performTabulation()
 void AstroPublisher::resetDataFile()
 {
     if (isPublishingToSDCard()) {
-        auto sd = Astroduino::_activeInstance->getSDCard(ASTRO_LOFS_BEGIN);
+        auto sd = Astruino::_activeInstance->getSDCard(ASTRO_LOFS_BEGIN);
 
         if (sd) {
             #if ASTRO_SYS_LEAVE_FILES_OPEN
@@ -407,7 +407,7 @@ void AstroPublisher::resetDataFile()
                 for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
                     dataFile.print(',');
 
-                    auto sensor = (AstroSensor *)(Astroduino::_activeInstance->_objects[_dataColumns[columnIndex].sensorKey].get());
+                    auto sensor = (AstroSensor *)(Astruino::_activeInstance->_objects[_dataColumns[columnIndex].sensorKey].get());
                     if (sensor && sensor == lastSensor) { ++measurementRow; }
                     else { measurementRow = 0; lastSensor = sensor; }
 
@@ -432,7 +432,7 @@ void AstroPublisher::resetDataFile()
             }
 
             #if !ASTRO_SYS_LEAVE_FILES_OPEN
-                Astroduino::_activeInstance->endSDCard(sd);
+                Astruino::_activeInstance->endSDCard(sd);
             #endif
         }
     }
@@ -462,7 +462,7 @@ void AstroPublisher::resetDataFile()
             for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
                 dataFileStream.print(',');
 
-                auto sensor = (AstroSensor *)(Astroduino::_activeInstance->_objects[_dataColumns[columnIndex].sensorKey].get());
+                auto sensor = (AstroSensor *)(Astruino::_activeInstance->_objects[_dataColumns[columnIndex].sensorKey].get());
                 if (sensor && sensor == lastSensor) { ++measurementRow; }
                 else { measurementRow = 0; lastSensor = sensor; }
 
