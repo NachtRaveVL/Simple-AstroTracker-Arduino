@@ -102,7 +102,6 @@ Core logic and source checks can be run without a telescope or Arduino connected
 cmake -S tests -B build-host
 cmake --build build-host
 ctest --test-dir build-host --output-on-failure
-python3 tests/validate_source.py
 ```
 
 The host suite covers astronomy math, precession, moving-body sanity, catalog lookup/cache behavior, mount and cover control, focuser behavior, thermal balancing, sensors, actuators, activation handles, pins, muxing, measurements, triggers, power rails, factory creation, provider interfaces, controller lifecycle, serialization, reporting, enum conversions, and example syntax.
