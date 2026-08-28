@@ -9,7 +9,7 @@
 AstroTrigger *newTriggerObjectFromSubData(const AstroTriggerSubData *dataIn)
 {
     if (!dataIn || !isValidType(dataIn->type)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && isValidType(dataIn->type), SFP(AStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && isValidType(dataIn->type), SFP(AStr_InvalidParameter));
 
     if (dataIn) {
         switch (dataIn->type) {
@@ -160,35 +160,35 @@ AstroTriggerSubData::AstroTriggerSubData()
 void AstroTriggerSubData::toJSONObject(JsonObject &objectOut) const
 {
     AstroSubData::toJSONObject(objectOut);
-    if (sensorName[0]) { objectOut["sensorName"] = sensorName; }
-    if (measurementRow) { objectOut["measurementRow"] = measurementRow; }
-    if (detriggerTol > DBL_EPSILON) { objectOut["detriggerTol"] = detriggerTol; }
-    if (detriggerDelay) { objectOut["detriggerDelay"] = detriggerDelay; }
-    if (measurementUnits != Astro_UnitsType_Undefined) { objectOut["measurementUnits"] = (int)measurementUnits; }
+    if (sensorName[0]) { objectOut[SFP(AStr_Key_SensorName)] = sensorName; }
+    if (measurementRow) { objectOut[SFP(AStr_Key_MeasurementRow)] = measurementRow; }
+    if (detriggerTol > DBL_EPSILON) { objectOut[SFP(AStr_Key_DetriggerTol)] = detriggerTol; }
+    if (detriggerDelay) { objectOut[SFP(AStr_Key_DetriggerDelay)] = detriggerDelay; }
+    if (measurementUnits != Astro_UnitsType_Undefined) { objectOut[SFP(AStr_Key_MeasurementUnits)] = (int)measurementUnits; }
     if (type == AstroTrigger::MeasureValue) {
-        objectOut["tolerance"] = dataAs.measureValue.tolerance;
-        objectOut["triggerBelow"] = dataAs.measureValue.triggerBelow;
+        objectOut[SFP(AStr_Key_Tolerance)] = dataAs.measureValue.tolerance;
+        objectOut[SFP(AStr_Key_TriggerBelow)] = dataAs.measureValue.triggerBelow;
     } else if (type == AstroTrigger::MeasureRange) {
-        objectOut["toleranceLow"] = dataAs.measureRange.toleranceLow;
-        objectOut["toleranceHigh"] = dataAs.measureRange.toleranceHigh;
-        objectOut["triggerOutside"] = dataAs.measureRange.triggerOutside;
+        objectOut[SFP(AStr_Key_ToleranceLow)] = dataAs.measureRange.toleranceLow;
+        objectOut[SFP(AStr_Key_ToleranceHigh)] = dataAs.measureRange.toleranceHigh;
+        objectOut[SFP(AStr_Key_TriggerOutside)] = dataAs.measureRange.triggerOutside;
     }
 }
 void AstroTriggerSubData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroSubData::fromJSONObject(objectIn);
-    const char *sensor = objectIn["sensorName"] | nullptr;
+    const char *sensor = objectIn[SFP(AStr_Key_SensorName)] | nullptr;
     if (sensor) { strncpy(sensorName, sensor, ASTRO_NAME_MAXSIZE - 1); sensorName[ASTRO_NAME_MAXSIZE - 1] = '\0'; }
-    measurementRow = objectIn["measurementRow"] | measurementRow;
-    detriggerTol = objectIn["detriggerTol"] | detriggerTol;
-    detriggerDelay = objectIn["detriggerDelay"] | detriggerDelay;
-    measurementUnits = (Astro_UnitsType)(objectIn["measurementUnits"] | (int)measurementUnits);
+    measurementRow = objectIn[SFP(AStr_Key_MeasurementRow)] | measurementRow;
+    detriggerTol = objectIn[SFP(AStr_Key_DetriggerTol)] | detriggerTol;
+    detriggerDelay = objectIn[SFP(AStr_Key_DetriggerDelay)] | detriggerDelay;
+    measurementUnits = (Astro_UnitsType)(objectIn[SFP(AStr_Key_MeasurementUnits)] | (int)measurementUnits);
     if (type == AstroTrigger::MeasureValue) {
-        dataAs.measureValue.tolerance = objectIn["tolerance"] | dataAs.measureValue.tolerance;
-        dataAs.measureValue.triggerBelow = objectIn["triggerBelow"] | dataAs.measureValue.triggerBelow;
+        dataAs.measureValue.tolerance = objectIn[SFP(AStr_Key_Tolerance)] | dataAs.measureValue.tolerance;
+        dataAs.measureValue.triggerBelow = objectIn[SFP(AStr_Key_TriggerBelow)] | dataAs.measureValue.triggerBelow;
     } else if (type == AstroTrigger::MeasureRange) {
-        dataAs.measureRange.toleranceLow = objectIn["toleranceLow"] | dataAs.measureRange.toleranceLow;
-        dataAs.measureRange.toleranceHigh = objectIn["toleranceHigh"] | dataAs.measureRange.toleranceHigh;
-        dataAs.measureRange.triggerOutside = objectIn["triggerOutside"] | dataAs.measureRange.triggerOutside;
+        dataAs.measureRange.toleranceLow = objectIn[SFP(AStr_Key_ToleranceLow)] | dataAs.measureRange.toleranceLow;
+        dataAs.measureRange.toleranceHigh = objectIn[SFP(AStr_Key_ToleranceHigh)] | dataAs.measureRange.toleranceHigh;
+        dataAs.measureRange.triggerOutside = objectIn[SFP(AStr_Key_TriggerOutside)] | dataAs.measureRange.triggerOutside;
     }
 }

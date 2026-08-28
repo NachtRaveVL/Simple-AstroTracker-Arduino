@@ -8,7 +8,7 @@
 AstroActuator *newActuatorObjectFromData(const AstroActuatorData *dataIn)
 {
     if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_InvalidParameter));
 
     if (dataIn && dataIn->isObjectData() && dataIn->id.object.idType == (aid_t)AstroIdentity::Actuator) {
         switch (dataIn->id.object.classType) {
@@ -599,35 +599,35 @@ AstroActuatorData::AstroActuatorData()
 void AstroActuatorData::toJSONObject(JsonObject &objectOut) const
 {
     AstroObjectData::toJSONObject(objectOut);
-    objectOut["enableMode"] = (int)enableMode;
-    if (outputPin.isSet()) { JsonObject pinObj = objectOut.createNestedObject("outputPin"); outputPin.toJSONObject(pinObj); }
-    if (outputPin2.isSet()) { JsonObject pinObj = objectOut.createNestedObject("outputPin2"); outputPin2.toJSONObject(pinObj); }
+    objectOut[SFP(AStr_Key_EnableMode)] = (int)enableMode;
+    if (outputPin.isSet()) { JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_OutputPin)); outputPin.toJSONObject(pinObj); }
+    if (outputPin2.isSet()) { JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_OutputPin2)); outputPin2.toJSONObject(pinObj); }
     if (contPowerUsage.value > FLT_EPSILON) {
-        JsonObject powerObj = objectOut.createNestedObject("continuousPowerUsage");
+        JsonObject powerObj = objectOut.createNestedObject(SFP(AStr_Key_ContinuousPowerUsage));
         contPowerUsage.toJSONObject(powerObj);
     }
-    if (railName[0]) { objectOut["railName"] = railName; }
+    if (railName[0]) { objectOut[SFP(AStr_Key_RailName)] = railName; }
     if (id.object.classType == (aid_t)AstroActuator::Focuser) {
-        objectOut["minimumPosition"] = minimumPosition;
-        objectOut["maximumPosition"] = maximumPosition;
+        objectOut[SFP(AStr_Key_MinimumPosition)] = minimumPosition;
+        objectOut[SFP(AStr_Key_MaximumPosition)] = maximumPosition;
     }
 }
 
 void AstroActuatorData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroObjectData::fromJSONObject(objectIn);
-    enableMode = (Astro_EnableMode)(objectIn["enableMode"] | (int)enableMode);
-    JsonObjectConst pinObj = objectIn["outputPin"].as<JsonObjectConst>();
+    enableMode = (Astro_EnableMode)(objectIn[SFP(AStr_Key_EnableMode)] | (int)enableMode);
+    JsonObjectConst pinObj = objectIn[SFP(AStr_Key_OutputPin)].as<JsonObjectConst>();
     if (!pinObj.isNull()) { outputPin.fromJSONObject(pinObj); }
-    JsonObjectConst pin2Obj = objectIn["outputPin2"].as<JsonObjectConst>();
+    JsonObjectConst pin2Obj = objectIn[SFP(AStr_Key_OutputPin2)].as<JsonObjectConst>();
     if (!pin2Obj.isNull()) { outputPin2.fromJSONObject(pin2Obj); }
-    JsonVariantConst powerVar = objectIn["continuousPowerUsage"];
+    JsonVariantConst powerVar = objectIn[SFP(AStr_Key_ContinuousPowerUsage)];
     if (!powerVar.isNull()) { contPowerUsage.fromJSONVariant(powerVar); }
-    const char *railNameIn = objectIn["railName"] | nullptr;
+    const char *railNameIn = objectIn[SFP(AStr_Key_RailName)] | nullptr;
     if (railNameIn) {
         strncpy(railName, railNameIn, ASTRO_NAME_MAXSIZE - 1);
         railName[ASTRO_NAME_MAXSIZE - 1] = '\0';
     }
-    minimumPosition = objectIn["minimumPosition"] | minimumPosition;
-    maximumPosition = objectIn["maximumPosition"] | maximumPosition;
+    minimumPosition = objectIn[SFP(AStr_Key_MinimumPosition)] | minimumPosition;
+    maximumPosition = objectIn[SFP(AStr_Key_MaximumPosition)] | maximumPosition;
 }

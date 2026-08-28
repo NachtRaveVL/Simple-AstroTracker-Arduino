@@ -21,10 +21,10 @@ AstroData *_allocateDataFromBaseDecode(const AstroData &baseDecode)
         retVal = _allocateDataForObjType(baseDecode.id.object.idType, baseDecode.id.object.classType);
     }
 
-    ASTRO_SOFT_ASSERT(retVal, F("Unknown data decode"));
+    ASTRO_SOFT_ASSERT(retVal, SFP(AStr_Err_UnknownDataDecode));
     if (retVal) {
         retVal->id = baseDecode.id;
-        ASTRO_SOFT_ASSERT(retVal->_version >= baseDecode._version, F("Data version mismatch"));
+        ASTRO_SOFT_ASSERT(retVal->_version >= baseDecode._version, SFP(AStr_Err_DataVersionMismatch));
         retVal->_revision = baseDecode._revision;
         return retVal;
     }
@@ -119,8 +119,8 @@ AstroSystemData::AstroSystemData()
       latitude(DBL_UNDEF), longitude(DBL_UNDEF), altitude(DBL_UNDEF)
 {
     _size = sizeof(*this);
-    ASTRO_HARD_ASSERT(isSystemData(), SFP(AStr_Err_OperationFailure));
-    strncpy(systemName, SFP(AStr_Default_SystemName).c_str(), ASTRO_NAME_MAXSIZE);
+    ASTRO_HARD_ASSERT(isSystemData(), SFP(AStr_OperationFailure));
+    strncpy(systemName, SFP(AStr_Astruino).c_str(), ASTRO_NAME_MAXSIZE);
 }
 
 void AstroSystemData::toJSONObject(JsonObject &objectOut) const
@@ -225,7 +225,7 @@ AstroCalibrationData::AstroCalibrationData()
       multiplier(1.0f), offset(0.0f)
 {
     _size = sizeof(*this);
-    ASTRO_HARD_ASSERT(isCalibrationData(), SFP(AStr_Err_OperationFailure));
+    ASTRO_HARD_ASSERT(isCalibrationData(), SFP(AStr_OperationFailure));
 }
 
 AstroCalibrationData::AstroCalibrationData(AstroIdentity ownerId, Astro_UnitsType calibrationUnitsIn)
@@ -234,7 +234,7 @@ AstroCalibrationData::AstroCalibrationData(AstroIdentity ownerId, Astro_UnitsTyp
       multiplier(1.0f), offset(0.0f)
 {
     _size = sizeof(*this);
-    ASTRO_HARD_ASSERT(isCalibrationData(), SFP(AStr_Err_OperationFailure));
+    ASTRO_HARD_ASSERT(isCalibrationData(), SFP(AStr_OperationFailure));
     if (ownerId) {
         strncpy(ownerName, ownerId.keyString.c_str(), ASTRO_NAME_MAXSIZE);
     }
@@ -266,7 +266,7 @@ void AstroCalibrationData::setFromTwoPoints(float point1MeasuredAt, float point1
 {
     float aTerm = point2CalibratedTo - point1CalibratedTo;
     float bTerm = point2MeasuredAt - point1MeasuredAt;
-    ASTRO_SOFT_ASSERT(!isFPEqual(bTerm, 0.0f), SFP(AStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(!isFPEqual(bTerm, 0.0f), SFP(AStr_InvalidParameter));
     if (!isFPEqual(bTerm, 0.0f)) {
         multiplier = aTerm / bTerm;
         offset = ((aTerm * point2MeasuredAt) + (bTerm * point1CalibratedTo)) / bTerm;

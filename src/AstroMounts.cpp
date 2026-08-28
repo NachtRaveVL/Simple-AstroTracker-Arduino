@@ -8,7 +8,7 @@
 AstroMount *newMountObjectFromData(const AstroMountData *dataIn)
 {
     if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_InvalidParameter));
 
     if (dataIn && dataIn->isObjectData() && dataIn->id.object.idType == (aid_t)AstroIdentity::Mount) {
         switch (dataIn->id.object.classType) {
@@ -329,35 +329,35 @@ AstroMountData::AstroMountData()
 void AstroMountData::toJSONObject(JsonObject &objectOut) const
 {
     AstroObjectData::toJSONObject(objectOut);
-    objectOut["targetType"] = (int)targetType;
-    objectOut["primaryAxisRate"] = primaryAxisRate;
-    objectOut["secondaryAxisRate"] = secondaryAxisRate;
-    objectOut["parkPrimary"] = parkPrimary;
-    objectOut["parkSecondary"] = parkSecondary;
+    objectOut[SFP(AStr_Key_TargetType)] = (int)targetType;
+    objectOut[SFP(AStr_Key_PrimaryAxisRate)] = primaryAxisRate;
+    objectOut[SFP(AStr_Key_SecondaryAxisRate)] = secondaryAxisRate;
+    objectOut[SFP(AStr_Key_ParkPrimary)] = parkPrimary;
+    objectOut[SFP(AStr_Key_ParkSecondary)] = parkSecondary;
     if (primaryLimitsEnabled) {
-        objectOut["primaryMinimum"] = primaryMinimum;
-        objectOut["primaryMaximum"] = primaryMaximum;
-        objectOut["primaryLimitsEnabled"] = primaryLimitsEnabled;
+        objectOut[SFP(AStr_Key_PrimaryMinimum)] = primaryMinimum;
+        objectOut[SFP(AStr_Key_PrimaryMaximum)] = primaryMaximum;
+        objectOut[SFP(AStr_Key_PrimaryLimitsEnabled)] = primaryLimitsEnabled;
     }
     if (secondaryLimitsEnabled) {
-        objectOut["secondaryMinimum"] = secondaryMinimum;
-        objectOut["secondaryMaximum"] = secondaryMaximum;
-        objectOut["secondaryLimitsEnabled"] = secondaryLimitsEnabled;
+        objectOut[SFP(AStr_Key_SecondaryMinimum)] = secondaryMinimum;
+        objectOut[SFP(AStr_Key_SecondaryMaximum)] = secondaryMaximum;
+        objectOut[SFP(AStr_Key_SecondaryLimitsEnabled)] = secondaryLimitsEnabled;
     }
 }
 
 void AstroMountData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroObjectData::fromJSONObject(objectIn);
-    targetType = (Astro_TargetType)(objectIn["targetType"] | (int)targetType);
-    primaryAxisRate = objectIn["primaryAxisRate"] | primaryAxisRate;
-    secondaryAxisRate = objectIn["secondaryAxisRate"] | secondaryAxisRate;
-    parkPrimary = objectIn["parkPrimary"] | parkPrimary;
-    parkSecondary = objectIn["parkSecondary"] | parkSecondary;
-    primaryMinimum = objectIn["primaryMinimum"] | primaryMinimum;
-    primaryMaximum = objectIn["primaryMaximum"] | primaryMaximum;
-    secondaryMinimum = objectIn["secondaryMinimum"] | secondaryMinimum;
-    secondaryMaximum = objectIn["secondaryMaximum"] | secondaryMaximum;
-    primaryLimitsEnabled = objectIn["primaryLimitsEnabled"] | primaryLimitsEnabled;
-    secondaryLimitsEnabled = objectIn["secondaryLimitsEnabled"] | secondaryLimitsEnabled;
+    targetType = (Astro_TargetType)(objectIn[SFP(AStr_Key_TargetType)] | (int)targetType);
+    primaryAxisRate = objectIn[SFP(AStr_Key_PrimaryAxisRate)] | primaryAxisRate;
+    secondaryAxisRate = objectIn[SFP(AStr_Key_SecondaryAxisRate)] | secondaryAxisRate;
+    parkPrimary = objectIn[SFP(AStr_Key_ParkPrimary)] | parkPrimary;
+    parkSecondary = objectIn[SFP(AStr_Key_ParkSecondary)] | parkSecondary;
+    primaryMinimum = objectIn[SFP(AStr_Key_PrimaryMinimum)] | primaryMinimum;
+    primaryMaximum = objectIn[SFP(AStr_Key_PrimaryMaximum)] | primaryMaximum;
+    secondaryMinimum = objectIn[SFP(AStr_Key_SecondaryMinimum)] | secondaryMinimum;
+    secondaryMaximum = objectIn[SFP(AStr_Key_SecondaryMaximum)] | secondaryMaximum;
+    primaryLimitsEnabled = objectIn[SFP(AStr_Key_PrimaryLimitsEnabled)] | primaryLimitsEnabled;
+    secondaryLimitsEnabled = objectIn[SFP(AStr_Key_SecondaryLimitsEnabled)] | secondaryLimitsEnabled;
 }

@@ -26,14 +26,14 @@ const AstroCalibrationData *AstroCalibrations::getUserCalibrationData(akey_t key
 
 bool AstroCalibrations::setUserCalibrationData(const AstroCalibrationData *calibrationData)
 {
-    ASTRO_SOFT_ASSERT(calibrationData && calibrationData->ownerName[0], "Invalid calibration data");
+    ASTRO_SOFT_ASSERT(calibrationData && calibrationData->ownerName[0], SFP(AStr_InvalidParameter));
     if (!calibrationData || !calibrationData->ownerName[0]) { return false; }
 
     akey_t key = astroStringHash(calibrationData->ownerName);
     auto iter = _calibrationData.find(key);
     if (iter == _calibrationData.end()) {
         AstroCalibrationData *copy = new AstroCalibrationData(*calibrationData);
-        ASTRO_SOFT_ASSERT(copy, "Calibration allocation failure");
+        ASTRO_SOFT_ASSERT(copy, SFP(AStr_AllocationFailure));
         if (!copy) { return false; }
         _calibrationData[key] = copy;
     } else {
@@ -44,7 +44,7 @@ bool AstroCalibrations::setUserCalibrationData(const AstroCalibrationData *calib
 
 bool AstroCalibrations::dropUserCalibrationData(const AstroCalibrationData *calibrationData)
 {
-    ASTRO_HARD_ASSERT(calibrationData, "Invalid calibration data");
+    ASTRO_HARD_ASSERT(calibrationData, SFP(AStr_InvalidParameter));
     if (!calibrationData) { return false; }
     akey_t key = astroStringHash(calibrationData->ownerName);
     auto iter = _calibrationData.find(key);
@@ -112,7 +112,7 @@ SharedPtr<AstroObject> AstroObjectRegistration::objectById(AstroIdentity id) con
 
 SharedPtr<AstroObject> AstroObjectRegistration::objectById_Col(const AstroIdentity &id) const
 {
-    ASTRO_SOFT_ASSERT(false, "Hashing collision"); // exhaustive search must be performed, publishing may miss values
+    ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_HashingCollision)); // exhaustive search must be performed, publishing may miss values
 
     for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
         if (id.keyString == iter->second->getKeyString()) {

@@ -8,7 +8,7 @@
 AstroRail *newRailObjectFromData(const AstroRailData *dataIn)
 {
     if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(HStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_InvalidParameter));
 
     if (dataIn && dataIn->isObjectData()) {
         switch (dataIn->id.object.classType) {
@@ -59,7 +59,7 @@ bool AstroRail::addLinkage(AstroObject *object)
 {
     if (AstroObject::addLinkage(object)) {
         if (object->isActuatorType()) {
-            ASTRO_HARD_ASSERT(isSimpleClass() || isRegulatedClass(), HStr_Err_OperationFailure);
+            ASTRO_HARD_ASSERT(isSimpleClass() || isRegulatedClass(), SFP(AStr_OperationFailure));
             if (isSimpleClass()) {
                 auto methodSlot = MethodSlot<AstroSimpleRail, AstroActuator *>((AstroSimpleRail *)this, &AstroSimpleRail::handleActivation);
                 ((AstroActuator *)object)->getActivationSignal().attach(methodSlot);
@@ -77,7 +77,7 @@ bool AstroRail::removeLinkage(AstroObject *object)
 {
     if (AstroObject::removeLinkage(object)) {
         if (((AstroObject *)object)->isActuatorType()) {
-            ASTRO_HARD_ASSERT(isSimpleClass() || isRegulatedClass(), HStr_Err_OperationFailure);
+            ASTRO_HARD_ASSERT(isSimpleClass() || isRegulatedClass(), SFP(AStr_OperationFailure));
             if (isSimpleClass()) {
                 auto methodSlot = MethodSlot<AstroSimpleRail, AstroActuator *>((AstroSimpleRail *)this, &AstroSimpleRail::handleActivation);
                 ((AstroActuator *)object)->getActivationSignal().detach(methodSlot);
@@ -200,7 +200,7 @@ AstroRegulatedRail::AstroRegulatedRail(const AstroRegulatedRailData *dataIn)
 
     _limitTrigger.setHandleMethod(&AstroRail::handleLimit, this);
     _limitTrigger.setObject(newTriggerObjectFromSubData(&(dataIn->limitTrigger)));
-    ASTRO_SOFT_ASSERT(_limitTrigger, SFP(HStr_Err_AllocationFailure));
+    ASTRO_SOFT_ASSERT(_limitTrigger, SFP(AStr_AllocationFailure));
 }
 
 void AstroRegulatedRail::update()
@@ -317,14 +317,14 @@ void AstroRailData::toJSONObject(JsonObject &objectOut) const
 {
     AstroObjectData::toJSONObject(objectOut);
 
-    if (powerUnits != Astro_UnitsType_Undefined) { objectOut[SFP(HStr_Key_PowerUnits)] = unitsTypeToSymbol(powerUnits); }
+    if (powerUnits != Astro_UnitsType_Undefined) { objectOut[SFP(AStr_Key_PowerUnits)] = unitsTypeToSymbol(powerUnits); }
 }
 
 void AstroRailData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroObjectData::fromJSONObject(objectIn);
 
-    powerUnits = unitsTypeFromSymbol(objectIn[SFP(HStr_Key_PowerUnits)]);
+    powerUnits = unitsTypeFromSymbol(objectIn[SFP(AStr_Key_PowerUnits)]);
 }
 
 AstroSimpleRailData::AstroSimpleRailData()
@@ -337,14 +337,14 @@ void AstroSimpleRailData::toJSONObject(JsonObject &objectOut) const
 {
     AstroRailData::toJSONObject(objectOut);
 
-    if (maxActiveAtOnce != 2) { objectOut[SFP(HStr_Key_MaxActiveAtOnce)] = maxActiveAtOnce; }
+    if (maxActiveAtOnce != 2) { objectOut[SFP(AStr_Key_MaxActiveAtOnce)] = maxActiveAtOnce; }
 }
 
 void AstroSimpleRailData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroRailData::fromJSONObject(objectIn);
 
-    maxActiveAtOnce = objectIn[SFP(HStr_Key_MaxActiveAtOnce)] | maxActiveAtOnce;
+    maxActiveAtOnce = objectIn[SFP(AStr_Key_MaxActiveAtOnce)] | maxActiveAtOnce;
 }
 
 AstroRegulatedRailData::AstroRegulatedRailData()
@@ -357,10 +357,10 @@ void AstroRegulatedRailData::toJSONObject(JsonObject &objectOut) const
 {
     AstroRailData::toJSONObject(objectOut);
 
-    objectOut[SFP(HStr_Key_MaxPower)] = maxPower;
-    if (powerUsageSensor[0]) { objectOut[SFP(HStr_Key_PowerUsageSensor)] = charsToString(powerUsageSensor, ASTRO_NAME_MAXSIZE); }
+    objectOut[SFP(AStr_Key_MaxPower)] = maxPower;
+    if (powerUsageSensor[0]) { objectOut[SFP(AStr_Key_PowerUsageSensor)] = charsToString(powerUsageSensor, ASTRO_NAME_MAXSIZE); }
     if (isValidType(limitTrigger.type)) {
-        JsonObject limitTriggerObj = objectOut.createNestedObject(SFP(HStr_Key_LimitTrigger));
+        JsonObject limitTriggerObj = objectOut.createNestedObject(SFP(AStr_Key_LimitTrigger));
         limitTrigger.toJSONObject(limitTriggerObj);
     }
 }
@@ -369,9 +369,9 @@ void AstroRegulatedRailData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroRailData::fromJSONObject(objectIn);
 
-    maxPower = objectIn[SFP(HStr_Key_MaxPower)] | maxPower;
-    const char *powerUsageSensorStr = objectIn[SFP(HStr_Key_PowerUsageSensor)];
+    maxPower = objectIn[SFP(AStr_Key_MaxPower)] | maxPower;
+    const char *powerUsageSensorStr = objectIn[SFP(AStr_Key_PowerUsageSensor)];
     if (powerUsageSensorStr && powerUsageSensorStr[0]) { strncpy(powerUsageSensor, powerUsageSensorStr, ASTRO_NAME_MAXSIZE); }
-    JsonObjectConst limitTriggerObj = objectIn[SFP(HStr_Key_LimitTrigger)];
+    JsonObjectConst limitTriggerObj = objectIn[SFP(AStr_Key_LimitTrigger)];
     if (!limitTriggerObj.isNull()) { limitTrigger.fromJSONObject(limitTriggerObj); }
 }

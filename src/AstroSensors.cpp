@@ -8,7 +8,7 @@
 AstroSensor *newSensorObjectFromData(const AstroSensorData *dataIn)
 {
     if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_InvalidParameter));
 
     if (dataIn && dataIn->isObjectData() && dataIn->id.object.idType == (aid_t)AstroIdentity::Sensor) {
         switch (dataIn->id.object.classType) {
@@ -112,9 +112,9 @@ AstroSensorData::AstroSensorData()
 void AstroSensorData::toJSONObject(JsonObject &objectOut) const
 {
     AstroObjectData::toJSONObject(objectOut);
-    objectOut["measurementUnits"] = (int)measurementUnits;
+    objectOut[SFP(AStr_Key_MeasurementUnits)] = (int)measurementUnits;
     if (inputPin.isSet()) {
-        JsonObject pinObj = objectOut.createNestedObject("inputPin");
+        JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_InputPin));
         inputPin.toJSONObject(pinObj);
     }
 }
@@ -122,7 +122,7 @@ void AstroSensorData::toJSONObject(JsonObject &objectOut) const
 void AstroSensorData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroObjectData::fromJSONObject(objectIn);
-    measurementUnits = (Astro_UnitsType)(objectIn["measurementUnits"] | (int)measurementUnits);
-    JsonObjectConst pinObj = objectIn["inputPin"].as<JsonObjectConst>();
+    measurementUnits = (Astro_UnitsType)(objectIn[SFP(AStr_Key_MeasurementUnits)] | (int)measurementUnits);
+    JsonObjectConst pinObj = objectIn[SFP(AStr_Key_InputPin)].as<JsonObjectConst>();
     if (!pinObj.isNull()) { inputPin.fromJSONObject(pinObj); }
 }

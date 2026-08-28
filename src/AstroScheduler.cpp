@@ -221,19 +221,19 @@ AstroSchedulerSubData::AstroSchedulerSubData()
 void AstroSchedulerSubData::toJSONObject(JsonObject &objectOut) const
 {
     AstroSubData::toJSONObject(objectOut);
-    objectOut["deploySunAlt"] = deploySunAltitudeDegrees;
-    objectOut["stowSunAlt"] = stowSunAltitudeDegrees;
-    objectOut["alignTol"] = alignmentToleranceDegrees;
-    objectOut["settleSecs"] = settleSeconds;
-    objectOut["reportSecs"] = reportIntervalSeconds;
+    objectOut[SFP(AStr_Key_DeploySunAlt)] = deploySunAltitudeDegrees;
+    objectOut[SFP(AStr_Key_StowSunAlt)] = stowSunAltitudeDegrees;
+    objectOut[SFP(AStr_Key_AlignTol)] = alignmentToleranceDegrees;
+    objectOut[SFP(AStr_Key_SettleSecs)] = settleSeconds;
+    objectOut[SFP(AStr_Key_ReportSecs)] = reportIntervalSeconds;
 }
 
 void AstroSchedulerSubData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroSubData::fromJSONObject(objectIn);
-    deploySunAltitudeDegrees = objectIn["deploySunAlt"] | deploySunAltitudeDegrees;
-    stowSunAltitudeDegrees = objectIn["stowSunAlt"] | stowSunAltitudeDegrees;
-    alignmentToleranceDegrees = objectIn["alignTol"] | alignmentToleranceDegrees;
-    settleSeconds = objectIn["settleSecs"] | settleSeconds;
-    reportIntervalSeconds = objectIn["reportSecs"] | reportIntervalSeconds;
+    deploySunAltitudeDegrees = objectIn[SFP(AStr_Key_DeploySunAlt)] | deploySunAltitudeDegrees;
+    stowSunAltitudeDegrees = objectIn[SFP(AStr_Key_StowSunAlt)] | stowSunAltitudeDegrees;
+    alignmentToleranceDegrees = objectIn[SFP(AStr_Key_AlignTol)] | alignmentToleranceDegrees;
+    settleSeconds = objectIn[SFP(AStr_Key_SettleSecs)] | settleSeconds;
+    reportIntervalSeconds = objectIn[SFP(AStr_Key_ReportSecs)] | reportIntervalSeconds;
 }

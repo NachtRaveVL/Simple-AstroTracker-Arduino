@@ -8,7 +8,7 @@
 AstroObject *newObjectFromData(const AstroData *dataIn)
 {
     if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_InvalidParameter));
 
     if (dataIn && dataIn->isObjectData()) {
         switch (dataIn->id.object.idType) {
@@ -52,7 +52,7 @@ akey_t AstroIdentity::regenKey()
             keyString = railTypeToString(objTypeAs.railType, true);
             break;
         case ObservationDevice:
-            keyString = F("ObservationDevice");
+            keyString = SFP(AStr_ObservationDevice);
             break;
         default: // Unable
             return key;
@@ -67,13 +67,13 @@ akey_t AstroIdentity::regenKey()
 String AstroIdentity::getDisplayString()
 {
     switch (type) {
-        case Actuator: return String(F("Actuator ")) + keyString;
-        case Sensor: return String(F("Sensor ")) + keyString;
-        case Target: return String(F("Target ")) + keyString;
-        case Mount: return String(F("Mount ")) + keyString;
-        case Rail: return String(F("Rail ")) + keyString;
-        case ObservationDevice: return String(F("Observation Device ")) + keyString;
-        default: return String(F("Unknown ")) + keyString;
+        case Actuator: return SFP(AStr_Actuator) + ' ' + keyString;
+        case Sensor: return SFP(AStr_Sensor) + ' ' + keyString;
+        case Target: return SFP(AStr_Target) + ' ' + keyString;
+        case Mount: return SFP(AStr_Mount) + ' ' + keyString;
+        case Rail: return SFP(AStr_Rail) + ' ' + keyString;
+        case ObservationDevice: return SFP(AStr_ObservationDeviceDisplay) + ' ' + keyString;
+        default: return SFP(AStr_Unknown) + ' ' + keyString;
     }
 }
 
@@ -94,7 +94,7 @@ void AstroObject::handleLowMemory()
 AstroData *AstroObject::newSaveData()
 {
     auto data = allocateData();
-    ASTRO_SOFT_ASSERT(data, SFP(AStr_Err_AllocationFailure));
+    ASTRO_SOFT_ASSERT(data, SFP(AStr_AllocationFailure));
     if (data) { saveToData(data); }
     return data;
 }
@@ -105,7 +105,7 @@ void AstroObject::allocateLinkages(size_t size)
         Pair<AstroObject *, int8_t> *newLinks = size ? new Pair<AstroObject *, int8_t>[size] : nullptr;
 
         if (size) {
-            ASTRO_HARD_ASSERT(newLinks, SFP(AStr_Err_AllocationFailure));
+            ASTRO_HARD_ASSERT(newLinks, SFP(AStr_AllocationFailure));
 
             hposi_t linksIndex = 0;
             if (_links) {

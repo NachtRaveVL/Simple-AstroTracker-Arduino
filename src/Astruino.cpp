@@ -313,8 +313,8 @@ void Astruino::allocateRTC()
                 break;
         }
         _rtcBegan = false;
-        ASTRO_SOFT_ASSERT(_rtc, "Allocation failure");
-        ASTRO_HARD_ASSERT(_rtcSetup.i2c.address == 0, "RTClib only supports the default I2C RTC address");
+        ASTRO_SOFT_ASSERT(_rtc, SFP(AStr_AllocationFailure));
+        ASTRO_HARD_ASSERT(_rtcSetup.i2c.address == 0, SFP(AStr_Err_RTCDefaultAddressOnly));
     }
 #endif
 }
@@ -345,7 +345,7 @@ AstroRTCInterface *Astruino::getRTC(bool begin)
         if (_rtcBegan) {
             bool rtcBattFailBefore = _rtcBattFail;
             _rtcBattFail = _rtc->lostPower();
-            if (_rtcBattFail && !rtcBattFailBefore) { logger.logWarning((int64_t)unixNow(), "RTC battery failure"); }
+            if (_rtcBattFail && !rtcBattFailBefore) { logger.logWarning((int64_t)unixNow(), SFP(AStr_Log_RTCBatteryFailure)); }
             _rtcSyncProvider = _rtc;
             setSyncProvider(rtcNow);
         } else {
