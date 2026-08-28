@@ -52,13 +52,13 @@ public:
     virtual void setMeasurementUnits(Astro_UnitsType units, uint8_t measurementRow = 0) override { if (measurementRow == 0) { setUnits(units); } }
     virtual Astro_UnitsType getMeasurementUnits(uint8_t measurementRow = 0) const override { return measurementRow == 0 ? getUnits() : Astro_UnitsType_Undefined; }
     virtual const AstroSingleMeasurement &getMeasurement() const override { return _measurement; }
-    Signal<const AstroMeasurement *, ASTRO_DEFAULT_MAXSIZE> &getMeasurementSignal();
+    Signal<const AstroMeasurement *, ASTRO_SENSOR_SIGNAL_SLOTS> &getMeasurementSignal();
 
 protected:
     Astro_SensorType _sensorType;                           // Sensor type
     AstroSingleMeasurement _measurement;                   // Latest sensor measurement
     const AstroCalibrationData *_calibrationData;           // Calibration data
-    Signal<const AstroMeasurement *, ASTRO_DEFAULT_MAXSIZE> _measurementSignal; // Measurement signal
+    Signal<const AstroMeasurement *, ASTRO_SENSOR_SIGNAL_SLOTS> _measurementSignal; // Measurement signal
 
     virtual AstroData *allocateData() const override;
     virtual void saveToData(AstroData *dataOut) const override;

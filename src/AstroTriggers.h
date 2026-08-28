@@ -58,7 +58,7 @@ public:
     inline bool isDetriggerDelayActive() const { return _lastTrigger != millis_none; }
 
     virtual AstroSensorAttachment &getSensorAttachment() override { return _sensor; }
-    Signal<Astro_TriggerState, ASTRO_DEFAULT_MAXSIZE> &getTriggerSignal();
+    Signal<Astro_TriggerState, ASTRO_TRIGGER_SIGNAL_SLOTS> &getTriggerSignal();
 
 protected:
     AstroSensorAttachment _sensor;                          // Sensor attachment
@@ -66,7 +66,7 @@ protected:
     millis_t _detriggerDelay;                               // De-trigger timing delay
     millis_t _lastTrigger;                                  // Last trigger millis
     Astro_TriggerState _triggerState;                       // Trigger state
-    Signal<Astro_TriggerState, ASTRO_DEFAULT_MAXSIZE> _triggerSignal; // Trigger signal
+    Signal<Astro_TriggerState, ASTRO_TRIGGER_SIGNAL_SLOTS> _triggerSignal; // Trigger signal
 
     virtual void handleMeasurement(const AstroMeasurement *measurement) = 0;
 };

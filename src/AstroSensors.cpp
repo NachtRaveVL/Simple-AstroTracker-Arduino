@@ -61,7 +61,7 @@ void AstroSensor::setUserCalibrationData(AstroCalibrationData *userCalibrationDa
         }
     } else { _calibrationData = userCalibrationData; }
 }
-Signal<const AstroMeasurement *, ASTRO_DEFAULT_MAXSIZE> &AstroSensor::getMeasurementSignal()
+Signal<const AstroMeasurement *, ASTRO_SENSOR_SIGNAL_SLOTS> &AstroSensor::getMeasurementSignal()
 { return _measurementSignal; }
 AstroData *AstroSensor::allocateData() const
 {

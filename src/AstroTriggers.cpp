@@ -8,12 +8,18 @@
 
 AstroTrigger *newTriggerObjectFromSubData(const AstroTriggerSubData *dataIn)
 {
-    if (!dataIn || !isValidType(dataIn->type)) { return nullptr; }
-    switch (dataIn->type) {
-        case AstroTrigger::MeasureValue: return new AstroMeasurementValueTrigger(dataIn);
-        case AstroTrigger::MeasureRange: return new AstroMeasurementRangeTrigger(dataIn);
-        default: return nullptr;
+    if (!dataIn || !isValidType(dataIn->type)) return nullptr;
+    ASTRO_SOFT_ASSERT(dataIn && isValidType(dataIn->type), SFP(AStr_Err_InvalidParameter));
+
+    if (dataIn) {
+        switch (dataIn->type) {
+            case AstroTrigger::MeasureValue: return new AstroMeasurementValueTrigger(dataIn);
+            case AstroTrigger::MeasureRange: return new AstroMeasurementRangeTrigger(dataIn);
+            default: break;
+        }
     }
+
+    return nullptr;
 }
 
 AstroTrigger::AstroTrigger(AstroIdentity sensorId, uint8_t measurementRow, double detriggerTol,
@@ -56,7 +62,7 @@ void AstroTrigger::setMeasurementUnits(Astro_UnitsType units, uint8_t row)
 { if (!row && _measurementUnits[0] != units) { _measurementUnits[0] = units; _sensor.setMeasurementUnits(units); bumpRevisionIfNeeded(); } }
 Astro_UnitsType AstroTrigger::getMeasurementUnits(uint8_t row) const
 { return row ? Astro_UnitsType_Undefined : (_measurementUnits[0] != Astro_UnitsType_Undefined ? _measurementUnits[0] : _sensor.getMeasurementUnits()); }
-Signal<Astro_TriggerState, ASTRO_DEFAULT_MAXSIZE> &AstroTrigger::getTriggerSignal() { return _triggerSignal; }
+Signal<Astro_TriggerState, ASTRO_TRIGGER_SIGNAL_SLOTS> &AstroTrigger::getTriggerSignal() { return _triggerSignal; }
 
 AstroMeasurementValueTrigger::AstroMeasurementValueTrigger(AstroIdentity sensorId, double triggerTol, bool triggerBelow,
                                                            uint8_t row, double detriggerTol, millis_t detriggerDelay)
