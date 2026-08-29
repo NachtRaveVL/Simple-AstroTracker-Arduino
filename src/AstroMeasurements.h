@@ -70,9 +70,27 @@ struct AstroSingleMeasurement : public AstroMeasurement {
 
     inline AstroSingleMeasurement &toUnits(Astro_UnitsType outUnits, float convertParam = FLT_UNDEF);
 
+    inline AstroSingleMeasurement &wrapBy(float range);
+    inline AstroSingleMeasurement &wrapBySplit(float range);
+    inline AstroSingleMeasurement &wrapBy360() { return wrapBy(360); }
+    inline AstroSingleMeasurement &wrapBy180Neg180() { return wrapBySplit(360); }
+    inline AstroSingleMeasurement &wrapBy2Pi() { return wrapBy(TWO_PI); }
+    inline AstroSingleMeasurement &wrapByPiNegPi() { return wrapBySplit(TWO_PI); }
+    inline AstroSingleMeasurement &wrapBy24Hr() { return wrapBy(MIN_PER_DAY); }
+    inline AstroSingleMeasurement &wrapBy12HrNeg12Hr() { return wrapBySplit(MIN_PER_DAY); }
+
     // Copiers (in utils)
 
     inline AstroSingleMeasurement asUnits(Astro_UnitsType outUnits, float convertParam = FLT_UNDEF) const;
+
+    inline AstroSingleMeasurement wrappedBy(float range) const;
+    inline AstroSingleMeasurement wrappedBySplit(float range) const;
+    inline AstroSingleMeasurement wrappedBy360() const { return wrappedBy(360); }
+    inline AstroSingleMeasurement wrappedBy180Neg180() const { return wrappedBySplit(360); }
+    inline AstroSingleMeasurement wrappedBy2Pi() const { return wrappedBy(TWO_PI); }
+    inline AstroSingleMeasurement wrappedByPiNegPi() const { return wrappedBySplit(TWO_PI); }
+    inline AstroSingleMeasurement wrappedBy24Hr() const { return wrappedBy(MIN_PER_DAY); }
+    inline AstroSingleMeasurement wrappedBy12HrNeg12Hr() const { return wrappedBySplit(MIN_PER_DAY); }
 };
 
 // Binary Value Sensor Data Measurement

@@ -302,9 +302,9 @@ template<typename T> inline T wrapBy24(T value) { return wrapBy<T>(value, 24); }
 // For wrapping of hours values to [-12,12)
 template<typename T> inline T wrapBy12Neg12(T value) { return wrapBySplit<T>(value, 24); }
 
-// Returns the base units from a rate unit (e.g. mm/min -> mm).
+// Returns the base units from a rate unit (e.g. m/s -> m).
 extern Astro_UnitsType baseUnits(Astro_UnitsType units);
-// Returns the rate units from a base unit (e.g. mm -> mm/min).
+// Returns the rate units from a base unit (e.g. m -> m/s).
 extern Astro_UnitsType rateUnits(Astro_UnitsType units);
 
 // Returns default units based on category and measurement mode (if undefined then uses active controller's measurement mode, else default measurement mode).
@@ -314,12 +314,20 @@ extern Astro_UnitsType defaultUnits(Astro_UnitsCategory unitsCategory, Astro_Mea
 inline Astro_UnitsType defaultAngleUnits(Astro_MeasurementMode measureMode = Astro_MeasurementMode_Undefined) { return defaultUnits(Astro_UnitsCategory_Angle, measureMode); }
 // Returns default distance units based on measurement mode (if undefined then uses active controller's measurement mode, else default measurement mode).
 inline Astro_UnitsType defaultDistanceUnits(Astro_MeasurementMode measureMode = Astro_MeasurementMode_Undefined) { return defaultUnits(Astro_UnitsCategory_Distance, measureMode); }
+// Returns default percentile units based on measurement mode (if undefined then uses active controller's measurement mode, else default measurement mode).
+inline Astro_UnitsType defaultPercentileUnits(Astro_MeasurementMode measureMode = Astro_MeasurementMode_Undefined) { return defaultUnits(Astro_UnitsCategory_Percentile, measureMode); }
 // Returns default power units based on measurement mode (if undefined then uses active controller's measurement mode, else default measurement mode).
 inline Astro_UnitsType defaultPowerUnits(Astro_MeasurementMode measureMode = Astro_MeasurementMode_Undefined) { return defaultUnits(Astro_UnitsCategory_Power, measureMode); }
 // Returns default speed units based on measurement mode (if undefined then uses active controller's measurement mode, else default measurement mode).
 inline Astro_UnitsType defaultSpeedUnits(Astro_MeasurementMode measureMode = Astro_MeasurementMode_Undefined) { return rateUnits(defaultDistanceUnits(measureMode)); }
 // Returns default temperature units based on measurement mode (if undefined then uses active controller's measurement mode, else default measurement mode).
 inline Astro_UnitsType defaultTemperatureUnits(Astro_MeasurementMode measureMode = Astro_MeasurementMode_Undefined) { return defaultUnits(Astro_UnitsCategory_Temperature, measureMode); }
+// Returns default humidity units based on measurement mode (if undefined then uses active controller's measurement mode, else default measurement mode).
+inline Astro_UnitsType defaultHumidityUnits(Astro_MeasurementMode measureMode = Astro_MeasurementMode_Undefined) { return defaultUnits(Astro_UnitsCategory_Humidity, measureMode); }
+// Returns default voltage units based on measurement mode (if undefined then uses active controller's measurement mode, else default measurement mode).
+inline Astro_UnitsType defaultVoltageUnits(Astro_MeasurementMode measureMode = Astro_MeasurementMode_Undefined) { return defaultUnits(Astro_UnitsCategory_Voltage, measureMode); }
+// Returns default current units based on measurement mode (if undefined then uses active controller's measurement mode, else default measurement mode).
+inline Astro_UnitsType defaultCurrentUnits(Astro_MeasurementMode measureMode = Astro_MeasurementMode_Undefined) { return defaultUnits(Astro_UnitsCategory_Current, measureMode); }
 // Returns default decimal places rounded to based on measurement mode (if undefined then uses active controller's measurement mode, else default measurement mode).
 inline int defaultDecimalPlaces(Astro_MeasurementMode measureMode = Astro_MeasurementMode_Undefined) { return (int)defaultUnits(Astro_UnitsCategory_Count, measureMode); }
 
