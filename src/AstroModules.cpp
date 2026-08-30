@@ -5,71 +5,102 @@
 
 #include "Astruino.h"
 
-AstroCalibrations::~AstroCalibrations()
-{
-    clearUserCalibrationData();
-}
-
-void AstroCalibrations::clearUserCalibrationData()
-{
-    for (auto iter = _calibrationData.begin(); iter != _calibrationData.end(); ++iter) {
-        if (iter->second) { delete iter->second; }
-    }
-    _calibrationData.clear();
-}
-
 const AstroCalibrationData *AstroCalibrations::getUserCalibrationData(akey_t key) const
 {
     auto iter = _calibrationData.find(key);
-    return iter != _calibrationData.end() ? iter->second : nullptr;
+    if (iter != _calibrationData.end()) {
+        return iter->second;
+    }
+    return nullptr;
 }
 
 bool AstroCalibrations::setUserCalibrationData(const AstroCalibrationData *calibrationData)
 {
-    ASTRO_SOFT_ASSERT(calibrationData && calibrationData->ownerName[0], SFP(AStr_InvalidParameter));
-    if (!calibrationData || !calibrationData->ownerName[0]) { return false; }
+    ASTRO_SOFT_ASSERT(calibrationData, SFP(AStr_Err_InvalidParameter));
 
-    akey_t key = astroStringHash(calibrationData->ownerName);
-    auto iter = _calibrationData.find(key);
-    if (iter == _calibrationData.end()) {
-        AstroCalibrationData *copy = new AstroCalibrationData(*calibrationData);
-        ASTRO_SOFT_ASSERT(copy, SFP(AStr_AllocationFailure));
-        if (!copy) { return false; }
-        _calibrationData[key] = copy;
-    } else {
-        *(iter->second) = *calibrationData;
+    if (calibrationData) {
+        akey_t key = stringHash(calibrationData->ownerName);
+        auto iter = _calibrationData.find(key);
+        bool retVal = false;
+
+        if (iter == _calibrationData.end()) {
+            auto calibData = new AstroCalibrationData();
+
+            ASTRO_SOFT_ASSERT(calibData, SFP(AStr_Err_AllocationFailure));
+            if (calibData) {
+                *calibData = *calibrationData;
+                _calibrationData[key] = calibData;
+                retVal = (_calibrationData.find(key) != _calibrationData.end());
+            }
+        } else {
+            *(iter->second) = *calibrationData;
+            retVal = true;
+        }
+
+        return retVal;
     }
-    return true;
+    return false;
 }
 
 bool AstroCalibrations::dropUserCalibrationData(const AstroCalibrationData *calibrationData)
 {
-    ASTRO_HARD_ASSERT(calibrationData, SFP(AStr_InvalidParameter));
-    if (!calibrationData) { return false; }
-    akey_t key = astroStringHash(calibrationData->ownerName);
+    ASTRO_HARD_ASSERT(calibrationData, SFP(AStr_Err_InvalidParameter));
+    akey_t key = stringHash(calibrationData->ownerName);
     auto iter = _calibrationData.find(key);
-    if (iter == _calibrationData.end()) { return false; }
-    if (iter->second) { delete iter->second; }
-    _calibrationData.erase(iter);
-    return true;
+
+    if (iter != _calibrationData.end()) {
+        if (iter->second) { delete iter->second; }
+        _calibrationData.erase(iter);
+
+        return true;
+    }
+
+    return false;
 }
 
-bool AstroObjectRegistration::registerObject(SharedPtr<AstroObject> object)
+
+bool AstroObjectRegistration::registerObject(SharedPtr<AstroObject> obj)
 {
-    if (!object || object->getKey() == akey_none || _objects.find(object->getKey()) != _objects.end()) { return false; }
-    _objects[object->getKey()] = object;
-    return true;
+    ASTRO_SOFT_ASSERT(obj->getId().posIndex >= 0 && obj->getId().posIndex < ASTRO_POS_MAXSIZE, SFP(AStr_Err_InvalidParameter));
+    if (obj && _objects.find(obj->getKey()) == _objects.end()) {
+        _objects[obj->getKey()] = obj;
+
+        if (obj->isActuatorType() || obj->isMountType() || obj->isTargetType()) {
+            if (getScheduler()) {
+                getScheduler()->setNeedsScheduling();
+            }
+        }
+        if (obj->isSensorType()) {
+            if (getPublisher()) {
+                getPublisher()->setNeedsTabulation();
+            }
+        }
+
+        return true;
+    }
+    return false;
 }
 
-bool AstroObjectRegistration::unregisterObject(SharedPtr<AstroObject> object)
+bool AstroObjectRegistration::unregisterObject(SharedPtr<AstroObject> obj)
 {
-    if (!object) { return false; }
-    auto iter = _objects.find(object->getKey());
-    if (iter == _objects.end() || iter->second.get() != object.get()) { return false; }
+    auto iter = _objects.find(obj->getKey());
+    if (iter != _objects.end()) {
+        _objects.erase(iter);
 
-    object->unresolve();
-    _objects.erase(iter);
-    return true;
+        if (obj->isActuatorType() || obj->isMountType() || obj->isTargetType()) {
+            if (getScheduler()) {
+                getScheduler()->setNeedsScheduling();
+            }
+        }
+        if (obj->isSensorType()) {
+            if (getPublisher()) {
+                getPublisher()->setNeedsTabulation();
+            }
+        }
+
+        return true;
+    }
+    return false;
 }
 
 SharedPtr<AstroObject> AstroObjectRegistration::objectById(AstroIdentity id) const
@@ -112,7 +143,7 @@ SharedPtr<AstroObject> AstroObjectRegistration::objectById(AstroIdentity id) con
 
 SharedPtr<AstroObject> AstroObjectRegistration::objectById_Col(const AstroIdentity &id) const
 {
-    ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_HashingCollision)); // exhaustive search must be performed, publishing may miss values
+    ASTRO_SOFT_ASSERT(false, F("Hashing collision")); // exhaustive search must be performed, publishing may miss values
 
     for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
         if (id.keyString == iter->second->getKeyString()) {
@@ -123,7 +154,7 @@ SharedPtr<AstroObject> AstroObjectRegistration::objectById_Col(const AstroIdenti
     return nullptr;
 }
 
-aposi_t AstroObjectRegistration::firstPosition(AstroIdentity id, bool taken) const
+aposi_t AstroObjectRegistration::firstPosition(AstroIdentity id, bool taken)
 {
     if (id.posIndex != ASTRO_POS_SEARCH_FROMEND) {
         id.posIndex = ASTRO_POS_SEARCH_FROMBEG;
@@ -146,34 +177,52 @@ aposi_t AstroObjectRegistration::firstPosition(AstroIdentity id, bool taken) con
     return -1;
 }
 
-void AstroObjectRegistration::updateObjects()
+
+bool AstroPinHandlers::tryGetPinLock(pintype_t pin, millis_t wait)
 {
-    for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
-        if (iter->second) { iter->second->update(); }
+    millis_t start = millis();
+    while (1) {
+        auto iter = _pinLocks.find(pin);
+        if (iter == _pinLocks.end()) {
+            _pinLocks[pin] = true;
+            return (_pinLocks.find(pin) != _pinLocks.end());
+        }
+        else if (millis() - start >= wait) { return false; }
+        else { yield(); }
     }
 }
 
-AstroFixedLocationProvider::AstroFixedLocationProvider(const AstroObserver &observer)
-    : _observer(observer)
-{ ; }
-
-bool AstroFixedLocationProvider::getObserver(AstroObserver *observerOut)
+void AstroPinHandlers::deactivatePinMuxers()
 {
-    if (!observerOut) { return false; }
-    *observerOut = _observer;
-    return true;
+    for (auto iter = _pinMuxers.begin(); iter != _pinMuxers.end(); ++iter) {
+        iter->second->deactivate();
+    }
 }
 
-void AstroFixedLocationProvider::setObserver(const AstroObserver &observer)
+OneWire *AstroPinHandlers::getOneWireForPin(pintype_t pin)
 {
-    _observer = observer;
+    auto wireIter = _pinOneWire.find(pin);
+    if (wireIter != _pinOneWire.end()) {
+        return wireIter->second;
+    } else {
+        OneWire *oneWire = new OneWire(pin);
+        if (oneWire) {
+            _pinOneWire[pin] = oneWire;
+            if (_pinOneWire.find(pin) != _pinOneWire.end()) { return oneWire; }
+            else if (oneWire) { delete oneWire; }
+        } else if (oneWire) { delete oneWire; }
+    }
+    return nullptr;
 }
 
-AstroCallbackLocationProvider::AstroCallbackLocationProvider(LocationCallback callback, void *context)
-    : _callback(callback), _context(context)
-{ ; }
-
-bool AstroCallbackLocationProvider::getObserver(AstroObserver *observerOut)
+void AstroPinHandlers::dropOneWireForPin(pintype_t pin)
 {
-    return _callback && observerOut ? _callback(_context, observerOut) : false;
+    auto wireIter = _pinOneWire.find(pin);
+    if (wireIter != _pinOneWire.end()) {
+        if (wireIter->second) {
+            wireIter->second->depower();
+            delete wireIter->second;
+        }
+        _pinOneWire.erase(wireIter);
+    }
 }

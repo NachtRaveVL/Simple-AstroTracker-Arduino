@@ -6,12 +6,14 @@
 #ifndef AstroActuators_H
 #define AstroActuators_H
 
+class AstroActuator;
+class AstroCallbackActuator;
+class AstroDigitalActuator;
+class AstroRelayMotorActuator;
+
 struct AstroActuatorData;
 
-#include "AstroActivation.h"
-#include "AstroAttachments.h"
-#include "AstroObject.h"
-#include "AstroPins.h"
+#include "Astruino.h"
 
 // Creates actuator object from passed actuator data (return ownership transfer - user code *must* delete returned object)
 extern AstroActuator *newActuatorObjectFromData(const AstroActuatorData *dataIn);

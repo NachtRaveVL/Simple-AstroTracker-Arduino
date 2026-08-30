@@ -107,7 +107,7 @@ void AstroObject::allocateLinkages(size_t size)
         if (size) {
             ASTRO_HARD_ASSERT(newLinks, SFP(AStr_AllocationFailure));
 
-            hposi_t linksIndex = 0;
+            aposi_t linksIndex = 0;
             if (_links) {
                 for (; linksIndex < _linksSize && linksIndex < size; ++linksIndex) {
                     newLinks[linksIndex] = _links[linksIndex];
@@ -128,7 +128,7 @@ bool AstroObject::addLinkage(AstroObject *obj)
 {
     if (!_links) { allocateLinkages(); }
     if (_links) {
-        hposi_t linksIndex = 0;
+        aposi_t linksIndex = 0;
         for (; linksIndex < _linksSize && _links[linksIndex].first; ++linksIndex) {
             if (_links[linksIndex].first == obj) {
                 _links[linksIndex].second++;
@@ -147,7 +147,7 @@ bool AstroObject::addLinkage(AstroObject *obj)
 bool AstroObject::removeLinkage(AstroObject *obj)
 {
     if (_links) {
-        for (hposi_t linksIndex = 0; linksIndex < _linksSize && _links[linksIndex].first; ++linksIndex) {
+        for (aposi_t linksIndex = 0; linksIndex < _linksSize && _links[linksIndex].first; ++linksIndex) {
             if (_links[linksIndex].first == obj) {
                 if (--_links[linksIndex].second <= 0) {
                     for (int linksSubIndex = linksIndex; linksSubIndex < _linksSize - 1; ++linksSubIndex) {
@@ -165,7 +165,7 @@ bool AstroObject::removeLinkage(AstroObject *obj)
 bool AstroObject::hasLinkage(AstroObject *obj) const
 {
     if (_links) {
-        for (hposi_t linksIndex = 0; linksIndex < _linksSize && _links[linksIndex].first; ++linksIndex) {
+        for (aposi_t linksIndex = 0; linksIndex < _linksSize && _links[linksIndex].first; ++linksIndex) {
             if (_links[linksIndex].first == obj) {
                 return true;
             }
@@ -178,7 +178,7 @@ void AstroObject::unresolveAny(AstroObject *obj)
 {
     if (this == obj && _links) {
         AstroObject *lastObject = nullptr;
-        for (hposi_t linksIndex = 0; linksIndex < _linksSize && _links[linksIndex].first; ++linksIndex) {
+        for (aposi_t linksIndex = 0; linksIndex < _linksSize && _links[linksIndex].first; ++linksIndex) {
             AstroObject *object = _links[linksIndex].first;
             if (object != obj) {
                 object->unresolveAny(obj); // may clobber indexing

@@ -6,97 +6,104 @@
 #ifndef AstroModules_H
 #define AstroModules_H
 
-class AstroObject;
-struct AstroCalibrationData;
+class AstroCalibrations;
+class AstroObjectRegistration;
+class AstroPinHandlers;
 
-#include "AstroCoordinates.h"
-#include "AstroInlines.hh"
-#include "AstroObject.h"
+#include "Astruino.h"
+#include "AstroPins.h"
 
 // Calibrations Storage
-// Stores user calibration data, which calibrates sensor output into usable values.
+// Stores user calibration data, which calibrates the various sensors output to
+// an usable input value.
 class AstroCalibrations {
 public:
-    ~AstroCalibrations();
-    void clearUserCalibrationData();
-    // Adds/updates user calibration data to the store, returning success flag.
+    // Adds/updates user calibration data to storage, returning success flag
     bool setUserCalibrationData(const AstroCalibrationData *calibrationData);
 
-    // Drops/removes user calibration data from the store, returning success flag.
+    // Drops/removes user calibration data from storage, returning success flag
     bool dropUserCalibrationData(const AstroCalibrationData *calibrationData);
 
-    // Returns user calibration data instance in store.
+    // Returns user calibration data instance in storage
     const AstroCalibrationData *getUserCalibrationData(akey_t key) const;
 
-    // Returns if there are user calibrations in the store.
+    // Returns if there are any user calibrations in storage
     inline bool hasUserCalibrations() const { return _calibrationData.size(); };
 
 protected:
-    Map<akey_t, AstroCalibrationData *, ASTRO_SYS_OBJECTS_MAXSIZE> _calibrationData; // Loaded user calibration data
+    Map<akey_t, AstroCalibrationData *, ASTRO_CAL_CALIBS_MAXSIZE> _calibrationData; // Loaded user calibration data
 };
 
+
 // Object Registration Storage
-// Stores objects in the main system store, which is used for SharedPtr<> lookups and
-// stable attachment resolution in the same manner as the sibling controller libraries.
+// Stores objects in main system store, which is used for SharedPtr<> lookups as well as
+// notifying appropriate modules upon entry-to/exit-from the system.
 class AstroObjectRegistration {
 public:
-    // Adds object to system, returning success.
-    bool registerObject(SharedPtr<AstroObject> object);
-    // Removes object from system, returning success.
-    bool unregisterObject(SharedPtr<AstroObject> object);
+    // Adds object to system, returning success
+    bool registerObject(SharedPtr<AstroObject> obj);
+    // Removes object from system, returning success
+    bool unregisterObject(SharedPtr<AstroObject> obj);
 
-    // Searches for object by id key (nullptr return = no object by that id, position index may use ASTRO_POS_SEARCH* defines).
+    // Searches for object by id key (nullptr return = no obj by that id, position index may use ASTRO_POS_SEARCH* defines)
     SharedPtr<AstroObject> objectById(AstroIdentity id) const;
 
-    // Finds first position either open or taken, given the identity type.
-    aposi_t firstPosition(AstroIdentity id, bool taken) const;
-    inline aposi_t firstPositionTaken(AstroIdentity id) const { return firstPosition(id, true); }
-    inline aposi_t firstPositionOpen(AstroIdentity id) const { return firstPosition(id, false); }
-
-    // Updates registered system objects.
-    void updateObjects();
+    // Finds first position either open or taken, given the id type
+    aposi_t firstPosition(AstroIdentity id, bool taken);
+    // Finds first position taken, given the id type
+    inline aposi_t firstPositionTaken(AstroIdentity id) { return firstPosition(id, true); }
+    // Finds first position open, given the id type
+    inline aposi_t firstPositionOpen(AstroIdentity id) { return firstPosition(id, false); }
 
 protected:
-    Map<akey_t, SharedPtr<AstroObject>, ASTRO_SYS_OBJECTS_MAXSIZE> _objects; // Shared object collection, keyed by AstroIdentity
+    Map<akey_t, SharedPtr<AstroObject>, ASTRO_SYS_OBJECTS_MAXSIZE> _objects; // Shared object collection, key'ed by AstroIdentity
 
     SharedPtr<AstroObject> objectById_Col(const AstroIdentity &id) const;
 };
 
-// Location Provider Interface
-// Supplies observer location without requiring GPS or networking.
-class AstroLocationProvider {
+
+// Pin Handlers Storage
+// Stores various pin-related system data on a shared pin # basis. Covers:
+// - Pin locks: used for async shared resource management
+// - Pin muxers: used for i/o pin multiplexing across a shared address bus
+// - Pin expanders: used for i/o virtual pin expanding across an i2c interface
+// - Pin OneWire: used for digital sensor pin's OneWire owner
+class AstroPinHandlers {
 public:
-    virtual ~AstroLocationProvider() { ; }
-    virtual bool getObserver(AstroObserver *observerOut) = 0;
-};
+    // Attempts to get a lock on pin #, to prevent multi-device comm overlap (e.g. for OneWire comms).
+    bool tryGetPinLock(pintype_t pin, millis_t wait = 150);
+    // Returns a locked pin lock for the given pin. Only call if pin lock was successfully locked.
+    inline void returnPinLock(pintype_t pin) { _pinLocks.erase(pin); }
 
+    // Sets pin muxer for pin #.
+    inline void setPinMuxer(pintype_t pin, SharedPtr<AstroPinMuxer> pinMuxer) { _pinMuxers[pin] = pinMuxer; }
+    // Returns pin muxer for pin #.
+    inline SharedPtr<AstroPinMuxer> getPinMuxer(pintype_t pin) { return _pinMuxers[pin]; }
+    // Deactivates all pin muxers. Called before selecting another channel if pin muxers are assumed
+    // to have a shared address bus (based on ASTRO_MUXERS_SHARED_ADDR_BUS setting).
+    void deactivatePinMuxers();
 
-// Fixed Location Provider
-// Stores a known observer location for fully offline or permanently installed systems.
-class AstroFixedLocationProvider : public AstroLocationProvider {
-public:
-    AstroFixedLocationProvider(const AstroObserver &observer = AstroObserver());
+#ifdef ASTRO_USE_MULTITASKING
 
-    virtual bool getObserver(AstroObserver *observerOut) override;
-    void setObserver(const AstroObserver &observer);
-    inline const AstroObserver &getObserver() const { return _observer; }
+    // Sets pin expander for index.
+    inline void setPinExpander(aposi_t index, SharedPtr<AstroPinExpander> pinExpander) { _pinExpanders[index] = pinExpander; }
+    // Returns expander for index.
+    inline SharedPtr<AstroPinExpander> getPinExpander(aposi_t index) { return _pinExpanders[index]; }
+
+#endif // /ifdef ASTRO_USE_MULTITASKING
+
+    // OneWire instance for given pin (lazily instantiated)
+    OneWire *getOneWireForPin(pintype_t pin);
+    // Drops OneWire instance for given pin (if created)
+    void dropOneWireForPin(pintype_t pin);
 
 protected:
-    AstroObserver _observer;                                // Stored observer/location data
-};
-
-// Callback Location Provider
-// Supplies observer coordinates through user code.
-class AstroCallbackLocationProvider : public AstroLocationProvider {
-public:
-    typedef bool (*LocationCallback)(void *context, AstroObserver *observerOut);
-
-    AstroCallbackLocationProvider(LocationCallback callback = nullptr, void *context = nullptr);
-    virtual bool getObserver(AstroObserver *observerOut) override;
-
-protected:
-    LocationCallback _callback;                            // Location provider callback
-    void *_context;                                         // Callback user context
+    Map<pintype_t, OneWire *, ASTRO_SYS_ONEWIRES_MAXSIZE> _pinOneWire; // Pin OneWire mapping
+    Map<pintype_t, pintype_t, ASTRO_SYS_PINLOCKS_MAXSIZE> _pinLocks; // Pin locks mapping (existence = locked)
+    Map<pintype_t, SharedPtr<AstroPinMuxer>, ASTRO_SYS_PINMUXERS_MAXSIZE> _pinMuxers; // Pin muxers mapping
+#ifdef ASTRO_USE_MULTITASKING
+    Map<aposi_t, SharedPtr<AstroPinExpander>, ASTRO_SYS_PINEXPANDERS_MAXSIZE> _pinExpanders; // Pin expanders mapping
+#endif
 };
 
 #endif // /ifndef AstroModules_H

@@ -54,7 +54,7 @@ template<typename ParameterType, int Slots>
 taskid_t scheduleSignalFireOnce(SharedPtr<AstroObjInterface> object, Signal<ParameterType,Slots> &signal, ParameterType fireParam)
 {
     SignalFireTask<ParameterType,Slots> *fireTask = object ? new SignalFireTask<ParameterType,Slots>(object, signal, fireParam) : nullptr;
-    ASTRO_SOFT_ASSERT(!object || fireTask, SFP(HStr_Err_AllocationFailure));
+    ASTRO_SOFT_ASSERT(!object || fireTask, SFP(AStr_Err_AllocationFailure));
     taskid_t retVal = fireTask ? taskManager.scheduleOnce(0, fireTask, TIME_MILLIS, true) : TASKMGR_INVALIDID;
     return (fireTask ? (fireTask->taskId = retVal) : retVal);
 }
@@ -63,7 +63,7 @@ template<typename ParameterType, int Slots>
 taskid_t scheduleSignalFireOnce(Signal<ParameterType,Slots> &signal, ParameterType fireParam)
 {
     SignalFireTask<ParameterType,Slots> *fireTask = new SignalFireTask<ParameterType,Slots>(nullptr, signal, fireParam);
-    ASTRO_SOFT_ASSERT(fireTask, SFP(HStr_Err_AllocationFailure));
+    ASTRO_SOFT_ASSERT(fireTask, SFP(AStr_Err_AllocationFailure));
     taskid_t retVal = fireTask ? taskManager.scheduleOnce(0, fireTask, TIME_MILLIS, true) : TASKMGR_INVALIDID;
     return (fireTask ? (fireTask->taskId = retVal) : retVal);
 }
@@ -72,7 +72,7 @@ template<class ObjectType, typename ParameterType>
 taskid_t scheduleObjectMethodCallOnce(SharedPtr<ObjectType> object, void (ObjectType::*method)(ParameterType), ParameterType callParam)
 {
     MethodSlotCallTask<ObjectType,ParameterType> *callTask = object ? new MethodSlotCallTask<ObjectType,ParameterType>(object, method, callParam) : nullptr;
-    ASTRO_SOFT_ASSERT(!object || callTask, SFP(HStr_Err_AllocationFailure));
+    ASTRO_SOFT_ASSERT(!object || callTask, SFP(AStr_Err_AllocationFailure));
     taskid_t retVal = callTask ? taskManager.scheduleOnce(0, callTask, TIME_MILLIS, true) : TASKMGR_INVALIDID;
     return (callTask ? (callTask->taskId = retVal) : retVal);
 }
@@ -81,7 +81,7 @@ template<class ObjectType, typename ParameterType>
 taskid_t scheduleObjectMethodCallOnce(ObjectType *object, void (ObjectType::*method)(ParameterType), ParameterType callParam)
 {
     MethodSlotCallTask<ObjectType,ParameterType> *callTask = object ? new MethodSlotCallTask<ObjectType,ParameterType>(object, method, callParam) : nullptr;
-    ASTRO_SOFT_ASSERT(!object || callTask, SFP(HStr_Err_AllocationFailure));
+    ASTRO_SOFT_ASSERT(!object || callTask, SFP(AStr_Err_AllocationFailure));
     taskid_t retVal = callTask ? taskManager.scheduleOnce(0, callTask, TIME_MILLIS, true) : TASKMGR_INVALIDID;
     return (callTask ? (callTask->taskId = retVal) : retVal);
 }
@@ -90,7 +90,7 @@ template<class ObjectType>
 taskid_t scheduleObjectMethodCallWithTaskIdOnce(SharedPtr<ObjectType> object, void (ObjectType::*method)(taskid_t))
 {
     MethodSlotCallTask<ObjectType,taskid_t> *callTask = object ? new MethodSlotCallTask<ObjectType,taskid_t>(object, method, (taskid_t)0) : nullptr;
-    ASTRO_SOFT_ASSERT(!object || callTask, SFP(HStr_Err_AllocationFailure));
+    ASTRO_SOFT_ASSERT(!object || callTask, SFP(AStr_Err_AllocationFailure));
     taskid_t retVal = callTask ? taskManager.scheduleOnce(0, callTask, TIME_MILLIS, true) : TASKMGR_INVALIDID;
     return (callTask ? (callTask->taskId = (callTask->_callParam = retVal)) : retVal);
 }
@@ -99,7 +99,7 @@ template<class ObjectType>
 taskid_t scheduleObjectMethodCallWithTaskIdOnce(ObjectType *object, void (ObjectType::*method)(taskid_t))
 {
     MethodSlotCallTask<ObjectType,taskid_t> *callTask = object ? new MethodSlotCallTask<ObjectType,taskid_t>(object, method, (taskid_t)0) : nullptr;
-    ASTRO_SOFT_ASSERT(!object || callTask, SFP(HStr_Err_AllocationFailure));
+    ASTRO_SOFT_ASSERT(!object || callTask, SFP(AStr_Err_AllocationFailure));
     taskid_t retVal = callTask ? taskManager.scheduleOnce(0, callTask, TIME_MILLIS, true) : TASKMGR_INVALIDID;
     return (callTask ? (callTask->taskId = (callTask->_callParam = retVal)) : retVal);
 }
@@ -124,19 +124,19 @@ void MethodSlotCallTask<ObjectType,ParameterType>::exec()
 template<typename T>
 String commaStringFromArray(const T *arrayIn, size_t length)
 {
-    if (!arrayIn || !length) { return String(SFP(HStr_null)); }
+    if (!arrayIn || !length) { return String(SFP(AStr_null)); }
     String retVal; retVal.reserve(length << 1 + length >> 1 + 1);
     for (size_t index = 0; index < length; ++index) {
         if (retVal.length()) { retVal.concat(','); }
         retVal += String(arrayIn[index]);
     }
-    return retVal.length() ? retVal : String(SFP(HStr_null));
+    return retVal.length() ? retVal : String(SFP(AStr_null));
 }
 
 template<typename T>
 void commaStringToArray(String stringIn, T *arrayOut, size_t length)
 {
-    if (!stringIn.length() || !length || stringIn.equalsIgnoreCase(SFP(HStr_null))) { return; }
+    if (!stringIn.length() || !length || stringIn.equalsIgnoreCase(SFP(AStr_null))) { return; }
     int lastSepPos = -1;
     for (size_t index = 0; index < length; ++index) {
         int nextSepPos = stringIn.indexOf(',', lastSepPos+1);
@@ -227,7 +227,7 @@ void linksResolveActuatorsByType(Vector<AstroObject *, N> &actuatorsIn, Vector<A
 {
     for (auto actIter = actuatorsIn.begin(); actIter != actuatorsIn.end(); ++actIter) {
         auto actuator = getSharedPtr<AstroActuator>(*actIter);
-        ASTRO_HARD_ASSERT(actuator, SFP(HStr_Err_OperationFailure));
+        ASTRO_HARD_ASSERT(actuator, SFP(AStr_Err_OperationFailure));
         if (actuator->getActuatorType() == actuatorType) {
             activationsOut.push_back(AstroActuatorAttachment());
             activationsOut.back().setObject(actuator);
@@ -240,7 +240,7 @@ void linksResolveActuatorsToAttachments(Vector<AstroObject *, N> &actuatorsIn, A
 {
     for (auto actIter = actuatorsIn.begin(); actIter != actuatorsIn.end(); ++actIter) {
         auto actuator = getSharedPtr<AstroActuator>(*actIter);
-        ASTRO_HARD_ASSERT(actuator, SFP(HStr_Err_OperationFailure));
+        ASTRO_HARD_ASSERT(actuator, SFP(AStr_Err_OperationFailure));
 
         activationsOut.push_back(AstroActuatorAttachment());
         activationsOut.back().setParent(parent, subIndex);
