@@ -363,6 +363,32 @@ enum Astro_TargetType : unsigned char {
     Astro_TargetType_Saturn,                                // Saturn
     Astro_TargetType_Uranus,                                // Uranus
     Astro_TargetType_Neptune,                               // Neptune
+    Astro_TargetType_Sirius,                                // Sirius
+    Astro_TargetType_Canopus,                               // Canopus
+    Astro_TargetType_Arcturus,                              // Arcturus
+    Astro_TargetType_Vega,                                  // Vega
+    Astro_TargetType_Capella,                               // Capella
+    Astro_TargetType_RigelKentaurus,                        // Rigel Kentaurus
+    Astro_TargetType_Procyon,                               // Procyon
+    Astro_TargetType_Betelgeuse,                            // Betelgeuse
+    Astro_TargetType_Achernar,                              // Achernar
+    Astro_TargetType_Hadar,                                 // Hadar
+    Astro_TargetType_Altair,                                // Altair
+    Astro_TargetType_Acrux,                                 // Acrux
+    Astro_TargetType_Aldebaran,                             // Aldebaran
+    Astro_TargetType_Spica,                                 // Spica
+    Astro_TargetType_Antares,                               // Antares
+    Astro_TargetType_Pollux,                                // Pollux
+    Astro_TargetType_Fomalhaut,                             // Fomalhaut
+    Astro_TargetType_Deneb,                                 // Deneb
+    Astro_TargetType_Regulus,                               // Regulus
+    Astro_TargetType_Polaris,                               // Polaris
+    Astro_TargetType_Castor,                                // Castor
+    Astro_TargetType_Bellatrix,                             // Bellatrix
+    Astro_TargetType_Alnilam,                               // Alnilam
+    Astro_TargetType_Alnitak,                               // Alnitak
+    Astro_TargetType_Mizar,                                 // Mizar
+    Astro_TargetType_Dubhe,                                 // Dubhe
     Astro_TargetType_M1,                                    // M1
     Astro_TargetType_M2,                                    // M2
     Astro_TargetType_M3,                                    // M3
@@ -473,32 +499,6 @@ enum Astro_TargetType : unsigned char {
     Astro_TargetType_M108,                                  // M108
     Astro_TargetType_M109,                                  // M109
     Astro_TargetType_M110,                                  // M110
-    Astro_TargetType_Sirius,                                // Sirius
-    Astro_TargetType_Canopus,                               // Canopus
-    Astro_TargetType_Arcturus,                              // Arcturus
-    Astro_TargetType_Vega,                                  // Vega
-    Astro_TargetType_Capella,                               // Capella
-    Astro_TargetType_RigelKentaurus,                        // Rigel Kentaurus
-    Astro_TargetType_Procyon,                               // Procyon
-    Astro_TargetType_Betelgeuse,                            // Betelgeuse
-    Astro_TargetType_Achernar,                              // Achernar
-    Astro_TargetType_Hadar,                                 // Hadar
-    Astro_TargetType_Altair,                                // Altair
-    Astro_TargetType_Acrux,                                 // Acrux
-    Astro_TargetType_Aldebaran,                             // Aldebaran
-    Astro_TargetType_Spica,                                 // Spica
-    Astro_TargetType_Antares,                               // Antares
-    Astro_TargetType_Pollux,                                // Pollux
-    Astro_TargetType_Fomalhaut,                             // Fomalhaut
-    Astro_TargetType_Deneb,                                 // Deneb
-    Astro_TargetType_Regulus,                               // Regulus
-    Astro_TargetType_Polaris,                               // Polaris
-    Astro_TargetType_Castor,                                // Castor
-    Astro_TargetType_Bellatrix,                             // Bellatrix
-    Astro_TargetType_Alnilam,                               // Alnilam
-    Astro_TargetType_Alnitak,                               // Alnitak
-    Astro_TargetType_Mizar,                                 // Mizar
-    Astro_TargetType_Dubhe,                                 // Dubhe
     Astro_TargetType_CustomTarget1,                         // Custom target 1
     Astro_TargetType_CustomTarget2,                         // Custom target 2
     Astro_TargetType_CustomTarget3,                         // Custom target 3
