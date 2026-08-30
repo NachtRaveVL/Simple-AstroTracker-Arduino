@@ -15,14 +15,11 @@ set(ASTRUINO_SRC
     ../src/AstroActuators.cpp
     ../src/AstroAttachments.cpp
     ../src/AstroCamera.cpp
-    ../src/AstroCoordinates.cpp
-    ../src/AstroCover.cpp
+    ../src/AstroCoreLogic.cpp
     ../src/AstroData.cpp
     ../src/AstroDatas.cpp
     ../src/AstroDrivers.cpp
-    ../src/AstroEphemeris.cpp
     ../src/AstroFactory.cpp
-    ../src/AstroInterfaces.cpp
     ../src/AstroTargetsLibrary.cpp
     ../src/AstroLogger.cpp
     ../src/AstroMeasurements.cpp
@@ -41,6 +38,7 @@ set(ASTRUINO_SRC
     ../src/AstroTriggers.cpp
     ../src/AstroUtils.cpp
     ../src/Astruino.cpp
+    ../src/shared/AstroUIData.cpp
 )
 
 add_library(astruino_host STATIC ${ASTRUINO_SRC})

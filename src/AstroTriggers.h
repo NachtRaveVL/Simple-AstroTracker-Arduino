@@ -11,17 +11,7 @@ class AstroMeasurementValueTrigger;
 class AstroMeasurementRangeTrigger;
 struct AstroTriggerSubData;
 
-#include "AstroAttachments.h"
-#include "AstroData.h"
-#include "AstroInterfaces.h"
-
-enum Astro_TriggerState : int8_t {
-    Astro_TriggerState_Disabled = 0,
-    Astro_TriggerState_NotTriggered,
-    Astro_TriggerState_Triggered,
-    Astro_TriggerState_Count,
-    Astro_TriggerState_Undefined = -1
-};
+#include "Astruino.h"
 
 extern AstroTrigger *newTriggerObjectFromSubData(const AstroTriggerSubData *dataIn);
 
@@ -46,8 +36,7 @@ public:
 
     virtual void saveToData(AstroTriggerSubData *dataOut) const;
     virtual void update();
-    Astro_TriggerState getTriggerState(bool poll = false);
-    virtual bool isTriggered() const override { return _triggerState == Astro_TriggerState_Triggered; }
+    virtual Astro_TriggerState getTriggerState(bool poll = false) override;
 
     virtual void setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t measurementRow = 0) override;
     virtual Astro_UnitsType getMeasurementUnits(uint8_t measurementRow = 0) const override;

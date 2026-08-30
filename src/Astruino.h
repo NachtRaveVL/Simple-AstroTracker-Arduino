@@ -116,7 +116,7 @@ typedef int uartmode_t;
 #define ASTRO_USE_WIFI
 #define ASTRO_USE_NET
 #elif defined(ASTRO_ENABLE_ETHERNET)
-#include <Ethernet.h>                   // https://github.com/arduino-libraries/Ethernet
+#include <Ethernet.h>                   // https://reference.arduino.cc/reference/en/libraries/ethernet/
 #define ASTRO_USE_ETHERNET
 #define ASTRO_USE_NET
 #endif // /ifdef ASTRO_ENABLE_WIFI
@@ -217,7 +217,11 @@ extern void miscLoop();
 #include "AstroDrivers.h"
 #include "AstroActuators.h"
 #include "AstroSensors.h"
+#include "AstroCoreLogic.h"
 #include "AstroMounts.h"
+#include "AstroCamera.h"
+#include "AstroThermal.h"
+#include "AstroTargets.h"
 #include "AstroRails.h"
 #include "AstroModules.h"
 #include "AstroScheduler.h"
@@ -227,7 +231,9 @@ extern void miscLoop();
 
 
 // Astruino Controller
-// Main controller interface of the Astruino solar tracker system.
+// Main controller interface for DIY astronomical tracking systems. Networking, displays,
+// remote transports, and external services remain optional so normal tracking, thermal,
+// scheduling, logging, and control behavior can remain local.
 class Astruino : public AstroFactory, public AstroCalibrations, public AstroObjectRegistration, public AstroPinHandlers {
 public:
     AstroScheduler scheduler;                                       // Scheduler public instance
@@ -245,12 +251,15 @@ public:
                DeviceSetup gpsSetup = DeviceSetup(),                // GPS device setup (uart/i2c/spi)
                pintype_t *ctrlInputPins = nullptr,                  // Control input pins, else nullptr
                DeviceSetup displaySetup = DeviceSetup());           // Display device setup (i2c/spi)
+    Astruino(Astro_MountType mountType,                             // Default primary mount type
+             Astro_RTCType rtcType = Astro_RTCType_None,            // RTC device type, else None
+             DeviceSetup rtcSetup = DeviceSetup());                  // RTC device setup (i2c only)
     // Library destructor. Just in case.
     ~Astruino();
 
     // Initializes default empty system. Typically called near top of setup().
     // See individual enums for more info.
-    void init(Astro_SystemMode systemMode = Astro_SystemMode_Tracking,                  // What mode of panel orientation is performed
+    void init(Astro_SystemMode systemMode = Astro_SystemMode_Tracking,                  // What astronomy operating mode should be used
               Astro_MeasurementMode measureMode = Astro_MeasurementMode_Default,        // What units of measurement should be used
               Astro_DisplayOutputMode dispOutMode = Astro_DisplayOutputMode_Disabled,   // What display output mode should be used
               Astro_ControlInputMode ctrlInMode = Astro_ControlInputMode_Disabled);     // What control input mode should be used
@@ -286,6 +295,9 @@ public:
     bool saveToJSONStream(Stream *streamOut, bool compact = true);
     // Saves current system setup to custom binary stream, returning success flag
     bool saveToBinaryStream(Stream *streamOut);
+
+    // Removes an object after releasing astronomy subsystem references.
+    bool unregisterObject(SharedPtr<AstroObject> object);
 
     // System Operation.
 
@@ -368,8 +380,9 @@ public:
 #endif
     // Sets system location (lat/long/alt, note: only triggers update if significant or forced)
     void setSystemLocation(double latitude, double longitude, double altitude = DBL_UNDEF, bool isSigChange = false);
-    // Sets system location (Location data, note: only triggers update if significant or forced)
-    inline void setSystemLocation(Location location, bool isSigChange = false) { setSystemLocation(location.latitude, location.longitude, location.altitude, isSigChange); }
+    // Sets system observer location (note: only triggers update if significant or forced)
+    inline void setSystemLocation(AstroObserver observer, bool isSigChange = false) { setSystemLocation(observer.latitudeDegrees, observer.longitudeDegrees, observer.elevationMeters, isSigChange); }
+    inline void setObserver(const AstroObserver &observer) { setSystemLocation(observer); }
 
     // Accessors.
 
@@ -463,8 +476,21 @@ public:
     // MAC address for Ethernet connection
     const uint8_t *getMACAddress() const;
 #endif
-    // System location (lat/long/alt)
-    Location getSystemLocation() const;
+    // System observer location (lat/long/alt)
+    AstroObserver getSystemLocation() const;
+    inline AstroObserver getObserver() const { return getSystemLocation(); }
+
+    // Primary astronomy subsystem accessors.
+    inline SharedPtr<AstroMount> getMountPtr() const { return _mount; }
+    inline AstroMount &getMount() { return *_mount; }
+    inline const AstroMount &getMount() const { return *_mount; }
+    inline AstroCover &getCover() { return _cover; }
+    inline const AstroCover &getCover() const { return _cover; }
+    inline SharedPtr<AstroCameraTrigger> getCameraPtr() const { return _camera; }
+    inline AstroCameraTrigger &getCamera() { return *_camera; }
+    inline const AstroCameraTrigger &getCamera() const { return *_camera; }
+    inline AstroThermalBalancer &getThermalBalancer() { return _thermal; }
+    inline const AstroThermalBalancer &getThermalBalancer() const { return _thermal; }
 
 protected:
     static Astruino *_activeInstance;                     // Current active instance (set after init, weak)
@@ -473,6 +499,12 @@ protected:
     AstroUIData *_uiData;                                   // UI data (owned)
 #endif
     AstroSystemData *_systemData;                           // System data (owned, saved to storage)
+    Astro_MountType _defaultMountType;                      // Default primary mount type for convenience constructor
+
+    SharedPtr<AstroMount> _mount;                            // Primary telescope/tracker mount
+    AstroCover _cover;                                      // Observatory/enclosure cover
+    SharedPtr<AstroCameraTrigger> _camera;                   // Primary observation trigger device
+    AstroThermalBalancer _thermal;                          // Environmental/thermal balancer
 
     const pintype_t _piezoBuzzerPin;                        // Piezo buzzer pin (default: Disabled)
     const Astro_EEPROMType _eepromType;                     // EEPROM device type
@@ -522,6 +554,9 @@ protected:
     String _sysConfigFilename;                              // System config filename used in serialization (default: "Astruino.cfg")
     uint16_t _sysDataAddress;                               // EEPROM system data address used in serialization (default: -1/disabled)
 
+    void resolveAstronomyObjects();
+    void applySystemData();
+
     void allocateEEPROM();
     void deallocateEEPROM();
     void allocateRTC();
@@ -564,7 +599,7 @@ public: // consider protected
     inline void notifyRTCTimeUpdated();
     inline void broadcastDateChanged();
     inline void notifySignificantTime(time_t time);
-    inline void notifySignificantLocation(Location loc);
+    inline void notifySignificantLocation(AstroObserver observer);
 };
 
 // Template implementations

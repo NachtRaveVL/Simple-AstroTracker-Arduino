@@ -9,7 +9,7 @@
 AstroTrigger *newTriggerObjectFromSubData(const AstroTriggerSubData *dataIn)
 {
     if (!dataIn || !isValidType(dataIn->type)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && isValidType(dataIn->type), SFP(AStr_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && isValidType(dataIn->type), SFP(AStr_Err_InvalidParameter));
 
     if (dataIn) {
         switch (dataIn->type) {

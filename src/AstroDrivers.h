@@ -6,7 +6,12 @@
 #ifndef AstroDrivers_H
 #define AstroDrivers_H
 
-#include "AstroPins.h"
+class AstroAxisDriver;
+class AstroCallbackAxisDriver;
+class AstroServoAxisDriver;
+class AstroStepDirAxisDriver;
+
+#include "Astruino.h"
 
 // Axis Driver Base
 // Abstracts the hardware used to move one telescope mount axis.

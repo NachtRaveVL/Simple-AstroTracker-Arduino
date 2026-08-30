@@ -47,9 +47,6 @@ public:
     inline AstroActivationHandle enableActuator(Astro_DirectionMode direction, float intensity = 1.0f, millis_t duration = (millis_t)-1, bool force = false) { return AstroActivationHandle(::getSharedPtr<AstroActuator>(this), direction, intensity, duration, force); }
     inline AstroActivationHandle enableActuator(millis_t duration = (millis_t)-1, bool force = false) { return enableActuator(Astro_DirectionMode_Forward, 1.0f, duration, force); }
 
-    bool addActivationHandle(AstroActivationHandle *handle);
-    bool removeActivationHandle(AstroActivationHandle *handle);
-
     inline Astro_ActuatorType getActuatorType() const { return _actuatorType; }
     inline void setEnableMode(Astro_EnableMode mode) { if (_enableMode != mode) { _enableMode = mode; setNeedsUpdate(); bumpRevisionIfNeeded(); } }
     inline Astro_EnableMode getEnableMode() const { return _enableMode; }
@@ -62,7 +59,7 @@ protected:
     Astro_EnableMode _enableMode;                            // Activation combination mode
     float _power;                                            // Current normalized output power
     bool _needsUpdate;                                      // Stale flag for handle updates
-    AstroActivationHandle *_handles[ASTRO_ACTIVATION_HANDLE_SLOTS]; // Activation handle slots
+    Vector<AstroActivationHandle *> _handles;               // Activation handles array
     AstroSingleMeasurement _contPowerUsage;                 // Continuous power draw
     AstroAttachment _parentRail;                            // Parent power rail attachment
     Signal<AstroActuator *, ASTRO_ACTUATOR_SIGNAL_SLOTS> _activateSignal; // Activation update signal
@@ -73,6 +70,8 @@ protected:
     virtual void _enableActuator(float intensity = 1.0f) override;
     virtual void _disableActuator() override;
     virtual void handleActivation();
+
+    friend struct AstroActivationHandle;
 };
 
 // Callback Actuator

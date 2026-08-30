@@ -6,35 +6,7 @@
 #ifndef Astruino_HPP
 #define Astruino_HPP
 
-#include <string.h>
-
-inline bool Twilight::isDaytime(time_t unixTime) const {
-    DateTime time = isUTC ? DateTime((uint32_t)unixTime) : localTime(unixTime);
-    double hour = time.hour() + (time.minute() / 60.0) + (time.second() / 3600.0);
-    return sunrise <= sunset ? hour >= sunrise && hour <= sunset
-                             : hour >= sunrise || hour <= sunset;
-}
-
-inline bool Twilight::isDaytime(DateTime localTime) const
-{
-    DateTime time = isUTC ? DateTime((uint32_t)unixTime(localTime)) : localTime;
-    double hour = time.hour() + (time.minute() / 60.0) + (time.second() / 3600.0);
-    return sunrise <= sunset ? hour >= sunrise && hour <= sunset
-                             : hour >= sunrise || hour <= sunset;
-}
-
-inline time_t Twilight::hourToUnixTime(double hour, bool isUTC)
-{
-    return isUTC ? unixDayStart() + (time_t)(hour * SECS_PER_HOUR)
-                 : unixTime(localDayStart() + TimeSpan(hour * SECS_PER_HOUR));
-}
-
-inline DateTime Twilight::hourToLocalTime(double hour, bool isUTC)
-{
-    return isUTC ? localTime(unixDayStart() + (time_t)(hour * SECS_PER_HOUR))
-                 : localDayStart() + TimeSpan(hour * SECS_PER_HOUR);
-}
-
+#include "Astruino.h"
 
 #ifdef ASTRO_USE_WIFI
 
@@ -85,6 +57,7 @@ inline void Astruino::performAutosave()
                 #ifdef ASTRO_USE_WIFI_STORAGE
                     saveToWiFiStorage(RAW);
                 #endif
+                break;
             case Astro_Autosave_Disabled:
                 break;
         }
@@ -102,13 +75,10 @@ inline void Astruino::broadcastDateChanged()
 {
     if (getSystemMode() == Astro_SystemMode_Tracking) {
         for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
-            if (iter->second->isPanelType()) {
-                auto panel = static_pointer_cast<AstroPanel>(iter->second);
+            if (iter->second->isMountType()) {
+                auto mount = static_pointer_cast<AstroMount>(iter->second);
 
-                if (panel && panel->isAnyTrackingClass()) {
-                    auto trackingPanel = static_pointer_cast<AstroTrackingPanel>(iter->second);
-                    trackingPanel->notifyDateChanged();
-                }
+                if (mount) { mount->notifyDateChanged(); }
             }
         }
     }
@@ -118,10 +88,12 @@ inline void Astruino::notifySignificantTime(time_t time)
 {
     logger.updateInitTracking(time);
     _lastAutosave = isAutosaveEnabled() ? time : 0;
+    scheduler.broadcastDateChange();
 }
 
-inline void Astruino::notifySignificantLocation(Location loc)
+inline void Astruino::notifySignificantLocation(AstroObserver observer)
 {
+    if (_mount) { _mount->setObserver(observer); }
     if (_systemData) { _systemData->bumpRevisionIfNeeded(); }
 }
 

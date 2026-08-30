@@ -9,7 +9,7 @@
 AstroTarget *newTargetObjectFromData(const AstroTargetData *dataIn)
 {
     if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
 
     if (dataIn && dataIn->isObjectData() && dataIn->id.object.idType == (aid_t)AstroIdentity::Target) {
         switch (dataIn->id.object.classType) {

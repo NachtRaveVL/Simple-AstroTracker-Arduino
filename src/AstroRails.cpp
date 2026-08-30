@@ -8,7 +8,7 @@
 AstroRail *newRailObjectFromData(const AstroRailData *dataIn)
 {
     if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
 
     if (dataIn && dataIn->isObjectData()) {
         switch (dataIn->id.object.classType) {
@@ -59,7 +59,7 @@ bool AstroRail::addLinkage(AstroObject *object)
 {
     if (AstroObject::addLinkage(object)) {
         if (object->isActuatorType()) {
-            ASTRO_HARD_ASSERT(isSimpleClass() || isRegulatedClass(), SFP(AStr_OperationFailure));
+            ASTRO_HARD_ASSERT(isSimpleClass() || isRegulatedClass(), SFP(AStr_Err_OperationFailure));
             if (isSimpleClass()) {
                 auto methodSlot = MethodSlot<AstroSimpleRail, AstroActuator *>((AstroSimpleRail *)this, &AstroSimpleRail::handleActivation);
                 ((AstroActuator *)object)->getActivationSignal().attach(methodSlot);
@@ -77,7 +77,7 @@ bool AstroRail::removeLinkage(AstroObject *object)
 {
     if (AstroObject::removeLinkage(object)) {
         if (((AstroObject *)object)->isActuatorType()) {
-            ASTRO_HARD_ASSERT(isSimpleClass() || isRegulatedClass(), SFP(AStr_OperationFailure));
+            ASTRO_HARD_ASSERT(isSimpleClass() || isRegulatedClass(), SFP(AStr_Err_OperationFailure));
             if (isSimpleClass()) {
                 auto methodSlot = MethodSlot<AstroSimpleRail, AstroActuator *>((AstroSimpleRail *)this, &AstroSimpleRail::handleActivation);
                 ((AstroActuator *)object)->getActivationSignal().detach(methodSlot);
@@ -200,7 +200,7 @@ AstroRegulatedRail::AstroRegulatedRail(const AstroRegulatedRailData *dataIn)
 
     _limitTrigger.setHandleMethod(&AstroRail::handleLimit, this);
     _limitTrigger.setObject(newTriggerObjectFromSubData(&(dataIn->limitTrigger)));
-    ASTRO_SOFT_ASSERT(_limitTrigger, SFP(AStr_AllocationFailure));
+    ASTRO_SOFT_ASSERT(_limitTrigger, SFP(AStr_Err_AllocationFailure));
 }
 
 void AstroRegulatedRail::update()

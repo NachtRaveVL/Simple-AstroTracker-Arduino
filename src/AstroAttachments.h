@@ -11,8 +11,9 @@ class AstroAttachment;
 template<class ParameterType, int Slots> class AstroSignalAttachment;
 class AstroActuatorAttachment;
 class AstroSensorAttachment;
+class AstroAxisDriverAttachment;
 class AstroTriggerAttachment;
-class AstroDriverAttachment;
+class AstroObservationDeviceAttachment;
 
 #include "Astruino.h"
 #include "AstroObject.h"
@@ -92,7 +93,7 @@ public:
     inline bool isResolved() const { return (bool)_obj; }
     inline bool needsResolved() const { return _obj.needsResolved(); }
     inline bool resolve() { return isResolved() || (bool)getObject(); }
-    inline void unresolve() { _obj.unresolve(); } 
+    inline void unresolve() { _obj.unresolve(); }
     template<class U> inline void unresolveIf(U obj) { _obj.unresolveIf(obj); }
 
     template<class U> void setObject(U obj, bool modify = true);
@@ -198,31 +199,16 @@ public:
     void setupActivation(float value, millis_t duration = -1, bool force = false);
     inline void setupActivation(const AstroSingleMeasurement &measurement, millis_t duration = -1, bool force = false) { setupActivation(measurement.value, duration, force); }
 
-    // Gets what units are expected to be used in setupActivation() methods
-    inline Astro_UnitsType getActivationUnits();
-
-    // Enables activation handle with current setup, if not already active.
-    // Repeat activations will reuse most recent setupActivation() values.
     void enableActivation();
-    // Disables activation handle, if not already inactive.
     inline void disableActivation() { _actHandle.unset(); }
 
-    // Activation status based on handle activation
     inline bool isActivated() const { return _actHandle.isActive(); }
     inline millis_t getTimeLeft() const { return _actHandle.getTimeLeft(); }
     inline millis_t getTimeActive(millis_t time = nzMillis()) const { return _actHandle.getTimeActive(time); }
 
-    // Currently active driving intensity [-1.0,1.0] / calibrated value [calibMin,calibMax], from actuator
     inline float getActiveDriveIntensity();
-    inline float getActiveCalibratedValue();
-
-    // Currently setup driving intensity [-1.0,1.0] / calibrated value [calibMin,calibMax], from activation
     inline float getSetupDriveIntensity() const;
-    inline float getSetupCalibratedValue();
 
-    // Sets an update slot to run during execution of actuator that can further refine duration/intensity.
-    // Useful for rate-based or variable activations. Slot receives actuator attachment pointer as parameter.
-    // Guaranteed to be called with final finished activation.
     void setUpdateSlot(const Slot<AstroActuatorAttachment *> &updateSlot);
     inline void setUpdateFunction(void (*updateFunctionPtr)(AstroActuatorAttachment *)) { setUpdateSlot(FunctionSlot<AstroActuatorAttachment *>(updateFunctionPtr)); }
     template<class U> inline void setUpdateMethod(void (U::*updateMethodPtr)(AstroActivationHandle *), U *updateClassInst = nullptr) { setUpdateSlot(MethodSlot<U,AstroActuatorAttachment *>(updateClassInst ? updateClassInst : reinterpret_cast<U *>(_parent), updateMethodPtr)); }
@@ -271,7 +257,6 @@ public:
     // Updates measurement attachment with sensor. Does not call sensor's update() (handled by system).
     virtual void updateIfNeeded(bool poll = false) override;
 
-    // Sets the current measurement associated with this process. Required to be called by custom handlers.
     void setMeasurement(AstroSingleMeasurement measurement);
     inline void setMeasurement(float value, Astro_UnitsType units = Astro_UnitsType_Undefined) { setMeasurement(AstroSingleMeasurement(value, units)); }
     void setMeasurementRow(uint8_t measurementRow);
@@ -309,17 +294,37 @@ protected:
 };
 
 
+// Mount Axis Driver Attachment Point
+// Axis drivers are astronomy-specific sub-objects, not registered controller objects.
+class AstroAxisDriverAttachment : public AstroSubObject {
+public:
+    AstroAxisDriverAttachment(AstroObjInterface *parent = nullptr, aposi_t axisIndex = 0);
+
+    inline void setObject(SharedPtr<AstroAxisDriver> driver) { if (_driver != driver) { _driver = driver; bumpRevisionIfNeeded(); } }
+    inline SharedPtr<AstroAxisDriver> getObject() const { return _driver; }
+    inline AstroAxisDriver *get() const { return _driver.get(); }
+    inline bool isSet() const { return (bool)_driver; }
+
+    void setTargetDegrees(double targetDegrees);
+    void stop();
+    double getTargetDegrees() const;
+
+    inline void setParentSubIndex(aposi_t axisIndex) { _axisIndex = axisIndex; }
+    inline aposi_t getParentSubIndex() const { return _axisIndex; }
+
+protected:
+    SharedPtr<AstroAxisDriver> _driver;                      // Axis driver sub-object
+    aposi_t _axisIndex;                                     // Parent axis index
+};
+
+
 // Trigger State Attachment Point
-// This attachment registers the parent object with a triggers's trigger signal
-// upon resolvement / unregisters the parent object from the trigger at time of
-// destruction or reassignment.
-class AstroTriggerAttachment  : public AstroSignalAttachment<Astro_TriggerState, ASTRO_TRIGGER_SIGNAL_SLOTS> {
+class AstroTriggerAttachment : public AstroSignalAttachment<Astro_TriggerState, ASTRO_TRIGGER_SIGNAL_SLOTS> {
 public:
     AstroTriggerAttachment(AstroObjInterface *parent = nullptr, aposi_t subIndex = 0);
     AstroTriggerAttachment(const AstroTriggerAttachment &attachment);
     virtual ~AstroTriggerAttachment();
 
-    // Updates owned trigger attachment.
     virtual void updateIfNeeded(bool poll = false) override;
 
     inline Astro_TriggerState getTriggerState(bool poll = false);
@@ -338,32 +343,16 @@ public:
 };
 
 
-// Driver Attachment Point
-// This attachment registers the parent object with a driver's driving signal
-// upon resolvement / unregisters the parent object from the driver at time of
-// destruction or reassignment.
-class AstroDriverAttachment : public AstroSignalAttachment<Astro_DrivingState, ASTRO_DRIVER_SIGNAL_SLOTS> {
+// Observation Device Attachment Point
+// Observation devices are registered Astro objects but expose the observation-device interface.
+class AstroObservationDeviceAttachment : public AstroAttachment {
 public:
-    AstroDriverAttachment(AstroObjInterface *parent = nullptr, aposi_t subIndex = 0);
-    AstroDriverAttachment(const AstroDriverAttachment &attachment);
-    virtual ~AstroDriverAttachment();
+    AstroObservationDeviceAttachment(AstroObjInterface *parent = nullptr, aposi_t subIndex = 0) : AstroAttachment(parent, subIndex) { ; }
 
-    // Updates owned driver attachment.
-    virtual void updateIfNeeded(bool poll = false) override;
-
-    inline Astro_DrivingState getDrivingState(bool poll = false);
-
-    template<class U> inline void setObject(U obj, bool modify = false) { AstroAttachment::setObject(obj, modify); }
-    inline SharedPtr<AstroDriver> getObject() { return AstroAttachment::getObject<AstroDriver>(); }
-    inline AstroDriver *get() { return AstroAttachment::get<AstroDriver>(); }
-
-    inline AstroDriver &operator*() { return *AstroAttachment::get<AstroDriver>(); }
-    inline AstroDriver *operator->() { return AstroAttachment::get<AstroDriver>(); }
-
-    inline AstroDriverAttachment &operator=(const AstroIdentity &rhs) { setObject(rhs); return *this; }
-    inline AstroDriverAttachment &operator=(const char *rhs) { setObject(rhs); return *this; }
-    template<class U> inline AstroDriverAttachment &operator=(SharedPtr<U> rhs) { setObject(rhs); return *this; }
-    template<class U> inline AstroDriverAttachment &operator=(const U *rhs) { setObject(rhs); return *this; }
+    template<class U> inline void setObject(SharedPtr<U> object, bool modify = false) { AstroAttachment::setObject(object, modify); }
+    inline SharedPtr<AstroCameraTrigger> getObject() { return AstroAttachment::getObject<AstroCameraTrigger>(); }
+    AstroObservationDevice *get();
+    inline AstroObservationDevice *operator->() { return get(); }
 };
 
 #endif // /ifndef AstroAttachments_H

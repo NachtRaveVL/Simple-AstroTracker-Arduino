@@ -4,298 +4,133 @@
 */
 
 #include "Astruino.h"
+#include "shared/AstruinoUI.h"
+
+static AstroRTCInterface *_rtcSyncProvider = nullptr;
+time_t rtcNow() {
+    return _rtcSyncProvider ? _rtcSyncProvider->now().unixtime() : 0;
+}
+
+void handleInterrupt(pintype_t pin)
+{
+    if (Astruino::_activeInstance) {
+        for (auto iter = Astruino::_activeInstance->_objects.begin(); iter != Astruino::_activeInstance->_objects.end(); ++iter) {
+            if (iter->second->isSensorType()) {
+                auto sensor = static_pointer_cast<AstroSensor>(iter->second);
+                if (sensor->isBinaryClass()) {
+                    auto binarySensor = static_pointer_cast<AstroDigitalSensor>(sensor);
+                    if (binarySensor && binarySensor->getInputPin().pin == pin) { binarySensor->notifyISRTriggered(); }
+                }
+            }
+        }
+
+        if (pin < apin_virtual) {
+            for (auto iter = Astruino::_activeInstance->_pinMuxers.begin(); iter != Astruino::_activeInstance->_pinMuxers.end(); ++iter) {
+                if (iter->second->getInterruptPin().pin == pin) {
+                    handleInterrupt(iter->second->getSignalPin().pin);
+                }
+            }
+            #ifdef ASTRO_USE_MULTITASKING
+                for (auto iter = Astruino::_activeInstance->_pinExpanders.begin(); iter != Astruino::_activeInstance->_pinExpanders.end(); ++iter) {
+                    if (iter->second->getInterruptPin().pin == pin) {
+                        iter->second->trySyncChannel();
+                        for (pintype_t virtPin = apin_virtual + (16 * iter->second->getExpanderPos());
+                            virtPin < apin_virtual + (16 * (iter->second->getExpanderPos() + 1));
+                            ++virtPin) {
+                            handleInterrupt(virtPin);
+                        }
+                    }
+                }
+            #endif
+        }
+    }
+}
+
 
 Astruino *Astruino::_activeInstance = nullptr;
 
-#ifdef ARDUINO
-static AstroRTCInterface *_rtcSyncProvider = nullptr;
-static time_t rtcNow()
-{
-    return _rtcSyncProvider ? _rtcSyncProvider->now().unixtime() : 0;
-}
+Astruino::Astruino(pintype_t piezoBuzzerPin,
+                       Astro_EEPROMType eepromType, DeviceSetup eepromSetup,
+                       Astro_RTCType rtcType, DeviceSetup rtcSetup,
+                       DeviceSetup sdSetup,
+                       DeviceSetup netSetup,
+                       DeviceSetup gpsSetup,
+                       pintype_t *ctrlInputPins,
+                       DeviceSetup displaySetup)
+    : _piezoBuzzerPin(piezoBuzzerPin),
+      _eepromType(eepromType), _eepromSetup(eepromSetup), _eeprom(nullptr), _eepromBegan(false),
+      _rtcType(rtcType), _rtcSetup(rtcSetup), _rtc(nullptr), _rtcBegan(false), _rtcBattFail(false),
+      _sdSetup(sdSetup), _sd(nullptr), _sdBegan(false), _sdOut(0),
+#ifdef ASTRO_USE_NET
+      _netSetup(netSetup), _netBegan(false),
 #endif
-
-Astruino *getController()
-{
-    return Astruino::getActiveInstance();
-}
-
-AstroLogger *getLogger()
-{
-    return getController() ? &getController()->logger : nullptr;
-}
-
-AstroPublisher *getPublisher()
-{
-    return getController() ? &getController()->publisher : nullptr;
-}
-
-AstroScheduler *getScheduler()
-{
-    return getController() ? &getController()->scheduler : nullptr;
-}
-
-
-AstroCover::AstroCover()
-    : AstroSubObject(), _position(0.0f), _target(0.0f), _travelRate(ASTRO_COVER_TRAVEL_RATE),
-      _travelTimeout(ASTRO_COVER_TRAVEL_TIMEOUT_SECS), _travelElapsed(0.0),
-      _openLimitActive(false), _closedLimitActive(false), _faulted(false),
-      _actuator(this), _openSensor(this), _closedSensor(this), _lastUpdate(nzMillis())
-{ ; }
-
-void AstroCover::open()
-{
-    if (_faulted) { return; }
-    if (!isFPEqual(_target, 1.0f)) { _travelElapsed = 0.0; }
-    _target = 1.0f;
-}
-
-void AstroCover::close()
-{
-    if (_faulted) { return; }
-    if (!isFPEqual(_target, 0.0f)) { _travelElapsed = 0.0; }
-    _target = 0.0f;
-}
-
-void AstroCover::stop()
-{
-    _target = _position;
-    _travelElapsed = 0.0;
-    applyActuatorPower(0.0f);
-}
-
-void AstroCover::setTravelRate(float fractionPerSecond)
-{
-    _travelRate = fractionPerSecond > 0.0f ? fractionPerSecond : 0.0f;
-}
-
-void AstroCover::setTravelTimeout(double seconds)
-{
-    _travelTimeout = seconds > 0.0 ? seconds : 0.0;
-}
-
-void AstroCover::setPosition(float position)
-{
-    _position = constrain(position, 0.0f, 1.0f);
-    _target = _position;
-    _travelElapsed = 0.0;
-}
-
-void AstroCover::clearFault()
-{
-    _faulted = false;
-    _travelElapsed = 0.0;
-    _lastUpdate = nzMillis();
-}
-
-bool AstroCover::isOpen() const
-{
-    if (_openSensor.isSet()) { return _openLimitActive; }
-    return _position >= 1.0f - FLT_EPSILON;
-}
-
-bool AstroCover::isClosed() const
-{
-    if (_closedSensor.isSet()) { return _closedLimitActive; }
-    return _position <= FLT_EPSILON;
-}
-
-bool AstroCover::isMoving() const
-{
-    return !_faulted && !isFPEqual(_target, _position);
-}
-
-bool AstroCover::pollLimitSensor(AstroSensorAttachment &sensor, bool *activeOut)
-{
-    if (!activeOut || !sensor.isSet()) { return false; }
-    sensor.updateIfNeeded(true);
-    const AstroSingleMeasurement &measurement = sensor.getMeasurement();
-    if (!measurement.isSet()) { return false; }
-    *activeOut = measurement.value > 0.5;
-    return true;
-}
-
-void AstroCover::applyActuatorPower(float power)
-{
-    if (!_actuator.isSet()) { return; }
-    if (isFPEqual(power, 0.0f)) {
-        _actuator.disableActivation();
-        return;
-    }
-    _actuator.setupActivation(power, (millis_t)-1, false);
-    _actuator.enableActivation();
-}
-
-void AstroCover::update()
-{
-    const millis_t now = nzMillis();
-    const double elapsedSeconds = _lastUpdate ? (double)(now - _lastUpdate) / 1000.0 : 0.0;
-    _lastUpdate = now;
-
-    bool openLimit = false;
-    bool closedLimit = false;
-    const bool hasOpenLimit = pollLimitSensor(_openSensor, &openLimit);
-    const bool hasClosedLimit = pollLimitSensor(_closedSensor, &closedLimit);
-    if (hasOpenLimit) { _openLimitActive = openLimit; }
-    if (hasClosedLimit) { _closedLimitActive = closedLimit; }
-
-    if (_openLimitActive && _closedLimitActive) {
-        _faulted = true;
-        applyActuatorPower(0.0f);
-        return;
-    }
-    if (_openLimitActive) { _position = 1.0f; }
-    else if (_closedLimitActive) { _position = 0.0f; }
-
-    if (_faulted || isFPEqual(_target, _position)) {
-        _travelElapsed = 0.0;
-        applyActuatorPower(0.0f);
-        return;
-    }
-
-    const float direction = _target > _position ? 1.0f : -1.0f;
-    if ((direction > 0.0f && _openLimitActive) || (direction < 0.0f && _closedLimitActive)) {
-        _position = direction > 0.0f ? 1.0f : 0.0f;
-        _target = _position;
-        _travelElapsed = 0.0;
-        applyActuatorPower(0.0f);
-        return;
-    }
-
-    _travelElapsed += elapsedSeconds;
-    if (_travelTimeout > 0.0 && _travelElapsed >= _travelTimeout) {
-        _faulted = true;
-        applyActuatorPower(0.0f);
-        return;
-    }
-
-    applyActuatorPower(direction);
-    if (_travelRate <= 0.0f || elapsedSeconds <= 0.0) { return; }
-
-    const float step = _travelRate * elapsedSeconds;
-    if (direction > 0.0f) { _position = min(_target, _position + step); }
-    else { _position = max(_target, _position - step); }
-
-    if (isFPEqual(_target, _position)) {
-        _position = _target;
-        _travelElapsed = 0.0;
-        applyActuatorPower(0.0f);
-    }
-}
-
-void AstroCover::unresolveAny(AstroObject *object)
-{
-    _actuator.unresolveAny(object);
-    _openSensor.unresolveAny(object);
-    _closedSensor.unresolveAny(object);
-    AstroSubObject::unresolveAny(object);
-}
-
-
-Astruino::Astruino(Astro_MountType mountType, Astro_RTCType rtcType, AstroDeviceSetup rtcSetup)
-    : scheduler(), logger(), publisher(), _systemData(),
-      _mount(new AstroMount(mountType, 0)), _cover(), _camera(new AstroCameraTrigger(nullptr, nullptr, 0)),
-      _thermal(), _rtcType(rtcType), _rtcSetup(rtcSetup)
-#ifdef ARDUINO
-      , _rtc(nullptr)
+#ifdef ASTRO_USE_GPS
+      _gpsSetup(gpsSetup), _gps(nullptr), _gpsBegan(false),
 #endif
-      , _rtcBegan(false), _rtcBattFail(false), _initialized(false), _suspended(true)
+#ifdef ASTRO_USE_GUI
+      _activeUIInstance(nullptr), _uiData(nullptr), _ctrlInputPins(ctrlInputPins), _displaySetup(displaySetup),
+#endif
+#ifdef ASTRO_USE_MULTITASKING
+      _controlTaskId(TASKMGR_INVALIDID), _dataTaskId(TASKMGR_INVALIDID), _miscTaskId(TASKMGR_INVALIDID),
+#endif
+      _systemData(nullptr), _defaultMountType(Astro_MountType_Unknown), _mount(nullptr), _cover(), _camera(nullptr), _thermal(),
+      _suspend(true), _pollingFrame(0), _lastSpaceCheck(0), _lastAutosave(0),
+      _sysConfigFilename(SFP(AStr_Default_ConfigFilename)), _sysDataAddress(-1)
 {
-    if (!_activeInstance) { _activeInstance = this; }
+    _activeInstance = this;
+}
 
-    registerObject(_mount);
-    registerObject(_camera);
-
-    scheduler.setMount(_mount);
-    scheduler.setCover(&_cover);
-    scheduler.setObservationDevice(_camera);
-    scheduler.setThermalBalancer(&_thermal);
-    scheduler.setLogger(&logger);
+Astruino::Astruino(Astro_MountType mountType, Astro_RTCType rtcType, DeviceSetup rtcSetup)
+    : Astruino(-1, Astro_EEPROMType_None, DeviceSetup(), rtcType, rtcSetup)
+{
+    _defaultMountType = mountType;
 }
 
 Astruino::~Astruino()
 {
     suspend();
-    while (_objects.size()) { _objects.erase(_objects.begin()); }
-    deallocateRTC();
-    if (_activeInstance == this) { _activeInstance = nullptr; }
-}
-
-void Astruino::init(Astro_SystemMode systemMode, Astro_MeasurementMode measurementMode)
-{
-    _systemData.systemMode = systemMode;
-    _systemData.measurementMode = measurementMode;
-    applySystemData();
-#ifdef ARDUINO
-    if ((_rtcSyncProvider = getRTC())) { setSyncProvider(rtcNow); }
+#ifdef ASTRO_USE_GUI
+    if (_activeUIInstance) { delete _activeUIInstance; _activeUIInstance = nullptr; }
+    if (_uiData) { delete _uiData; _uiData = nullptr; }
 #endif
-    _initialized = true;
-    _suspended = true;
+    deactivatePinMuxers();
+    while (_objects.size()) { _objects.erase(_objects.begin()); }
+    while (_pinOneWire.size()) { dropOneWireForPin(_pinOneWire.begin()->first); }
+    while (_pinMuxers.size()) { _pinMuxers.erase(_pinMuxers.begin()); }
+#ifdef ASTRO_USE_MULTITASKING
+    while (_pinExpanders.size()) { _pinExpanders.erase(_pinExpanders.begin()); }
+#endif
+    deallocateEEPROM();
+    deallocateRTC();
+    deallocateSD();
+#ifdef ASTRO_USE_GPS
+    deallocateGPS();
+#endif
+    if (this == _activeInstance) { _activeInstance = nullptr; }
+    if (_systemData) { delete _systemData; _systemData = nullptr; }
 }
 
-void Astruino::setObserver(const AstroObserver &observer)
+void Astruino::allocateEEPROM()
 {
-    _systemData.latitude = observer.latitudeDegrees;
-    _systemData.longitude = observer.longitudeDegrees;
-    _systemData.altitude = observer.elevationMeters;
-    _mount->setObserver(observer);
+    if (!_eeprom && _eepromType != Astro_EEPROMType_None && _eepromSetup.cfgType == DeviceSetup::I2CSetup) {
+        _eeprom = new I2C_eeprom(ASTRO_SYS_I2CEEPROM_BASEADDR | _eepromSetup.cfgAs.i2c.address,
+                                 getEEPROMSize(), _eepromSetup.cfgAs.i2c.wire);
+        _eepromBegan = false;
+        ASTRO_SOFT_ASSERT(_eeprom, SFP(AStr_Err_AllocationFailure));
+    }
 }
 
-void Astruino::applySystemData()
+void Astruino::deallocateEEPROM()
 {
-    _mount->setObserver(AstroObserver(_systemData.latitude, _systemData.longitude, _systemData.altitude));
-    scheduler.setConfig(_systemData.scheduler);
-    logger.setSubData(&_systemData.logger);
-    publisher.setSubData(&_systemData.publisher);
-}
-
-bool Astruino::unregisterObject(SharedPtr<AstroObject> object)
-{
-    if (!object) { return false; }
-    _cover.unresolveAny(object.get());
-    _thermal.unresolveAny(object.get());
-    scheduler.unresolveAny(object.get());
-    return AstroObjectRegistration::unregisterObject(object);
-}
-
-void Astruino::launch()
-{
-    if (!_initialized) { init(); }
-    applySystemData();
-    _suspended = false;
-}
-
-void Astruino::suspend()
-{
-    _suspended = true;
-    if (_camera) { _camera->stopObservation(); }
-    if (_mount) { _mount->stow(); }
-}
-
-
-void Astruino::update()
-{
-    if (!_initialized || _suspended) { return; }
-
-    updateObjects();
-    _cover.update();
-    scheduler.update();
-}
-
-void Astruino::setTimeZoneOffset(int8_t hoursOffset)
-{
-    if (_systemData.timeZoneOffset != hoursOffset) { _systemData.timeZoneOffset = hoursOffset; }
-}
-
-time_t Astruino::getTimeZoneOffset() const
-{
-    return (time_t)_systemData.timeZoneOffset * 3600L;
+    if (_eeprom) {
+        delete _eeprom; _eeprom = nullptr;
+        _eepromBegan = false;
+    }
 }
 
 void Astruino::allocateRTC()
 {
-#ifdef ARDUINO
-    if (!_rtc && _rtcType != Astro_RTCType_None && _rtcSetup.cfgType == AstroDeviceSetup::I2CSetup) {
+    if (!_rtc && _rtcType != Astro_RTCType_None && _rtcSetup.cfgType == DeviceSetup::I2CSetup) {
         switch (_rtcType) {
             case Astro_RTCType_DS1307:
                 _rtc = new AstroRTCWrapper<RTC_DS1307>();
@@ -309,60 +144,1396 @@ void Astruino::allocateRTC()
             case Astro_RTCType_PCF8563:
                 _rtc = new AstroRTCWrapper<RTC_PCF8563>();
                 break;
-            default:
-                break;
+            default: break;
         }
         _rtcBegan = false;
-        ASTRO_SOFT_ASSERT(_rtc, SFP(AStr_AllocationFailure));
-        ASTRO_HARD_ASSERT(_rtcSetup.i2c.address == 0, SFP(AStr_Err_RTCDefaultAddressOnly));
+        ASTRO_SOFT_ASSERT(_rtc, SFP(AStr_Err_AllocationFailure));
+        ASTRO_HARD_ASSERT(_rtcSetup.cfgAs.i2c.address == 0b000, F("RTClib does not support i2c multi-addressing, only i2c address 0b000 may be used"));
     }
-#endif
 }
 
 void Astruino::deallocateRTC()
 {
-#ifdef ARDUINO
     if (_rtc) {
-        if (_rtcSyncProvider == _rtc) {
-            setSyncProvider(nullptr);
-            _rtcSyncProvider = nullptr;
-        }
-        delete _rtc;
-        _rtc = nullptr;
+        if (_rtcSyncProvider == _rtc) { setSyncProvider(nullptr); _rtcSyncProvider = nullptr; }
+        delete _rtc; _rtc = nullptr;
         _rtcBegan = false;
     }
-#endif
 }
 
-#ifdef ARDUINO
+void Astruino::allocateSD()
+{
+    if (!_sd && _sdSetup.cfgType == DeviceSetup::SPISetup) {
+        #if !(defined(NO_GLOBAL_INSTANCES) || defined(NO_GLOBAL_SD))
+            _sd = &SD;
+        #else
+            _sd = new SDClass();
+        #endif
+        _sdBegan = false;
+        ASTRO_SOFT_ASSERT(_sd, SFP(AStr_Err_AllocationFailure));
+    }
+}
+
+void Astruino::deallocateSD()
+{
+    if (_sd) {
+        #if !(defined(NO_GLOBAL_INSTANCES) || defined(NO_GLOBAL_SD))
+            _sd = nullptr;
+        #else
+            delete _sd; _sd = nullptr;
+        #endif
+        _sdBegan = false;
+    }
+}
+
+#ifdef ASTRO_USE_GPS
+
+void Astruino::allocateGPS()
+{
+    if (!_gps && _gpsSetup.cfgType != DeviceSetup::None) {
+        switch (_gpsSetup.cfgType) {
+            case DeviceSetup::UARTSetup:
+                _gps = new GPSClass(_gpsSetup.cfgAs.uart.serial);
+                break;
+            case DeviceSetup::I2CSetup:
+                _gps = new GPSClass(_gpsSetup.cfgAs.i2c.wire);
+                break;
+            case DeviceSetup::SPISetup:
+                _gps = new GPSClass(_gpsSetup.cfgAs.spi.spi, _gpsSetup.cfgAs.spi.cs);
+                break;
+            default: break;
+        }
+        _gpsBegan = false;
+        ASTRO_SOFT_ASSERT(_gps, SFP(AStr_Err_AllocationFailure));
+    }
+}
+
+void Astruino::deallocateGPS()
+{
+    if (_gps) {
+        delete _gps; _gps = nullptr;
+        _gpsBegan = false;
+    }
+}
+
+#endif
+
+void Astruino::init(Astro_SystemMode systemMode,
+                      Astro_MeasurementMode measureMode,
+                      Astro_DisplayOutputMode dispOutMode,
+                      Astro_ControlInputMode ctrlInMode)
+{
+    ASTRO_HARD_ASSERT(!_systemData, SFP(AStr_Err_AlreadyInitialized));
+
+    if (!_systemData) {
+        commonPreInit();
+
+        ASTRO_SOFT_ASSERT((int)systemMode >= 0 && systemMode < Astro_SystemMode_Count, SFP(AStr_Err_InvalidParameter));
+        ASTRO_SOFT_ASSERT((int)measureMode >= 0 && measureMode < Astro_MeasurementMode_Count, SFP(AStr_Err_InvalidParameter));
+        #ifdef ASTRO_USE_GUI
+            ASTRO_SOFT_ASSERT((int)dispOutMode >= 0 && dispOutMode < Astro_DisplayOutputMode_Count, SFP(AStr_Err_InvalidParameter));
+            ASTRO_SOFT_ASSERT((int)ctrlInMode >= 0 && ctrlInMode < Astro_ControlInputMode_Count, SFP(AStr_Err_InvalidParameter));
+        #endif
+
+        _systemData = new AstroSystemData();
+        ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_AllocationFailure));
+
+        if (_systemData) {
+            _systemData->systemMode = systemMode;
+            _systemData->measureMode = measureMode;
+            #ifdef ASTRO_USE_GUI
+                _systemData->dispOutMode = dispOutMode;
+                _systemData->ctrlInMode = ctrlInMode;
+            #else
+                _systemData->dispOutMode = Astro_DisplayOutputMode_Disabled;
+                _systemData->ctrlInMode = Astro_ControlInputMode_Disabled;
+            #endif
+
+            commonPostInit();
+        }
+    }  
+}
+
+bool Astruino::initFromEEPROM(bool jsonFormat)
+{
+    ASTRO_HARD_ASSERT(!_systemData, SFP(AStr_Err_AlreadyInitialized));
+
+    if (!_systemData) {
+        commonPreInit();
+
+        if (getEEPROM() && _eepromBegan && _sysDataAddress != -1) {
+            AstroEEPROMStream eepromStream(_sysDataAddress, getEEPROMSize() - _sysDataAddress);
+            return jsonFormat ? initFromJSONStream(&eepromStream) : initFromBinaryStream(&eepromStream);
+        }
+    }
+
+    return false;
+}
+
+bool Astruino::saveToEEPROM(bool jsonFormat)
+{
+    ASTRO_HARD_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+
+    if (_systemData) {
+        if (getEEPROM() && _eepromBegan && _sysDataAddress != -1) {
+            AstroEEPROMStream eepromStream(_sysDataAddress, getEEPROMSize() - _sysDataAddress);
+            return jsonFormat ? saveToJSONStream(&eepromStream) : saveToBinaryStream(&eepromStream);
+        }
+    }
+
+    return false;
+}
+
+bool Astruino::initFromSDCard(bool jsonFormat)
+{
+    ASTRO_HARD_ASSERT(!_systemData, SFP(AStr_Err_AlreadyInitialized));
+
+    if (!_systemData) {
+        commonPreInit();
+        auto sd = getSDCard();
+
+        if (sd) {
+            bool retVal = false;
+            auto configFile = sd->open(_sysConfigFilename.c_str(), FILE_READ);
+
+            if (configFile) {
+                retVal = jsonFormat ? initFromJSONStream(&configFile) : initFromBinaryStream(&configFile);
+
+                configFile.close();
+            }
+
+            endSDCard(sd);
+            return retVal;
+        }
+    }
+
+    return false;
+}
+
+bool Astruino::saveToSDCard(bool jsonFormat)
+{
+    ASTRO_HARD_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+
+    if (!_systemData) {
+        auto sd = getSDCard();
+
+        if (sd) {
+            bool retVal = false;
+            auto configFile = sd->open(_sysConfigFilename.c_str(), FILE_READ);
+
+            if (configFile) {
+                retVal = jsonFormat ? saveToJSONStream(&configFile, false) : saveToBinaryStream(&configFile);
+
+                configFile.flush();
+                configFile.close();
+            }
+
+            endSDCard(sd);
+            return retVal;
+        }
+    }
+
+    return false;
+}
+
+#ifdef ASTRO_USE_WIFI_STORAGE
+
+bool Astruino::initFromWiFiStorage(bool jsonFormat)
+{
+    ASTRO_HARD_ASSERT(!_systemData, SFP(AStr_Err_AlreadyInitialized));
+
+    if (!_systemData) {
+        commonPreInit();
+
+        auto configFile = WiFiStorage.open(_sysConfigFilename.c_str());
+
+        if (configFile) {
+            auto configFileStream = AstroWiFiStorageFileStream(configFile);
+            return jsonFormat ? initFromJSONStream(&configFileStream) : initFromBinaryStream(&configFileStream);
+
+            configFile.close();
+        }
+    }
+
+    return false;
+}
+
+bool Astruino::saveToWiFiStorage(bool jsonFormat)
+{
+    ASTRO_HARD_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+
+    if (_systemData) {
+        if (WiFiStorage.exists(_sysConfigFilename.c_str())) {
+            WiFiStorage.remove(_sysConfigFilename.c_str());
+        }
+        auto configFile = WiFiStorage.open(_sysConfigFilename.c_str());
+
+        if (configFile) {
+            auto configFileStream = AstroWiFiStorageFileStream(configFile);
+            return jsonFormat ? saveToJSONStream(&configFileStream, false) : saveToBinaryStream(&configFileStream);
+
+            configFileStream.flush();
+            configFile.close();
+        }
+    }
+
+    return false;
+}
+
+#endif
+
+bool Astruino::initFromJSONStream(Stream *streamIn)
+{
+    ASTRO_HARD_ASSERT(!_systemData, SFP(AStr_Err_AlreadyInitialized));
+    ASTRO_SOFT_ASSERT(streamIn && streamIn->available(), SFP(AStr_Err_InvalidParameter));
+
+    if (!_systemData && streamIn && streamIn->available()) {
+        commonPreInit();
+
+        {   StaticJsonDocument<ASTRO_JSON_DOC_SYSSIZE> doc;
+            deserializeJson(doc, *streamIn);
+            JsonObjectConst systemDataObj = doc.as<JsonObjectConst>();
+            AstroSystemData *systemData = (AstroSystemData *)newDataFromJSONObject(systemDataObj);
+
+            ASTRO_SOFT_ASSERT(systemData && systemData->isSystemData(), SFP(AStr_Err_ImportFailure));
+            if (systemData && systemData->isSystemData()) {
+                _systemData = systemData;
+            } else if (systemData) {
+                delete systemData;
+            }
+        }
+
+        if (_systemData) {
+            while (streamIn->available()) {
+                StaticJsonDocument<ASTRO_JSON_DOC_DEFSIZE> doc;
+                deserializeJson(doc, *streamIn);
+                JsonObjectConst dataObj = doc.as<JsonObjectConst>();
+                AstroData *data = newDataFromJSONObject(dataObj);
+
+                ASTRO_SOFT_ASSERT(data && (data->isStandardData() || data->isObjectData()), SFP(AStr_Err_ImportFailure));
+                if (data && data->isStandardData()) {
+                    if (data->isCalibrationData()) {
+                        setUserCalibrationData((AstroCalibrationData *)data);
+                    } else if (data->isUIData()) {
+                        if (_uiData) { delete _uiData; }
+                        _uiData = (AstroUIData *)data; data = nullptr;
+                    }
+                    if (data) { delete data; data = nullptr; }
+                } else if (data && data->isObjectData()) {
+                    AstroObject *obj = newObjectFromData(data);
+                    delete data; data = nullptr;
+
+                    if (obj && !obj->isUnknownType()) {
+                        _objects[obj->getKey()] = SharedPtr<AstroObject>(obj);
+                    } else {
+                        ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_ImportFailure));
+                        if (obj) { delete obj; }
+                        delete _systemData; _systemData = nullptr;
+                        break;
+                    }
+                } else {
+                    if (data) { delete data; data = nullptr; }
+                    delete _systemData; _systemData = nullptr;
+                    break;
+                }
+            }
+        }
+
+        ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_InitializationFailure));
+        if (_systemData) { commonPostInit(); }
+        return _systemData;
+    }
+
+    return false;
+}
+
+bool Astruino::saveToJSONStream(Stream *streamOut, bool compact)
+{
+    ASTRO_HARD_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(streamOut, SFP(AStr_Err_InvalidParameter));
+
+    if (_systemData && streamOut) {
+        {   StaticJsonDocument<ASTRO_JSON_DOC_SYSSIZE> doc;
+
+            JsonObject systemDataObj = doc.to<JsonObject>();
+            _systemData->toJSONObject(systemDataObj);
+
+            if (!(compact ? serializeJson(doc, *streamOut) : serializeJsonPretty(doc, *streamOut))) {
+                ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_ExportFailure));
+                return false;
+            }
+        }
+
+        if (hasUserCalibrations()) {
+            for (auto iter = _calibrationData.begin(); iter != _calibrationData.end(); ++iter) {
+                StaticJsonDocument<ASTRO_JSON_DOC_DEFSIZE> doc;
+
+                JsonObject calibDataObj = doc.to<JsonObject>();
+                iter->second->toJSONObject(calibDataObj);
+
+                if (!(compact ? serializeJson(doc, *streamOut) : serializeJsonPretty(doc, *streamOut))) {
+                    ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_ExportFailure));
+                    return false;
+                }
+            }
+        }
+
+        if (_uiData) {
+            StaticJsonDocument<ASTRO_JSON_DOC_DEFSIZE> doc;
+
+            JsonObject uiDataObj = doc.to<JsonObject>();
+            _uiData->toJSONObject(uiDataObj);
+
+            if (!(compact ? serializeJson(doc, *streamOut) : serializeJsonPretty(doc, *streamOut))) {
+                ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_ExportFailure));
+                return false;
+            }
+        }
+
+        if (_objects.size()) {
+            for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
+                AstroData *data = iter->second->newSaveData();
+
+                ASTRO_SOFT_ASSERT(data && data->isObjectData(), SFP(AStr_Err_AllocationFailure));
+                if (data && data->isObjectData()) {
+                    StaticJsonDocument<ASTRO_JSON_DOC_DEFSIZE> doc;
+
+                    JsonObject objectDataObj = doc.to<JsonObject>();
+                    data->toJSONObject(objectDataObj);
+                    delete data; data = nullptr;
+
+                    if (!(compact ? serializeJson(doc, *streamOut) : serializeJsonPretty(doc, *streamOut))) {
+                        ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_ExportFailure));
+                        return false;
+                    }
+                } else {
+                    if (data) { delete data; data = nullptr; }
+                    return false;
+                }
+            }
+        }
+
+        commonPostSave();
+        return true;
+    }
+
+    return false;
+}
+
+bool Astruino::initFromBinaryStream(Stream *streamIn)
+{
+    ASTRO_HARD_ASSERT(!_systemData, SFP(AStr_Err_AlreadyInitialized));
+    ASTRO_SOFT_ASSERT(streamIn && streamIn->available(), SFP(AStr_Err_InvalidParameter));
+
+    if (!_systemData && streamIn && streamIn->available()) {
+        commonPreInit();
+
+        {   AstroSystemData *systemData = (AstroSystemData *)newDataFromBinaryStream(streamIn);
+
+            ASTRO_SOFT_ASSERT(systemData && systemData->isSystemData(), SFP(AStr_Err_ImportFailure));
+            if (systemData && systemData->isSystemData()) {
+                _systemData = systemData;
+            } else if (systemData) {
+                delete systemData;
+            }
+        }
+
+        if (_systemData) {
+            while (streamIn->available()) {
+                AstroData *data = newDataFromBinaryStream(streamIn);
+
+                ASTRO_SOFT_ASSERT(data && (data->isStandardData() || data->isObjectData()), SFP(AStr_Err_AllocationFailure));
+                if (data && data->isStandardData()) {
+                    if (data->isCalibrationData()) {
+                        setUserCalibrationData((AstroCalibrationData *)data);
+                    } else if (data->isUIData()) {
+                        if (_uiData) { delete _uiData; }
+                        _uiData = (AstroUIData *)data; data = nullptr;
+                    }
+                    if (data) { delete data; data = nullptr; }
+                } else if (data && data->isObjectData()) {
+                    AstroObject *obj = newObjectFromData(data);
+                    delete data; data = nullptr;
+
+                    if (obj && !obj->isUnknownType()) {
+                        _objects[obj->getKey()] = SharedPtr<AstroObject>(obj);
+                    } else {
+                        ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_ImportFailure));
+                        if (obj) { delete obj; }
+                        delete _systemData; _systemData = nullptr;
+                        break;
+                    }
+                } else {
+                    if (data) { delete data; data = nullptr; }    
+                    delete _systemData; _systemData = nullptr;
+                    break;
+                }
+            }
+        }
+
+        ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_InitializationFailure));
+        if (_systemData) { commonPostInit(); }
+        return _systemData;
+    }
+
+    return false;
+}
+
+bool Astruino::saveToBinaryStream(Stream *streamOut)
+{
+    ASTRO_HARD_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(streamOut, SFP(AStr_Err_InvalidParameter));
+
+    if (_systemData && streamOut) {
+        {   size_t bytesWritten = serializeDataToBinaryStream(_systemData, streamOut);
+
+            ASTRO_SOFT_ASSERT(bytesWritten, SFP(AStr_Err_ExportFailure));
+            if (!bytesWritten) { return false; }
+        }
+
+        if (hasUserCalibrations()) {
+            size_t bytesWritten = 0;
+
+            for (auto iter = _calibrationData.begin(); iter != _calibrationData.end(); ++iter) {
+                bytesWritten += serializeDataToBinaryStream(iter->second, streamOut);
+            }
+
+            ASTRO_SOFT_ASSERT(bytesWritten, SFP(AStr_Err_ExportFailure));
+            if (!bytesWritten) { return false; }
+        }
+
+        if (_uiData) {
+            size_t bytesWritten = serializeDataToBinaryStream(_uiData, streamOut);
+
+            ASTRO_SOFT_ASSERT(bytesWritten, SFP(AStr_Err_ExportFailure));
+            if (!bytesWritten) { return false; }
+        }
+
+        if (_objects.size()) {
+            for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
+                AstroData *data = iter->second->newSaveData();
+
+                ASTRO_SOFT_ASSERT(data && data->isObjectData(), SFP(AStr_Err_AllocationFailure));
+                if (data && data->isObjectData()) {
+                    size_t bytesWritten = serializeDataToBinaryStream(data, streamOut);
+                    delete data; data = nullptr;
+
+                    ASTRO_SOFT_ASSERT(bytesWritten, SFP(AStr_Err_ExportFailure));
+                    if (!bytesWritten) { return false; }
+                } else {
+                    if (data) { delete data; data = nullptr; }
+                    return false;
+                }
+            }
+        }
+
+        commonPostSave();
+        return true;
+    }
+
+    return false;
+}
+
+void Astruino::commonPreInit()
+{
+    Map<uintptr_t,uint32_t> began;
+
+    #ifdef ASTRO_USE_MULTITASKING
+        taskManager.setInterruptCallback(&handleInterrupt);
+
+        for (auto iter = _pinExpanders.begin(); iter != _pinExpanders.end(); ++iter) {
+            iter->second->init();
+            iter->second->tryRegisterISR();
+        }
+    #endif
+    for (auto iter = _pinMuxers.begin(); iter != _pinMuxers.end(); ++iter) {
+        iter->second->init();
+        iter->second->tryRegisterISR();
+    }
+
+    if (rtcNow() == 0) { setTime(12,0,0,1,1,2000); }
+
+    if (isValidPin(_piezoBuzzerPin)) {
+        pinMode(_piezoBuzzerPin, OUTPUT);
+        #ifdef ESP32
+            ledcSetup(0, 0, 10);
+            ledcAttachPin(_piezoBuzzerPin, 0);
+        #elif !defined(ARDUINO_SAM_DUE)
+            noTone(_piezoBuzzerPin);
+        #else
+            digitalWrite(_piezoBuzzerPin, 0);
+        #endif
+    }
+    if (_eepromType != Astro_EEPROMType_None && _eepromSetup.cfgType == DeviceSetup::I2CSetup) {
+        if (began.find((uintptr_t)_eepromSetup.cfgAs.i2c.wire) == began.end() || _eepromSetup.cfgAs.i2c.speed < began[(uintptr_t)_eepromSetup.cfgAs.i2c.wire]) {
+            _eepromSetup.cfgAs.i2c.wire->begin();
+            _eepromSetup.cfgAs.i2c.wire->setClock((began[(uintptr_t)_eepromSetup.cfgAs.i2c.wire] = _eepromSetup.cfgAs.i2c.speed));
+        }
+    }
+    if (_rtcType != Astro_RTCType_None && _rtcSetup.cfgType == DeviceSetup::I2CSetup) {
+        if (began.find((uintptr_t)_rtcSetup.cfgAs.i2c.wire) == began.end() || _rtcSetup.cfgAs.i2c.speed < began[(uintptr_t)_rtcSetup.cfgAs.i2c.wire]) {
+            _rtcSetup.cfgAs.i2c.wire->begin();
+            _rtcSetup.cfgAs.i2c.wire->setClock((began[(uintptr_t)_rtcSetup.cfgAs.i2c.wire] = _rtcSetup.cfgAs.i2c.speed));
+        }
+    }
+    #ifdef ASTRO_USE_GUI
+        if (getDisplayOutputMode() != Astro_DisplayOutputMode_Disabled && _displaySetup.cfgType == DeviceSetup::I2CSetup) {
+            if (began.find((uintptr_t)_displaySetup.cfgAs.i2c.wire) == began.end() || _displaySetup.cfgAs.i2c.speed < began[(uintptr_t)_displaySetup.cfgAs.i2c.wire]) {
+                _displaySetup.cfgAs.i2c.wire->begin();
+                _displaySetup.cfgAs.i2c.wire->setClock((began[(uintptr_t)_displaySetup.cfgAs.i2c.wire] = _displaySetup.cfgAs.i2c.speed));
+            }
+        }
+    #endif
+    if (_sdSetup.cfgType == DeviceSetup::SPISetup && isValidPin(_sdSetup.cfgAs.spi.cs)) {
+        if (began.find((uintptr_t)_sdSetup.cfgAs.spi.spi) == began.end()) {
+            _sdSetup.cfgAs.spi.spi->begin();
+            began[(uintptr_t)_sdSetup.cfgAs.spi.spi] = 0;
+        }
+        pinMode(_sdSetup.cfgAs.spi.cs, OUTPUT);
+        digitalWrite(_sdSetup.cfgAs.spi.cs, HIGH);
+    }
+    #ifdef ASTRO_USE_NET
+        if (_netSetup.cfgType == DeviceSetup::SPISetup && isValidPin(_netSetup.cfgAs.spi.cs)) {
+            if (began.find((uintptr_t)_netSetup.cfgAs.spi.spi) == began.end()) {
+                _netSetup.cfgAs.spi.spi->begin();
+                began[(uintptr_t)_netSetup.cfgAs.spi.spi] = 0;
+            }
+            pinMode(_netSetup.cfgAs.spi.cs, OUTPUT);
+            digitalWrite(_netSetup.cfgAs.spi.cs, HIGH);
+            #ifdef ASTRO_USE_ETHERNET
+                Ethernet.init(_netSetup.cfgAs.spi.cs);
+            #endif
+        } else if (_netSetup.cfgType == DeviceSetup::UARTSetup) {
+            if (began.find((uintptr_t)_netSetup.cfgAs.uart.serial) == began.end() || _netSetup.cfgAs.uart.baud < began[(uintptr_t)_netSetup.cfgAs.uart.serial]) {
+                _netSetup.cfgAs.uart.serial->begin((began[(uintptr_t)_netSetup.cfgAs.uart.serial] = _netSetup.cfgAs.uart.baud), (uartmode_t)ASTRO_SYS_ATWIFI_SERIALMODE);
+            }
+            #ifdef ASTRO_USE_AT_WIFI
+                WiFi.init(_netSetup.cfgAs.uart.serial);
+            #endif
+        }
+    #endif
+    #ifdef ASTRO_USE_WIFI_STORAGE
+        //WiFiStorage.begin();
+    #endif
+}
+
+#ifdef ASTRO_USE_VERBOSE_OUTPUT
+static void printDeviceSetup(String prefix, const DeviceSetup &devSetup)
+{
+    switch(devSetup.cfgType) {
+        case DeviceSetup::I2CSetup:
+            Serial.print(','); Serial.print(' '); Serial.print(prefix); Serial.print(F("I2CAddress: 0x"));
+            Serial.print(devSetup.cfgAs.i2c.address, HEX);
+            Serial.print(','); Serial.print(' '); Serial.print(prefix); Serial.print(F("I2CSpeed: "));
+            Serial.print(roundf(devSetup.cfgAs.i2c.speed / 1000.0f)); Serial.print(F("kHz"));
+            break;
+
+        case DeviceSetup::SPISetup:
+            Serial.print(','); Serial.print(' '); Serial.print(prefix); Serial.print(F("SPICSPin: "));
+            if (isValidPin(devSetup.cfgAs.spi.cs)) { Serial.print(devSetup.cfgAs.spi.cs); }
+            else { Serial.print(SFP(AStr_Disabled)); }
+            Serial.print(','); Serial.print(' '); Serial.print(prefix); Serial.print(F("SPISpeed: "));
+            Serial.print(roundf(devSetup.cfgAs.spi.speed / 1000000.0f)); Serial.print(F("MHz"));
+            break;
+
+        case DeviceSetup::UARTSetup:
+            Serial.print(','); Serial.print(' '); Serial.print(prefix); Serial.print(F("UARTBaud: "));
+            Serial.print(devSetup.cfgAs.uart.baud); Serial.print(F("bps"));
+            break;
+
+        default:
+            Serial.print(','); Serial.print(' '); Serial.print(prefix); Serial.print(':'); Serial.print(' ');
+            Serial.print(SFP(AStr_Disabled));
+            break;
+    }
+}
+#endif
+
+void Astruino::resolveAstronomyObjects()
+{
+    _mount = nullptr;
+    _camera = nullptr;
+
+    for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
+        if (!_mount && iter->second->isMountType()) {
+            _mount = static_pointer_cast<AstroMount>(iter->second);
+        } else if (!_camera && iter->second->isObservationDeviceType()) {
+            _camera = static_pointer_cast<AstroCameraTrigger>(iter->second);
+        }
+    }
+
+    scheduler.setMount(_mount);
+    scheduler.setCover(&_cover);
+    scheduler.setObservationDevice(_camera);
+    scheduler.setThermalBalancer(&_thermal);
+}
+
+void Astruino::applySystemData()
+{
+    if (!_systemData) { return; }
+
+    resolveAstronomyObjects();
+
+    if (!_mount && _defaultMountType != Astro_MountType_Unknown) { _mount = addMount(_defaultMountType); }
+    if (!_camera && _defaultMountType != Astro_MountType_Unknown) { _camera = addCameraTrigger(); }
+
+    resolveAstronomyObjects();
+
+    if (_mount) {
+        _mount->setObserver(AstroObserver(_systemData->latitude, _systemData->longitude, _systemData->altitude));
+    }
+}
+
+void Astruino::commonPostInit()
+{
+    if ((_rtcSyncProvider = getRTC())) {
+        setSyncProvider(rtcNow);
+    }
+
+    applySystemData();
+
+    scheduler.updateDayTracking(); // also calls setNeedsScheduling & setNeedsRedraw
+    logger.updateInitTracking();
+    setNeedsTabulation();
+
+    #ifdef ASTRO_USE_WIFI
+        if (!_systemData->wifiPasswordSeed && _systemData->wifiPassword[0]) {
+            setWiFiConnection(getWiFiSSID(), getWiFiPassword()); // sets seed and encrypts
+        }
+    #endif
+
+    #ifdef ASTRO_USE_VERBOSE_OUTPUT
+        #if 1 // set to 0 if you just want this gone
+            Serial.print(F("Astruino::commonPostInit piezoBuzzerPin: "));
+            if (isValidPin(_piezoBuzzerPin)) { Serial.print(_piezoBuzzerPin); }
+            else { Serial.print(SFP(AStr_Disabled)); }
+            Serial.print(F(", eepromSize: "));
+            if (getEEPROMSize()) { Serial.print(getEEPROMSize()); }
+            else { Serial.print(SFP(AStr_Disabled)); }
+            printDeviceSetup(F("eeprom"), _eepromSetup);
+            Serial.print(F(", rtcType: "));
+            if (_rtcType != Astro_RTCType_None) { Serial.print(_rtcType); }
+            else { Serial.print(SFP(AStr_Disabled)); }
+            printDeviceSetup(F("rtc"), _rtcSetup);
+            printDeviceSetup(F("sd"), _sdSetup);
+            #ifdef ASTRO_USE_NET
+                printDeviceSetup(F("net"), _netSetup);
+            #endif
+            #ifdef ASTRO_USE_GUI
+                Serial.print(F(", controlInputPins: "));
+                if (getControlInputPins().first && _ctrlInputPins && isValidPin(_ctrlInputPins[0])) {
+                    Serial.print('{');
+                    for (int i = 0; i < getControlInputPins().first; ++i) {
+                        if (i) { Serial.print(','); }
+                        Serial.print(_ctrlInputPins[i]);
+                    }
+                    Serial.print('}');
+                }
+                else { Serial.print(SFP(AStr_Disabled)); }
+                printDeviceSetup(F("displaySetup"), _displaySetup);
+            #endif
+            Serial.print(F(", systemMode: "));
+            Serial.print(systemModeToString(getSystemMode()));
+            Serial.print(F(", measureMode: "));
+            Serial.print(measurementModeToString(getMeasurementMode()));
+            Serial.print(F(", dispOutMode: "));
+            Serial.print(displayOutputModeToString(getDisplayOutputMode()));
+            Serial.print(F(", ctrlInMode: "));
+            Serial.print(controlInputModeToString(getControlInputMode()));
+            Serial.println(); flushYield();
+        #endif
+    #endif // /ifdef ASTRO_USE_VERBOSE_OUTPUT
+}
+
+void Astruino::commonPostSave()
+{
+    logger.logSystemSave();
+
+    if (_systemData) {
+        _systemData->unsetModified();
+    }
+
+    if (hasUserCalibrations()) {
+        for (auto iter = _calibrationData.begin(); iter != _calibrationData.end(); ++iter) {
+            iter->second->unsetModified();
+        }
+    }
+
+    for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
+        iter->second->unsetModified();
+    }
+}
+
+// Runloops
+
+// Tight updates (buzzer/etc) that need to be ran often
+inline void tightUpdates()
+{
+    // TODO: put in link to buzzer update here. #5 in Hydruino.
+}
+
+// Loose updates (gps/etc) that need ran every so often
+inline void looseUpdates()
+{
+    #ifdef ASTRO_USE_GPS
+        if (Astruino::_activeInstance->_gps) { while(Astruino::_activeInstance->_gps->available()) { Astruino::_activeInstance->_gps->read(); } }
+    #endif
+    #ifdef ASTRO_USE_MQTT
+        if (publisher._mqttClient) { publisher._mqttClient->loop(); }
+    #endif
+}
+
+// Yields upon time limit exceed
+inline void yieldIfNeeded(millis_t &lastYield)
+{
+    tightUpdates();
+    millis_t time = millis();
+    if (time - lastYield >= ASTRO_SYS_YIELD_AFTERMILLIS) {
+        looseUpdates();
+        lastYield = time; yield();
+    }
+}
+
+void controlLoop()
+{
+    if (Astruino::_activeInstance && !Astruino::_activeInstance->_suspend) {
+        #ifdef ASTRO_USE_VERBOSE_OUTPUT
+            Serial.println(F("controlLoop")); flushYield();
+        #endif
+        millis_t lastYield = millis();
+
+        for (auto iter = Astruino::_activeInstance->_objects.begin(); iter != Astruino::_activeInstance->_objects.end(); ++iter) {
+            iter->second->update();
+
+            yieldIfNeeded(lastYield);
+        }
+
+        Astruino::_activeInstance->_cover.update();
+        Astruino::_activeInstance->scheduler.update();
+
+        #ifdef ASTRO_USE_VERBOSE_OUTPUT
+            Serial.println(F("~controlLoop")); flushYield();
+        #endif
+    }
+
+    tightUpdates();
+}
+
+void dataLoop()
+{
+    if (Astruino::_activeInstance && !Astruino::_activeInstance->_suspend) {
+        #ifdef ASTRO_USE_VERBOSE_OUTPUT
+            Serial.println(F("dataLoop")); flushYield();
+        #endif
+        millis_t lastYield = millis();
+
+        Astruino::_activeInstance->publisher.advancePollingFrame();
+
+        for (auto iter = Astruino::_activeInstance->_objects.begin(); iter != Astruino::_activeInstance->_objects.end(); ++iter) {
+            if (iter->second->isSensorType()) {
+                auto sensor = static_pointer_cast<AstroSensor>(iter->second);
+                if (sensor->needsPolling()) {
+                    sensor->takeMeasurement(); // no force if already current for this frame #, we're just ensuring data for publisher
+                }
+            }
+
+            yieldIfNeeded(lastYield);
+        }
+
+        #ifdef ASTRO_USE_VERBOSE_OUTPUT
+            Serial.println(F("~dataLoop")); flushYield();
+        #endif
+    }
+
+    tightUpdates();
+}
+
+void miscLoop()
+{
+    if (Astruino::_activeInstance && !Astruino::_activeInstance->_suspend) {
+        #ifdef ASTRO_USE_VERBOSE_OUTPUT
+            Serial.println(F("miscLoop")); flushYield();
+        #endif
+        millis_t lastYield = millis();
+
+        #if ASTRO_SYS_MEM_LOGGING_ENABLE
+        {   static time_t _lastMemLog = unixNow();
+            if (unixNow() >= _lastMemLog + 15) {
+                _lastMemLog = unixNow();
+                Astruino::_activeInstance->logger.logMessage(String(F("Free memory: ")), String(freeMemory()));
+            }
+        }
+        #endif
+        Astruino::_activeInstance->checkFreeMemory();
+
+        yieldIfNeeded(lastYield);
+
+        Astruino::_activeInstance->checkFreeSpace();
+
+        yieldIfNeeded(lastYield);
+
+        Astruino::_activeInstance->checkAutosave();
+
+        yieldIfNeeded(lastYield);
+
+        Astruino::_activeInstance->publisher.update();
+
+        #ifdef ASTRO_USE_GPS
+            yieldIfNeeded(lastYield);
+
+            if (Astruino::_activeInstance->_gps && Astruino::_activeInstance->_gps->newNMEAreceived()) {
+                Astruino::_activeInstance->_gps->parse(Astruino::_activeInstance->_gps->lastNMEA());
+                if (Astruino::_activeInstance->_gps->fix) {
+                    Astruino::_activeInstance->setSystemLocation(Astruino::_activeInstance->_gps->lat, Astruino::_activeInstance->_gps->lon, Astruino::_activeInstance->_gps->altitude);
+                }
+            }
+        #endif
+
+        #ifdef ASTRO_USE_VERBOSE_OUTPUT
+            Serial.println(F("~miscLoop")); flushYield();
+        #endif
+    }
+
+    tightUpdates();
+}
+
+bool Astruino::unregisterObject(SharedPtr<AstroObject> object)
+{
+    if (!object) { return false; }
+
+    bool wasMount = _mount && _mount.get() == object.get();
+    bool wasCamera = _camera && _camera.get() == object.get();
+
+    _cover.unresolveAny(object.get());
+    _thermal.unresolveAny(object.get());
+    scheduler.unresolveAny(object.get());
+
+    if (!AstroObjectRegistration::unregisterObject(object)) { return false; }
+
+    if (wasMount) { _mount = nullptr; }
+    if (wasCamera) { _camera = nullptr; }
+    resolveAstronomyObjects();
+    return true;
+}
+
+void Astruino::launch()
+{
+    // Forces all sensors to get a new measurement
+    publisher.advancePollingFrame();
+
+    // Create/enable main runloops
+    _suspend = false;
+    #ifdef ASTRO_USE_MULTITASKING
+        if (!isValidTask(_controlTaskId)) {
+            _controlTaskId = taskManager.scheduleFixedRate(ASTRO_CONTROL_LOOP_INTERVAL, controlLoop);
+        } else {
+            taskManager.setTaskEnabled(_controlTaskId, true);
+        }
+        if (!isValidTask(_dataTaskId)) {
+            _dataTaskId = taskManager.scheduleFixedRate(getPollingInterval(), dataLoop);
+        } else {
+            taskManager.setTaskEnabled(_dataTaskId, true);
+        }
+        if (!isValidTask(_miscTaskId)) {
+            _miscTaskId = taskManager.scheduleFixedRate(ASTRO_MISC_LOOP_INTERVAL, miscLoop);
+        } else {
+            taskManager.setTaskEnabled(_miscTaskId, true);
+        }
+    #endif
+
+    #ifdef ASTRO_USE_VERBOSE_OUTPUT
+        Serial.println(F("Astruino::launch System launched!")); flushYield();
+    #endif
+}
+
+void Astruino::suspend()
+{
+    _suspend = true;
+    if (_camera) { _camera->stopObservation(); }
+    if (_mount) { _mount->stow(); }
+    #ifdef ASTRO_USE_MULTITASKING
+        if (isValidTask(_controlTaskId)) {
+            taskManager.setTaskEnabled(_controlTaskId, false);
+        }
+        if (isValidTask(_dataTaskId)) {
+            taskManager.setTaskEnabled(_dataTaskId, false);
+        }
+        if (isValidTask(_miscTaskId)) {
+            taskManager.setTaskEnabled(_miscTaskId, false);
+        }
+    #endif
+
+    #ifdef ASTRO_USE_VERBOSE_OUTPUT
+        Serial.println(F("Astruino::suspend System suspended!")); flushYield();
+    #endif
+}
+
+void Astruino::update()
+{
+    #ifdef ASTRO_USE_MULTITASKING
+        taskManager.runLoop(); // tcMenu also uses this system to run its UI
+    #else
+        controlLoop();
+        dataLoop();
+        miscLoop();
+    #endif
+
+    looseUpdates();
+    tightUpdates();
+}
+
+void Astruino::setSystemName(String systemName)
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    if (_systemData && !systemName.equals(getSystemName())) {
+        strncpy(_systemData->systemName, systemName.c_str(), ASTRO_NAME_MAXSIZE);
+
+        setNeedsRedraw();
+        _systemData->bumpRevisionIfNeeded();
+    }
+}
+
+void Astruino::setTimeZoneOffset(int8_t hoursOffset)
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    if (_systemData && _systemData->timeZoneOffset != hoursOffset) {
+        _systemData->timeZoneOffset = hoursOffset;
+
+        setNeedsRedraw();
+        _systemData->bumpRevisionIfNeeded();
+    }
+}
+
+void Astruino::setPollingInterval(uint16_t pollingInterval)
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    if (_systemData && _systemData->pollingInterval != pollingInterval) {
+        _systemData->pollingInterval = pollingInterval;
+        _systemData->bumpRevisionIfNeeded();
+
+        #ifdef ASTRO_USE_MULTITASKING
+            if (isValidTask(_dataTaskId)) {
+                auto dataTask = taskManager.getTask(_dataTaskId);
+                if (dataTask) {
+                    bool enabled = dataTask->isEnabled();
+                    auto next = dataTask->getNext();
+                    dataTask->handleScheduling(getPollingInterval(), TIME_MILLIS, true);
+                    dataTask->setNext(next);
+                    dataTask->setEnabled(enabled);
+                }
+            }
+        #endif
+    }
+}
+
+void Astruino::setAutosaveEnabled(Astro_Autosave autosaveEnabled, Astro_Autosave autosaveFallback, uint16_t autosaveInterval)
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    if (_systemData && (_systemData->autosaveEnabled != autosaveEnabled || _systemData->autosaveFallback != autosaveFallback || _systemData->autosaveInterval != autosaveInterval)) {
+        _systemData->autosaveEnabled = autosaveEnabled;
+        _systemData->autosaveFallback = autosaveFallback;
+        _systemData->autosaveInterval = autosaveInterval;
+        _systemData->bumpRevisionIfNeeded();
+    }
+}
+
+void Astruino::setRTCTime(DateTime time)
+{
+    if (getRTC()) { _setUnixTime(DateTime((uint32_t)unixTime(time)), true); }
+}
+
+#ifdef ASTRO_USE_WIFI
+
+void Astruino::setWiFiConnection(String ssid, String pass)
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    if (_systemData) {
+        bool ssidChanged = ssid.equals(getWiFiSSID());
+        bool passChanged = pass.equals(getWiFiPassword());
+
+        if (ssidChanged || passChanged || (pass.length() && !_systemData->wifiPasswordSeed)) {
+            if (ssid.length()) {
+                strncpy(_systemData->wifiSSID, ssid.c_str(), ASTRO_NAME_MAXSIZE);
+            } else {
+                memset(_systemData->wifiSSID, '\000', ASTRO_NAME_MAXSIZE);
+            }
+
+            if (pass.length()) {
+                randomSeed(unixNow());
+                _systemData->wifiPasswordSeed = random(1, RANDOM_MAX);
+
+                randomSeed(_systemData->wifiPasswordSeed);
+                for (int charIndex = 0; charIndex < ASTRO_NAME_MAXSIZE; ++charIndex) {
+                    _systemData->wifiPassword[charIndex] = (uint8_t)(charIndex < pass.length() ? pass[charIndex] : '\000') ^ (uint8_t)random(256);
+                }
+            } else {
+                _systemData->wifiPasswordSeed = 0;
+                memset(_systemData->wifiPassword, '\000', ASTRO_NAME_MAXSIZE);
+            }
+
+            _systemData->bumpRevisionIfNeeded();
+
+            if (_netBegan && (ssidChanged || passChanged)) { WiFi.disconnect(); _netBegan = false; } // forces re-connect on next getWiFi
+        }
+    }
+}
+
+#endif
+#ifdef ASTRO_USE_ETHERNET
+
+void Astruino::setEthernetConnection(const uint8_t *macAddress)
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    if (_systemData) {
+        bool macChanged = memcmp(macAddress, getMACAddress(), sizeof(uint8_t[6])) != 0;
+
+        if (macChanged) {
+            memcpy(_systemData->macAddress, macAddress, sizeof(uint8_t[6]));
+            _systemData->bumpRevisionIfNeeded();
+
+            if (_netBegan) { Ethernet.setMACAddress(macAddress); }
+        }
+    }
+}
+
+#endif
+
+void Astruino::setSystemLocation(double latitude, double longitude, double altitude, bool isSigChange)
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    if (_systemData && (!isFPEqual(_systemData->latitude, latitude) || !isFPEqual(_systemData->longitude, longitude) || !isFPEqual(_systemData->altitude, altitude))) {
+        isSigChange = isSigChange || ((latitude - _systemData->latitude) * (latitude - _systemData->latitude)) +
+                                     ((longitude - _systemData->longitude) * (longitude - _systemData->longitude)) >= ASTRO_SYS_LATLONG_DISTSQRDTOL ||
+                                     fabs(altitude - _systemData->altitude) >= ASTRO_SYS_ALTITUDE_DISTTOL;
+        _systemData->latitude = latitude;
+        _systemData->longitude = longitude;
+        _systemData->altitude = altitude;
+        if (isSigChange) { notifySignificantLocation(AstroObserver(_systemData->latitude, _systemData->longitude, _systemData->altitude)); }
+    }
+}
+
+#ifdef ASTRO_USE_GUI
+
+Pair<uint8_t, const pintype_t *> Astruino::getControlInputPins() const
+{
+    if (_ctrlInputPins) {
+        switch (getControlInputMode()) {
+            case Astro_ControlInputMode_RotaryEncoderOk:
+            case Astro_ControlInputMode_UpDownButtonsOk:
+            case Astro_ControlInputMode_UpDownESP32TouchOk:
+            case Astro_ControlInputMode_AnalogJoystickOk:
+                return make_pair((uint8_t)3, (const pintype_t *)_ctrlInputPins);
+            case Astro_ControlInputMode_RotaryEncoderOkLR:
+            case Astro_ControlInputMode_UpDownButtonsOkLR:
+            case Astro_ControlInputMode_UpDownESP32TouchOkLR:
+                return make_pair((uint8_t)5, (const pintype_t *)_ctrlInputPins);
+            case Astro_ControlInputMode_Matrix3x4Keyboard_OptRotEncOk:  
+                return make_pair((uint8_t)10, (const pintype_t *)_ctrlInputPins);
+            case Astro_ControlInputMode_Matrix3x4Keyboard_OptRotEncOkLR:
+                return make_pair((uint8_t)12, (const pintype_t *)_ctrlInputPins);
+            case Astro_ControlInputMode_Matrix4x4Keyboard_OptRotEncOk:
+                return make_pair((uint8_t)11, (const pintype_t *)_ctrlInputPins);
+            case Astro_ControlInputMode_Matrix4x4Keyboard_OptRotEncOkLR:
+                return make_pair((uint8_t)13, (const pintype_t *)_ctrlInputPins);
+            case Astro_ControlInputMode_Matrix2x2UpDownButtonsOkL:
+            case Astro_ControlInputMode_ResistiveTouch:
+                return make_pair((uint8_t)4, (const pintype_t *)_ctrlInputPins);
+            #ifdef ASTRO_ENABLE_XPT2046TS
+                case Astro_ControlInputMode_TouchScreen:
+            #endif
+            case Astro_ControlInputMode_TFTTouch:
+                return make_pair((uint8_t)2, (const pintype_t *)_ctrlInputPins);
+            default: break;
+        }
+    }
+    return make_pair((uint8_t)0, (const pintype_t *)nullptr);
+}
+
+#endif
+
+I2C_eeprom *Astruino::getEEPROM(bool begin)
+{
+    if (!_eeprom) { allocateEEPROM(); }
+
+    if (_eeprom && begin && !_eepromBegan) {
+        _eepromBegan = _eeprom->begin();
+
+        if (!_eepromBegan) { deallocateEEPROM(); }
+    }
+
+    return (!begin || _eepromBegan) ? _eeprom : nullptr;
+}
 
 AstroRTCInterface *Astruino::getRTC(bool begin)
 {
     if (!_rtc) { allocateRTC(); }
 
     if (_rtc && begin && !_rtcBegan) {
-        _rtcBegan = _rtc->begin(_rtcSetup.i2c.wire);
+        _rtcBegan = _rtc->begin(_rtcSetup.cfgAs.i2c.wire);
+
         if (_rtcBegan) {
             bool rtcBattFailBefore = _rtcBattFail;
             _rtcBattFail = _rtc->lostPower();
-            if (_rtcBattFail && !rtcBattFailBefore) { logger.logWarning((int64_t)unixNow(), SFP(AStr_Log_RTCBatteryFailure)); }
-            _rtcSyncProvider = _rtc;
-            setSyncProvider(rtcNow);
-        } else {
-            deallocateRTC();
-        }
+            if (_rtcBattFail && !rtcBattFailBefore) {
+                logger.logWarning(SFP(AStr_Log_RTCBatteryFailure));
+            }
+        } else { deallocateRTC(); }
     }
 
     return (!begin || _rtcBegan) ? _rtc : nullptr;
 }
 
-void Astruino::setRTCTime(DateTime time)
+SDClass *Astruino::getSDCard(bool begin)
 {
-    auto rtc = getRTC();
-    if (rtc) {
-        rtc->adjust(DateTime((uint32_t)unixTime(time)));
-        setSyncProvider(rtcNow);
+    if (!_sd) { allocateSD(); }
+
+    if (_sd && begin) {
+        if (!_sdBegan) {
+            #if defined(ESP32)
+                _sdBegan = _sd->begin(_sdSetup.cfgAs.spi.cs, *_sdSetup.cfgAs.spi.spi, _sdSetup.cfgAs.spi.speed);
+            #elif defined(CORE_TEENSY)
+                _sdBegan = _sd->begin(_sdSetup.cfgAs.spi.cs); // card speed not possible to set on teensy
+            #else
+                _sdBegan = _sd->begin(_sdSetup.cfgAs.spi.speed, _sdSetup.cfgAs.spi.cs);
+            #endif
+        }
+
+        if (!_sdBegan && _sdOut == 0) { deallocateSD(); }
+
+        if (_sd && _sdBegan) { _sdOut++; }
     }
+
+    return (!begin || _sdBegan) ? _sd : nullptr;
+}
+
+void Astruino::endSDCard(SDClass *sd)
+{
+    #if defined(CORE_TEENSY)
+        --_sdOut; // no delayed write on teensy's SD impl
+    #else
+        if (--_sdOut == 0 && _sd) {
+            _sd->end();
+        }
+    #endif
+}
+
+#ifdef ASTRO_USE_WIFI
+
+WiFiClass *Astruino::getWiFi(String ssid, String pass, bool begin)
+{
+    int status = WiFi.status();
+
+    if (begin && (!_netBegan || status != WL_CONNECTED)) {
+        if (status == WL_CONNECTED) {
+            _netBegan = true;
+        } else if (status == WL_NO_SHIELD) {
+            _netBegan = false;
+        } else { // attempt connection
+            #ifdef ASTRO_USE_AT_WIFI
+                status = WiFi.begin(ssid.c_str(), pass.c_str());
+            #else
+                status = pass.length() ? WiFi.begin(const_cast<char *>(ssid.c_str()), pass.c_str())
+                                       : WiFi.begin(const_cast<char *>(ssid.c_str()));
+            #endif
+
+            _netBegan = (status == WL_CONNECTED);
+        }
+    }
+
+    return (!begin || _netBegan) ? &WiFi : nullptr;
 }
 
 #endif
+#ifdef ASTRO_USE_ETHERNET
+
+EthernetClass *Astruino::getEthernet(const uint8_t *macAddress, bool begin)
+{
+    int status = Ethernet.linkStatus();
+    
+    if (begin && (!_netBegan || status != LinkON)) {
+        if (status == LinkON) {
+            _netBegan = true;
+        } else if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+            _netBegan = false;
+        } else { // attempt connection
+            status = Ethernet.begin(const_cast<uint8_t *>(getMACAddress()));
+
+            _netBegan = (status == LinkON);
+        }
+    }
+
+    return (!begin || _netBegan) ? &Ethernet : nullptr;
+}
+
+#endif
+#ifdef ASTRO_USE_GPS
+
+GPSClass *Astruino::getGPS(bool begin)
+{
+    if (!_gps) { allocateGPS(); }
+
+    if (_gps && begin && !_gpsBegan) {
+        switch (_gpsSetup.cfgType) {
+            case DeviceSetup::UARTSetup:
+                _gpsBegan = _gps->begin(_gpsSetup.cfgAs.uart.baud);
+                break;
+            case DeviceSetup::I2CSetup:
+                _gpsBegan = _gps->begin(GPS_DEFAULT_I2C_ADDR | _gpsSetup.cfgAs.i2c.address);
+                break;
+            case DeviceSetup::SPISetup:
+                _gpsBegan = _gps->begin(_gpsSetup.cfgAs.spi.speed);
+                break;
+            default: break;
+        }
+        if (!_gpsBegan) { deallocateGPS(); }
+    }
+
+    return (!begin || _gpsBegan) ? _gps : nullptr;
+}
+
+#endif
+
+Astro_SystemMode Astruino::getSystemMode() const
+{
+    return _systemData ? _systemData->systemMode : Astro_SystemMode_Undefined;
+}
+
+Astro_MeasurementMode Astruino::getMeasurementMode() const
+{
+    return _systemData ? _systemData->measureMode : Astro_MeasurementMode_Undefined;
+}
+
+Astro_DisplayOutputMode Astruino::getDisplayOutputMode() const
+{
+    return _systemData ? _systemData->dispOutMode : Astro_DisplayOutputMode_Undefined;
+}
+
+Astro_ControlInputMode Astruino::getControlInputMode() const
+{
+    return _systemData ? _systemData->ctrlInMode : Astro_ControlInputMode_Undefined;
+}
+
+String Astruino::getSystemName() const
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    return _systemData ? String(_systemData->systemName) : String();
+}
+
+time_t Astruino::getTimeZoneOffset() const
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    return _systemData ? _systemData->timeZoneOffset * SECS_PER_HOUR : 0;
+}
+
+uint16_t Astruino::getPollingInterval() const
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    return _systemData ? _systemData->pollingInterval : 0;
+}
+
+bool Astruino::isPollingFrameOld(aframe_t frame, aframe_t allowance) const
+{
+    return _pollingFrame - frame > allowance;
+}
+
+bool Astruino::isAutosaveEnabled() const
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    return _systemData ? _systemData->autosaveEnabled != Astro_Autosave_Disabled : false;
+}
+
+bool Astruino::isAutosaveFallbackEnabled() const
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    return _systemData ? _systemData->autosaveFallback != Astro_Autosave_Disabled : false;
+}
+
+#ifdef ASTRO_USE_WIFI
+
+String Astruino::getWiFiSSID() const
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    return _systemData ? String(_systemData->wifiSSID) : String();
+}
+
+String Astruino::getWiFiPassword() const
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    if (_systemData) {
+        char wifiPassword[ASTRO_NAME_MAXSIZE] = {0};
+
+        if (_systemData->wifiPasswordSeed) {
+            randomSeed(_systemData->wifiPasswordSeed);
+            for (int charIndex = 0; charIndex < ASTRO_NAME_MAXSIZE; ++charIndex) {
+                wifiPassword[charIndex] = (char)(_systemData->wifiPassword[charIndex] ^ (uint8_t)random(256));
+            }
+        } else {
+            strncpy(wifiPassword, (const char *)(_systemData->wifiPassword), ASTRO_NAME_MAXSIZE);
+        }
+
+        return String(wifiPassword);
+    }
+    return String();
+}
+
+#endif
+#ifdef ASTRO_USE_ETHERNET
+
+const uint8_t *Astruino::getMACAddress() const
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    return _systemData ? &_systemData->macAddress[0] : nullptr;
+}
+
+#endif
+
+AstroObserver Astruino::getSystemLocation() const
+{
+    ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
+    return _systemData ? AstroObserver(_systemData->latitude, _systemData->longitude, _systemData->altitude) : AstroObserver();
+}
+
+void Astruino::checkFreeMemory()
+{
+    auto memLeft = freeMemory();
+    if (memLeft != -1 && memLeft < ASTRO_SYS_FREERAM_LOWBYTES) {
+        broadcastLowMemory();
+    }
+}
+
+static uint64_t getSDCardFreeSpace()
+{
+    uint64_t retVal = ASTRO_SYS_FREESPACE_LOWSPACE;
+    #if defined(CORE_TEENSY)
+        auto sd = getController()->getSDCard();
+        if (sd) {
+            retVal = sd->totalSize() - sd->usedSize();
+            getController()->endSDCard(sd);
+        }
+    #endif
+    return retVal;
+}
+
+void Astruino::checkFreeSpace()
+{
+    if ((logger.isLoggingEnabled() || publisher.isPublishingEnabled()) &&
+        (!_lastSpaceCheck || unixNow() >= _lastSpaceCheck + (ASTRO_SYS_FREESPACE_INTERVAL * SECS_PER_MIN))) {
+        if (logger.isLoggingToSDCard() || publisher.isPublishingToSDCard()) {
+            uint32_t freeKB = getSDCardFreeSpace();
+            while (freeKB < ASTRO_SYS_FREESPACE_LOWSPACE) {
+                logger.cleanupOldestLogs(true);
+                publisher.cleanupOldestData(true);
+                freeKB = getSDCardFreeSpace();
+            }
+        }
+        // TODO: URL free space
+        _lastSpaceCheck = unixNow();
+    }
+}
+
+void Astruino::checkAutosave()
+{
+    if (isAutosaveEnabled() && unixNow() >= _lastAutosave + (_systemData->autosaveInterval * SECS_PER_MIN)) {
+        performAutosave();
+    }
+}

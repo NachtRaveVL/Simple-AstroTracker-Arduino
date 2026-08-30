@@ -8,7 +8,7 @@
 AstroMount *newMountObjectFromData(const AstroMountData *dataIn)
 {
     if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
 
     if (dataIn && dataIn->isObjectData() && dataIn->id.object.idType == (aid_t)AstroIdentity::Mount) {
         switch (dataIn->id.object.classType) {
@@ -273,6 +273,13 @@ void AstroMount::update()
         _parked = true;
     } else if (_parked && !isAtParkPosition()) {
         _parked = false;
+    }
+}
+
+void AstroMount::notifyDateChanged()
+{
+    if (_tracking && _mountType != Astro_MountType_SingleAxis) {
+        updateTarget((int64_t)unixNow(), 0.0);
     }
 }
 

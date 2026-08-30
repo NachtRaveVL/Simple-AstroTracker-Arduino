@@ -67,6 +67,7 @@ public:
     void clearGuideOffset(uint8_t axisIndex = 0xff);
 
     virtual void update() override;
+    void notifyDateChanged();
     virtual bool isAligned(double toleranceDegrees = ASTRO_SCH_ALIGN_TOL_DEG) const override;
     virtual bool isParked() const override { return _parked; }
 

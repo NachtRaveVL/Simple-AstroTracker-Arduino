@@ -107,19 +107,19 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr[] PROGMEM = " HARD";
             return flashStr;
         }
-        case AStr_Astruino: {
+        case AStr_Default_SystemName: {
             static const char flashStr[] PROGMEM = "Astruino";
             return flashStr;
         }
-        case AStr_AstruinoDotCfg: {
+        case AStr_Default_ConfigFilename: {
             static const char flashStr[] PROGMEM = "Astruino.cfg";
             return flashStr;
         }
-        case AStr_AllocationFailure: {
+        case AStr_Err_AllocationFailure: {
             static const char flashStr[] PROGMEM = "Allocation failure";
             return flashStr;
         }
-        case AStr_AlreadyInitialized: {
+        case AStr_Err_AlreadyInitialized: {
             static const char flashStr[] PROGMEM = "Already initialized";
             return flashStr;
         }
@@ -135,7 +135,7 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr[] PROGMEM = "Data version mismatch";
             return flashStr;
         }
-        case AStr_ExportFailure: {
+        case AStr_Err_ExportFailure: {
             static const char flashStr[] PROGMEM = "Export failure";
             return flashStr;
         }
@@ -143,11 +143,11 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr[] PROGMEM = "Hashing collision";
             return flashStr;
         }
-        case AStr_ImportFailure: {
+        case AStr_Err_ImportFailure: {
             static const char flashStr[] PROGMEM = "Import failure";
             return flashStr;
         }
-        case AStr_InvalidParameter: {
+        case AStr_Err_InvalidParameter: {
             static const char flashStr[] PROGMEM = "Invalid parameter";
             return flashStr;
         }
@@ -155,11 +155,11 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr[] PROGMEM = "Not configured properly";
             return flashStr;
         }
-        case AStr_NotYetInitialized: {
+        case AStr_Err_NotYetInitialized: {
             static const char flashStr[] PROGMEM = "Not yet initialized";
             return flashStr;
         }
-        case AStr_OperationFailure: {
+        case AStr_Err_OperationFailure: {
             static const char flashStr[] PROGMEM = "Operation failure";
             return flashStr;
         }
@@ -175,11 +175,11 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr[] PROGMEM = "Unsupported operation";
             return flashStr;
         }
-        case AStr_SystemUptimeColon: {
+        case AStr_Log_SystemUptime: {
             static const char flashStr[] PROGMEM = "System uptime: ";
             return flashStr;
         }
-        case AStr_EnvironmentReport: {
+        case AStr_Log_EnvReport: {
             static const char flashStr[] PROGMEM = "Environment report";
             return flashStr;
         }
@@ -199,12 +199,20 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr[] PROGMEM = "Cover closing";
             return flashStr;
         }
-        case AStr_SystemDataSaved: {
+        case AStr_Log_SystemDataSaved: {
             static const char flashStr[] PROGMEM = "System data saved";
             return flashStr;
         }
         case AStr_Log_RTCBatteryFailure: {
             static const char flashStr[] PROGMEM = "RTC battery failure";
+            return flashStr;
+        }
+        case AStr_Log_HasEnabled: {
+            static const char flashStr[] PROGMEM = "has enabled";
+            return flashStr;
+        }
+        case AStr_Log_HasDisabled: {
+            static const char flashStr[] PROGMEM = "has disabled";
             return flashStr;
         }
         case AStr_Log_Prefix_Info: {
@@ -569,6 +577,26 @@ const char *pgmAddrForStr(Astro_String strNum)
         }
         case AStr_Key_ReportSecs: {
             static const char flashStr[] PROGMEM = "reportSecs";
+            return flashStr;
+        }
+        case AStr_Key_UpdatesPerSec: {
+            static const char flashStr[] PROGMEM = "updatesPerSec";
+            return flashStr;
+        }
+        case AStr_Key_DisplayTheme: {
+            static const char flashStr[] PROGMEM = "displayTheme";
+            return flashStr;
+        }
+        case AStr_Key_JoystickCalib: {
+            static const char flashStr[] PROGMEM = "joystickCalib";
+            return flashStr;
+        }
+        case AStr_Key_UsingISR: {
+            static const char flashStr[] PROGMEM = "usingISR";
+            return flashStr;
+        }
+        case AStr_Key_StateStableTimeMs: {
+            static const char flashStr[] PROGMEM = "stateStableTimeMs";
             return flashStr;
         }
         case AStr_Actuator: {
@@ -1093,6 +1121,134 @@ const char *pgmAddrForStr(Astro_String strNum)
         }
         case AStr_A: {
             static const char flashStr[] PROGMEM = "A";
+            return flashStr;
+        }
+        case AStr_Disabled: {
+            static const char flashStr[] PROGMEM = "Disabled";
+            return flashStr;
+        }
+        case AStr_Err_InitializationFailure: {
+            static const char flashStr[] PROGMEM = "Initialization failure";
+            return flashStr;
+        }
+        case AStr_AC110V: {
+            static const char flashStr[] PROGMEM = "AC110V";
+            return flashStr;
+        }
+        case AStr_AC220V: {
+            static const char flashStr[] PROGMEM = "AC220V";
+            return flashStr;
+        }
+        case AStr_DC48V: {
+            static const char flashStr[] PROGMEM = "DC48V";
+            return flashStr;
+        }
+        case AStr_DescOrder: {
+            static const char flashStr[] PROGMEM = "DescOrder";
+            return flashStr;
+        }
+        case AStr_AscOrder: {
+            static const char flashStr[] PROGMEM = "AscOrder";
+            return flashStr;
+        }
+        case AStr_LCD16x2: {
+            static const char flashStr[] PROGMEM = "LCD16x2";
+            return flashStr;
+        }
+        case AStr_LCD20x4: {
+            static const char flashStr[] PROGMEM = "LCD20x4";
+            return flashStr;
+        }
+        case AStr_SSD1305: {
+            static const char flashStr[] PROGMEM = "SSD1305";
+            return flashStr;
+        }
+        case AStr_SSD1305x32Ada: {
+            static const char flashStr[] PROGMEM = "SSD1305x32Ada";
+            return flashStr;
+        }
+        case AStr_SSD1305x64Ada: {
+            static const char flashStr[] PROGMEM = "SSD1305x64Ada";
+            return flashStr;
+        }
+        case AStr_SSD1306: {
+            static const char flashStr[] PROGMEM = "SSD1306";
+            return flashStr;
+        }
+        case AStr_SH1106: {
+            static const char flashStr[] PROGMEM = "SH1106";
+            return flashStr;
+        }
+        case AStr_CustomOLED: {
+            static const char flashStr[] PROGMEM = "CustomOLED";
+            return flashStr;
+        }
+        case AStr_SSD1607: {
+            static const char flashStr[] PROGMEM = "SSD1607";
+            return flashStr;
+        }
+        case AStr_IL3820: {
+            static const char flashStr[] PROGMEM = "IL3820";
+            return flashStr;
+        }
+        case AStr_IL3820V2: {
+            static const char flashStr[] PROGMEM = "IL3820V2";
+            return flashStr;
+        }
+        case AStr_ST7735: {
+            static const char flashStr[] PROGMEM = "ST7735";
+            return flashStr;
+        }
+        case AStr_ST7789: {
+            static const char flashStr[] PROGMEM = "ST7789";
+            return flashStr;
+        }
+        case AStr_ILI9341: {
+            static const char flashStr[] PROGMEM = "ILI9341";
+            return flashStr;
+        }
+        case AStr_RotaryEncoder: {
+            static const char flashStr[] PROGMEM = "RotaryEncoder";
+            return flashStr;
+        }
+        case AStr_UpDownButtons: {
+            static const char flashStr[] PROGMEM = "UpDownButtons";
+            return flashStr;
+        }
+        case AStr_UpDownESP32Touch: {
+            static const char flashStr[] PROGMEM = "UpDownESP32Touch";
+            return flashStr;
+        }
+        case AStr_AnalogJoystick: {
+            static const char flashStr[] PROGMEM = "AnalogJoystick";
+            return flashStr;
+        }
+        case AStr_Matrix2x2: {
+            static const char flashStr[] PROGMEM = "Matrix2x2";
+            return flashStr;
+        }
+        case AStr_Matrix3x4: {
+            static const char flashStr[] PROGMEM = "Matrix3x4";
+            return flashStr;
+        }
+        case AStr_Matrix4x4: {
+            static const char flashStr[] PROGMEM = "Matrix4x4";
+            return flashStr;
+        }
+        case AStr_ResistiveTouch: {
+            static const char flashStr[] PROGMEM = "ResistiveTouch";
+            return flashStr;
+        }
+        case AStr_TouchScreen: {
+            static const char flashStr[] PROGMEM = "TouchScreen";
+            return flashStr;
+        }
+        case AStr_TFTTouch: {
+            static const char flashStr[] PROGMEM = "TFTTouch";
+            return flashStr;
+        }
+        case AStr_RemoteControl: {
+            static const char flashStr[] PROGMEM = "RemoteControl";
             return flashStr;
         }
         case AStr_Count: break;

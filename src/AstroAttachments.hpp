@@ -173,41 +173,20 @@ void AstroSignalAttachment<ParameterType,Slots>::setHandleSlot(const Slot<Parame
 }
 
 
-inline Astro_UnitsType AstroActuatorAttachment::getActivationUnits()
-{
-    return resolve() && get()->getUserCalibrationData() ? get()->getUserCalibrationData()->calibrationUnits : Astro_UnitsType_Raw_1;
-}
-
 inline float AstroActuatorAttachment::getActiveDriveIntensity()
 {
     return resolve() ? get()->getDriveIntensity() : 0.0f;
 }
 
-inline float AstroActuatorAttachment::getActiveCalibratedValue()
-{
-    return resolve() ? get()->getCalibratedValue() : 0.0f;
-}
-
 inline float AstroActuatorAttachment::getSetupDriveIntensity() const
 {
-    return _actSetup.intensity;
-}
-
-inline float AstroActuatorAttachment::getSetupCalibratedValue()
-{
-    return resolve() ? get()->calibrationTransform(_actSetup.intensity) : 0.0f;
+    return _actSetup.getDriveIntensity();
 }
 
 
 inline Astro_TriggerState AstroTriggerAttachment::getTriggerState(bool poll)
 {
     return resolve() ? get()->getTriggerState(poll) : Astro_TriggerState_Undefined;
-}
-
-
-inline Astro_DrivingState AstroDriverAttachment::getDrivingState(bool poll)
-{
-    return resolve() ? get()->getDrivingState(poll) : Astro_DrivingState_Undefined;
 }
 
 #endif // /ifndef AstroAttachments_HPP

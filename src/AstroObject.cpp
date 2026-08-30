@@ -8,7 +8,7 @@
 AstroObject *newObjectFromData(const AstroData *dataIn)
 {
     if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
 
     if (dataIn && dataIn->isObjectData()) {
         switch (dataIn->id.object.idType) {
@@ -94,7 +94,7 @@ void AstroObject::handleLowMemory()
 AstroData *AstroObject::newSaveData()
 {
     auto data = allocateData();
-    ASTRO_SOFT_ASSERT(data, SFP(AStr_AllocationFailure));
+    ASTRO_SOFT_ASSERT(data, SFP(AStr_Err_AllocationFailure));
     if (data) { saveToData(data); }
     return data;
 }
@@ -105,7 +105,7 @@ void AstroObject::allocateLinkages(size_t size)
         Pair<AstroObject *, int8_t> *newLinks = size ? new Pair<AstroObject *, int8_t>[size] : nullptr;
 
         if (size) {
-            ASTRO_HARD_ASSERT(newLinks, SFP(AStr_AllocationFailure));
+            ASTRO_HARD_ASSERT(newLinks, SFP(AStr_Err_AllocationFailure));
 
             aposi_t linksIndex = 0;
             if (_links) {

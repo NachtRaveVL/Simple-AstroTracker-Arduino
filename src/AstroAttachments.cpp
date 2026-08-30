@@ -4,7 +4,6 @@
 */
 
 #include "Astruino.h"
-#include "Astruino.h"
 #include "AstroCoreLogic.h"
 
 AstroDLinkObject::AstroDLinkObject()
@@ -142,19 +141,9 @@ void AstroActuatorAttachment::updateIfNeeded(bool poll)
 
 void AstroActuatorAttachment::setupActivation(float value, millis_t duration, bool force)
 {
-    if (resolve()) {
-        value = get()->calibrationInvTransform(value);
-
-        if (get()->isMotorType()) {
-            // Keep direction selection tolerant of floating-point noise around a stopped command.
-            int direction = helioDirectionForOffset(value, FLT_EPSILON);
-            setupActivation(AstroActivation(direction > 0 ? Astro_DirectionMode_Forward : direction < 0 ? Astro_DirectionMode_Reverse : Astro_DirectionMode_Stop,
-                                            fabsf(value), duration, (force ? Astro_ActivationFlags_Forced : Astro_ActivationFlags_None)));
-            return;
-        }
-    }
-
-    setupActivation(AstroActivation(Astro_DirectionMode_Forward, value, duration, (force ? Astro_ActivationFlags_Forced : Astro_ActivationFlags_None)));
+    int direction = astroDirectionForOffset(value, FLT_EPSILON);
+    setupActivation(AstroActivation(direction > 0 ? Astro_DirectionMode_Forward : direction < 0 ? Astro_DirectionMode_Reverse : Astro_DirectionMode_Stop,
+                                    fabsf(value), duration, (force ? Astro_ActivationFlags_Forced : Astro_ActivationFlags_None)));
 }
 
 void AstroActuatorAttachment::enableActivation()
@@ -177,23 +166,19 @@ void AstroActuatorAttachment::setUpdateSlot(const Slot<AstroActuatorAttachment *
 void AstroActuatorAttachment::applySetup()
 {
     if (_actSetup.isValid()) {
-        if (isFPEqual(_rateMultiplier, 1.0f)) {
-            _actHandle.activation = _actSetup;
-        } else {
-            _actHandle.activation.direction = _actSetup.direction;
-            _actHandle.activation.flags = _actSetup.flags;
+        _actHandle.activation.direction = _actSetup.direction;
+        _actHandle.activation.flags = _actSetup.flags;
 
-            if (resolve() && get()->isAnyBinaryClass()) { // Duration based change for rate multiplier
-                _actHandle.activation.intensity = _actSetup.intensity;
-                if (!_actHandle.isUntimed()) {
-                    _actHandle.activation.duration = _actSetup.duration * _rateMultiplier;
-                } else { // cannot directly use rate multiplier
-                    _actHandle.activation.duration = _actSetup.duration;
-                }
-            } else { // Intensity based change for rate multiplier
-                _actHandle.activation.intensity = _actSetup.intensity * _rateMultiplier;
+        if (resolve() && (get()->classType == AstroActuator::Digital || get()->classType == AstroActuator::RelayMotor)) {
+            _actHandle.activation.intensity = _actSetup.intensity;
+            if (!_actHandle.isUntimed()) {
+                _actHandle.activation.duration = _actSetup.duration * _rateMultiplier;
+            } else {
                 _actHandle.activation.duration = _actSetup.duration;
             }
+        } else {
+            _actHandle.activation.intensity = _actSetup.intensity * _rateMultiplier;
+            _actHandle.activation.duration = _actSetup.duration;
         }
 
         if (isActivated() && resolve()) { get()->setNeedsUpdate(); }
@@ -281,6 +266,26 @@ void AstroSensorAttachment::handleMeasurement(const AstroMeasurement *measuremen
 }
 
 
+AstroAxisDriverAttachment::AstroAxisDriverAttachment(AstroObjInterface *parent, aposi_t axisIndex)
+    : AstroSubObject(parent), _driver(), _axisIndex(axisIndex)
+{ ; }
+
+void AstroAxisDriverAttachment::setTargetDegrees(double targetDegrees)
+{
+    if (_driver) { _driver->setTargetDegrees(targetDegrees); }
+}
+
+void AstroAxisDriverAttachment::stop()
+{
+    if (_driver) { _driver->stop(); }
+}
+
+double AstroAxisDriverAttachment::getTargetDegrees() const
+{
+    return _driver ? _driver->getTargetDegrees() : 0.0;
+}
+
+
 AstroTriggerAttachment::AstroTriggerAttachment(AstroObjInterface *parent, aposi_t subIndex)
     : AstroSignalAttachment<Astro_TriggerState, ASTRO_TRIGGER_SIGNAL_SLOTS>(parent, subIndex, &AstroTrigger::getTriggerSignal)
 { ; }
@@ -298,18 +303,8 @@ void AstroTriggerAttachment::updateIfNeeded(bool poll)
 }
 
 
-AstroDriverAttachment::AstroDriverAttachment(AstroObjInterface *parent, aposi_t subIndex)
-    : AstroSignalAttachment<Astro_DrivingState, ASTRO_DRIVER_SIGNAL_SLOTS>(parent, subIndex, &AstroDriver::getDrivingSignal)
-{ ; }
-
-AstroDriverAttachment::AstroDriverAttachment(const AstroDriverAttachment &attachment)
-    : AstroSignalAttachment<Astro_DrivingState, ASTRO_DRIVER_SIGNAL_SLOTS>(attachment)
-{ ; }
-
-AstroDriverAttachment::~AstroDriverAttachment()
-{ ; }
-
-void AstroDriverAttachment::updateIfNeeded(bool poll)
+AstroObservationDevice *AstroObservationDeviceAttachment::get()
 {
-    if (poll && resolve()) { get()->update(); }
+    auto object = getObject();
+    return object ? static_cast<AstroObservationDevice *>(object.get()) : nullptr;
 }

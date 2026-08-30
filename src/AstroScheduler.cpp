@@ -6,6 +6,24 @@
 #include "Astruino.h"
 #include "AstroUtils.h"
 
+
+static String astroSchedulerStageToString(Astro_SchedulerStage stage)
+{
+    switch (stage) {
+        case Astro_SchedulerStage_DayStowed: return SFP(AStr_DayStowed);
+        case Astro_SchedulerStage_Deploying: return SFP(AStr_Deploying);
+        case Astro_SchedulerStage_Cooling: return SFP(AStr_Cooling);
+        case Astro_SchedulerStage_Slewing: return SFP(AStr_Slewing);
+        case Astro_SchedulerStage_Settling: return SFP(AStr_Settling);
+        case Astro_SchedulerStage_Observing: return SFP(AStr_Observing);
+        case Astro_SchedulerStage_Warming: return SFP(AStr_Warming);
+        case Astro_SchedulerStage_Stowing: return SFP(AStr_Stowing);
+        case Astro_SchedulerStage_SafeStowed: return SFP(AStr_SafeStowed);
+        case Astro_SchedulerStage_Fault: return SFP(AStr_Fault);
+        default: return String();
+    }
+}
+
 AstroSchedulerConfig::AstroSchedulerConfig()
     : deploySunAltitudeDegrees(ASTRO_SCH_DEPLOY_SUN_ALT_DEG),
       stowSunAltitudeDegrees(ASTRO_SCH_STOW_SUN_ALT_DEG),
@@ -16,7 +34,8 @@ AstroSchedulerConfig::AstroSchedulerConfig()
 
 AstroScheduler::AstroScheduler()
     : _mount(nullptr), _cover(nullptr), _device(nullptr), _thermal(nullptr),
-      _safetyTrigger(nullptr), _logger(nullptr), _targetType(Astro_TargetType_M42), _config(),
+      _safetyTrigger(nullptr), _targetType(Astro_TargetType_M42),
+      _needsScheduling(false), _lastDay{0},
       _stage(Astro_SchedulerStage_DayStowed), _stageStart(0), _settleStart(0), _lastEnvReport(0)
 { ; }
 
@@ -45,10 +64,6 @@ void AstroScheduler::setSafetyTrigger(SharedPtr<AstroTrigger> trigger)
     _safetyTrigger.setObject(trigger);
 }
 
-void AstroScheduler::setLogger(AstroLogger *logger)
-{
-    _logger = logger;
-}
 
 void AstroScheduler::setTarget(Astro_TargetType targetType)
 {
@@ -58,7 +73,22 @@ void AstroScheduler::setTarget(Astro_TargetType targetType)
 
 void AstroScheduler::setConfig(const AstroSchedulerConfig &config)
 {
-    _config = config;
+    ASTRO_SOFT_ASSERT(hasSchedulerData(), SFP(AStr_Err_NotYetInitialized));
+    if (hasSchedulerData() &&
+        (!isFPEqual(schedulerData()->deploySunAltitudeDegrees, config.deploySunAltitudeDegrees) ||
+         !isFPEqual(schedulerData()->stowSunAltitudeDegrees, config.stowSunAltitudeDegrees) ||
+         !isFPEqual(schedulerData()->alignmentToleranceDegrees, config.alignmentToleranceDegrees) ||
+         schedulerData()->settleSeconds != config.settleSeconds ||
+         schedulerData()->reportIntervalSeconds != config.reportIntervalSeconds)) {
+        schedulerData()->deploySunAltitudeDegrees = config.deploySunAltitudeDegrees;
+        schedulerData()->stowSunAltitudeDegrees = config.stowSunAltitudeDegrees;
+        schedulerData()->alignmentToleranceDegrees = config.alignmentToleranceDegrees;
+        schedulerData()->settleSeconds = config.settleSeconds;
+        schedulerData()->reportIntervalSeconds = config.reportIntervalSeconds;
+
+        setNeedsScheduling();
+        Astruino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+    }
 }
 
 void AstroScheduler::unresolveAny(AstroObject *object)
@@ -75,27 +105,67 @@ void AstroScheduler::enterStage(Astro_SchedulerStage stage, int64_t unixTime)
     _stage = stage;
     _stageStart = unixTime;
     _settleStart = 0;
-    if (_logger) {
-        AstroString stageName = schedulerStageToString(stage, true);
-        if (!stageName.empty()) { _logger->logMessage(unixTime, stageName.c_str()); }
+    if (getLogger()) {
+        String stageName = astroSchedulerStageToString(stage);
+        if (stageName.length()) { getLogger()->logMessage(stageName); }
     }
 }
 
 void AstroScheduler::reportEnvironment(int64_t unixTime, const AstroThermalReadings &readings,
                                        const AstroThermalOutputs &outputs)
 {
-    if (!_logger || !_config.reportIntervalSeconds) { return; }
-    if (_lastEnvReport && unixTime < _lastEnvReport + _config.reportIntervalSeconds) { return; }
-    _logger->logEnvironment(unixTime, readings.ambientTemperatureC, readings.humidityPercent, outputs.dewPointC,
-                            readings.opticsTemperatureC, readings.cameraSensorTemperatureC, readings.cameraBodyTemperatureC,
-                            outputs.dewHeaterPower, outputs.cameraCoolingPower, outputs.cameraFanPower);
+    if (!getLogger() || !schedulerData()->reportIntervalSeconds) { return; }
+    if (_lastEnvReport && unixTime < _lastEnvReport + schedulerData()->reportIntervalSeconds) { return; }
+    String readingsReport;
+    readingsReport.reserve(160);
+    readingsReport.concat(F(" ambientC=")); readingsReport.concat(String(readings.ambientTemperatureC, 2));
+    readingsReport.concat(F(" humidity=")); readingsReport.concat(String(readings.humidityPercent, 2));
+    readingsReport.concat(F(" dewPointC=")); readingsReport.concat(String(outputs.dewPointC, 2));
+    if (readings.opticsTemperatureC < 900.0) {
+        readingsReport.concat(F(" opticsC=")); readingsReport.concat(String(readings.opticsTemperatureC, 2));
+    }
+    if (readings.cameraSensorTemperatureC < 900.0) {
+        readingsReport.concat(F(" cameraSensorC=")); readingsReport.concat(String(readings.cameraSensorTemperatureC, 2));
+    }
+    if (readings.cameraBodyTemperatureC < 900.0) {
+        readingsReport.concat(F(" cameraBodyC=")); readingsReport.concat(String(readings.cameraBodyTemperatureC, 2));
+    }
+
+    String outputsReport;
+    outputsReport.reserve(96);
+    if (outputs.dewHeaterPower >= 0.0f) {
+        outputsReport.concat(F(" dewHeater=")); outputsReport.concat(String(outputs.dewHeaterPower * 100.0f, 1)); outputsReport.concat('%');
+    }
+    if (outputs.cameraCoolingPower >= 0.0f) {
+        outputsReport.concat(F(" cameraCooling=")); outputsReport.concat(String(outputs.cameraCoolingPower * 100.0f, 1)); outputsReport.concat('%');
+    }
+    if (outputs.cameraFanPower >= 0.0f) {
+        outputsReport.concat(F(" cameraFan=")); outputsReport.concat(String(outputs.cameraFanPower * 100.0f, 1)); outputsReport.concat('%');
+    }
+
+    getLogger()->logMessage(SFP(AStr_Log_EnvReport), readingsReport, outputsReport);
     _lastEnvReport = unixTime;
 }
 
 void AstroScheduler::update()
 {
+    if (!hasSchedulerData()) { return; }
+
     const int64_t unixTime = (int64_t)unixNow();
     if (unixTime <= 0) { return; }
+
+    DateTime currTime = localTime(unixTime);
+    if (!(_lastDay[0] == currTime.year()-2000 &&
+          _lastDay[1] == currTime.month() &&
+          _lastDay[2] == currTime.day())) {
+        // only log uptime upon actual day change and if uptime has been at least 1d
+        if (getLogger()->getSystemUptime() >= SECS_PER_DAY) {
+            getLogger()->logSystemUptime();
+        }
+        broadcastDateChange();
+    }
+
+    if (needsScheduling()) { performScheduling(); }
 
     AstroEquatorialCoordinates sunCoordinates;
     double sunAltitudeDegrees = 90.0;
@@ -126,7 +196,7 @@ void AstroScheduler::update()
             if (_thermal) { _thermal->setMode(Astro_ThermalMode_DayStorage); }
             if (_mount) { _mount->park(); }
             if (_cover && (!_mount || _mount->isParked())) { _cover->close(); }
-            if (sunAltitudeDegrees <= _config.deploySunAltitudeDegrees &&
+            if (sunAltitudeDegrees <= schedulerData()->deploySunAltitudeDegrees &&
                 (!_cover || _cover->isClosed()) && (!_mount || _mount->isParked())) {
                 if (_cover) { _cover->open(); }
                 enterStage(Astro_SchedulerStage_Deploying, unixTime);
@@ -156,23 +226,23 @@ void AstroScheduler::update()
 
         case Astro_SchedulerStage_Slewing: {
             if (_mount) { _mount->track(); }
-            if (!_mount || _mount->isAligned(_config.alignmentToleranceDegrees)) {
+            if (!_mount || _mount->isAligned(schedulerData()->alignmentToleranceDegrees)) {
                 enterStage(Astro_SchedulerStage_Settling, unixTime);
                 _settleStart = unixTime;
             }
         } break;
 
         case Astro_SchedulerStage_Settling: {
-            bool aligned = !_mount || _mount->isAligned(_config.alignmentToleranceDegrees);
+            bool aligned = !_mount || _mount->isAligned(schedulerData()->alignmentToleranceDegrees);
             if (!aligned) { _settleStart = unixTime; }
-            else if (unixTime >= _settleStart + _config.settleSeconds) {
+            else if (unixTime >= _settleStart + schedulerData()->settleSeconds) {
                 if (_device && _device->ready()) { _device->startObservation(); }
                 enterStage(Astro_SchedulerStage_Observing, unixTime);
             }
         } break;
 
         case Astro_SchedulerStage_Observing: {
-            if (sunAltitudeDegrees >= _config.stowSunAltitudeDegrees) {
+            if (sunAltitudeDegrees >= schedulerData()->stowSunAltitudeDegrees) {
                 if (_device) { _device->stopObservation(); }
                 if (_mount) { _mount->park(); }
                 if (_thermal) { _thermal->setMode(Astro_ThermalMode_DayStorage); }
@@ -213,6 +283,58 @@ void AstroScheduler::update()
         default: break;
     }
 }
+
+void AstroScheduler::updateDayTracking()
+{
+    DateTime currTime = localTime(unixNow());
+    _lastDay[0] = currTime.year()-2000;
+    _lastDay[1] = currTime.month();
+    _lastDay[2] = currTime.day();
+
+    setNeedsScheduling();
+    Astruino::_activeInstance->setNeedsRedraw();
+}
+
+void AstroScheduler::performScheduling()
+{
+    ASTRO_HARD_ASSERT(hasSchedulerData(), SFP(AStr_Err_NotYetInitialized));
+
+    _needsScheduling = false;
+}
+
+void AstroScheduler::broadcastDateChange()
+{
+    updateDayTracking();
+
+    #ifdef ASTRO_USE_MULTITASKING
+        // these can take a while to complete
+        taskManager.scheduleOnce(0, []{
+            if (getController()) {
+                getController()->broadcastDateChanged();
+            }
+            yield();
+            if (getLogger()) {
+                getLogger()->notifyDateChanged();
+            }
+            yield();
+            if (getPublisher()) {
+                getPublisher()->notifyDateChanged();
+            }
+            yield();
+        });
+    #else
+        if (getController()) {
+            getController()->broadcastDateChanged();
+        }
+        if (getLogger()) {
+            getLogger()->notifyDateChanged();
+        }
+        if (getPublisher()) {
+            getPublisher()->notifyDateChanged();
+        }
+    #endif
+}
+
 
 AstroSchedulerSubData::AstroSchedulerSubData()
     : AstroSchedulerConfig(), AstroSubData(0)

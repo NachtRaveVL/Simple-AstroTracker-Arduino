@@ -65,7 +65,7 @@ public:
     inline void logStatus(const AstroObjInterface *obj, const String &statusString = String());
 
     void logSystemUptime();
-    inline void logSystemSave() { logMessage(SFP(Str_Log_SystemDataSaved)); }
+    inline void logSystemSave() { logMessage(SFP(AStr_Log_SystemDataSaved)); }
 
     void logMessage(const String &msg, const String &suffix1 = String(), const String &suffix2 = String());
     void logWarning(const String &warn, const String &suffix1 = String(), const String &suffix2 = String());

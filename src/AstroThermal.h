@@ -6,7 +6,11 @@
 #ifndef AstroThermal_H
 #define AstroThermal_H
 
-#include "AstroAttachments.h"
+struct AstroThermalReadings;
+struct AstroThermalOutputs;
+class AstroThermalBalancer;
+
+#include "Astruino.h"
 
 // Thermal Readings
 // Current environmental and equipment temperatures used by thermal balancing.

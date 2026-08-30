@@ -8,9 +8,6 @@
 
 class AstroScheduler;
 struct AstroSchedulerSubData;
-struct AstroProcess;
-struct AstroFeeding;
-struct AstroLighting;
 
 #include "Astruino.h"
 
@@ -45,11 +42,14 @@ public:
     void setObservationDevice(SharedPtr<AstroCameraTrigger> device);
     void setThermalBalancer(AstroThermalBalancer *thermal);
     void setSafetyTrigger(SharedPtr<AstroTrigger> trigger);
-    void setLogger(AstroLogger *logger);
     void setTarget(Astro_TargetType targetType);
     void setConfig(const AstroSchedulerConfig &config);
 
     void update();
+
+    inline void setNeedsScheduling() { _needsScheduling = hasSchedulerData(); }
+    inline bool needsScheduling() { return _needsScheduling; }
+
     void unresolveAny(AstroObject *object);
 
     inline Astro_SchedulerStage getStage() const { return _stage; }
@@ -62,13 +62,22 @@ protected:
     SharedPtr<AstroCameraTrigger> _device;                  // Observation device
     AstroThermalBalancer *_thermal;                         // Thermal balancer, not owned
     AstroTriggerAttachment _safetyTrigger;                  // Observing safety trigger attachment
-    AstroLogger *_logger;                                   // System logger, not owned
     Astro_TargetType _targetType;                           // Active observation target
-    AstroSchedulerConfig _config;                           // Active scheduler configuration
+    bool _needsScheduling;                                  // Needs rescheduling tracking flag
+    aposi_t _lastDay[3];                                    // Last day tracking for rescheduling (Y-2k,M,D)
     Astro_SchedulerStage _stage;                            // Current scheduler stage
     int64_t _stageStart;                                    // Stage start timestamp
     int64_t _settleStart;                                   // Alignment settle start timestamp
     int64_t _lastEnvReport;                                 // Last environment report timestamp
+
+    friend class Astruino;
+
+    inline AstroSchedulerSubData *schedulerData() const;
+    inline bool hasSchedulerData() const;
+
+    void updateDayTracking();
+    void performScheduling();
+    void broadcastDateChange();
 
     void enterStage(Astro_SchedulerStage stage, int64_t unixTime);
     void reportEnvironment(int64_t unixTime, const AstroThermalReadings &readings,

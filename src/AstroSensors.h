@@ -6,30 +6,54 @@
 #ifndef AstroSensors_H
 #define AstroSensors_H
 
+class AstroSensor;
+class AstroValueSensor;
+class AstroCallbackSensor;
+class AstroDigitalSensor;
+class AstroAnalogSensor;
+
 struct AstroSensorData;
 
+#include "Astruino.h"
 #include "AstroDatas.h"
-#include "AstroMeasurements.h"
-#include "AstroObject.h"
-#include "AstroPins.h"
 
 // Creates sensor object from passed sensor data (return ownership transfer - user code *must* delete returned object)
 extern AstroSensor *newSensorObjectFromData(const AstroSensorData *dataIn);
 
+// Returns the default measurement units for a sensor type.
+extern Astro_UnitsType defaultUnitsForSensor(Astro_SensorType sensorType, uint8_t measurementRow = 0,
+                                              Astro_MeasurementMode measureMode = Astro_MeasurementMode_Undefined);
+// Returns the default measurement category for a sensor type.
+extern Astro_UnitsCategory defaultCategoryForSensor(Astro_SensorType sensorType, uint8_t measurementRow = 0);
+
 // Sensor Base
 // Base class for measurements supplied by pins, callbacks, or external sensor adapters.
-class AstroSensor : public AstroObject, public AstroSensorObjectInterface, public AstroMeasurementUnitsInterface {
+class AstroSensor : public AstroObject, public AstroSensorObjectInterface,
+                    public AstroMeasurementUnitsInterfaceStorageSingle {
 public:
     const enum : signed char { Value, Callback, Digital, Analog, Unknown = -1 } classType;
+    inline bool isValueClass() const { return classType == Value; }
+    inline bool isCallbackClass() const { return classType == Callback; }
+    inline bool isDigitalClass() const { return classType == Digital; }
+    inline bool isBinaryClass() const { return isDigitalClass(); }
+    inline bool isAnalogClass() const { return classType == Analog; }
+    inline bool isUnknownClass() const { return classType <= Unknown; }
+
     AstroSensor(Astro_SensorType sensorType = Astro_SensorType_Undefined,
                 Astro_UnitsType units = Astro_UnitsType_Undefined,
                 aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG,
                 int classTypeIn = Unknown);
     AstroSensor(const AstroSensorData *dataIn);
-    virtual ~AstroSensor() { ; }
+    virtual ~AstroSensor() { _isTakingMeasure = false; }
 
     virtual bool readValue(double *valueOut) = 0;
-    virtual bool poll(int64_t timestamp = 0, aframe_t frame = 1) override;
+    virtual bool takeMeasurement(bool force = false) override;
+    virtual const AstroMeasurement *getMeasurement(bool poll = false) override;
+    virtual bool isTakingMeasurement() const override { return _isTakingMeasure; }
+    virtual bool needsPolling(aframe_t allowance = 0) const override;
+    virtual void update() override;
+
+    void yieldForMeasurement(millis_t timeout = ASTRO_DATA_LOOP_INTERVAL);
 
     void setUserCalibrationData(AstroCalibrationData *userCalibrationData);
     inline const AstroCalibrationData *getUserCalibrationData() const { return _calibrationData; }
@@ -47,21 +71,23 @@ public:
     inline void calibrationInvTransform(AstroSingleMeasurement *measurementInOut) const { if (measurementInOut && _calibrationData) { _calibrationData->inverseTransform(measurementInOut); } }
 
     inline Astro_SensorType getSensorType() const { return _sensorType; }
-    inline Astro_UnitsType getUnits() const { return _measurement.units; }
-    inline void setUnits(Astro_UnitsType units) { _measurement.units = units; }
-    virtual void setMeasurementUnits(Astro_UnitsType units, uint8_t measurementRow = 0) override { if (measurementRow == 0) { setUnits(units); } }
-    virtual Astro_UnitsType getMeasurementUnits(uint8_t measurementRow = 0) const override { return measurementRow == 0 ? getUnits() : Astro_UnitsType_Undefined; }
-    virtual const AstroSingleMeasurement &getMeasurement() const override { return _measurement; }
+    inline Astro_UnitsType getUnits() const { return getMeasurementUnits(); }
+    inline void setUnits(Astro_UnitsType units) { setMeasurementUnits(units); }
+    virtual void setMeasurementUnits(Astro_UnitsType units, uint8_t measurementRow = 0) override;
+    virtual Astro_UnitsType getMeasurementUnits(uint8_t measurementRow = 0) const override;
     Signal<const AstroMeasurement *, ASTRO_SENSOR_SIGNAL_SLOTS> &getMeasurementSignal();
 
 protected:
     Astro_SensorType _sensorType;                           // Sensor type
-    AstroSingleMeasurement _measurement;                   // Latest sensor measurement
+    AstroSingleMeasurement _lastMeasurement;                // Latest sensor measurement
+    bool _isTakingMeasure;                                  // Measurement in progress flag
     const AstroCalibrationData *_calibrationData;           // Calibration data
     Signal<const AstroMeasurement *, ASTRO_SENSOR_SIGNAL_SLOTS> _measurementSignal; // Measurement signal
 
+    void finishMeasurement(const AstroSingleMeasurement &measurement);
+
     virtual AstroData *allocateData() const override;
-    virtual void saveToData(AstroData *dataOut) const override;
+    virtual void saveToData(AstroData *dataOut) override;
 };
 
 // Value Sensor
@@ -102,20 +128,46 @@ protected:
 };
 
 // Digital Sensor
-// Reads a binary measurement from a digital input pin.
+// Reads a binary measurement from a digital input pin. Digital inputs support the same
+// interrupt-driven notification path and minimum-stable-time filtering as sibling libraries.
 class AstroDigitalSensor : public AstroSensor {
 public:
     AstroDigitalSensor(AstroDigitalPin inputPin = AstroDigitalPin(),
                        Astro_SensorType sensorType = Astro_SensorType_Undefined,
                        aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);
     AstroDigitalSensor(const AstroSensorData *dataIn);
+    virtual ~AstroDigitalSensor();
+
     virtual bool readValue(double *valueOut) override;
+    virtual bool takeMeasurement(bool force = false) override;
+
+    virtual void setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t measurementRow = 0) override;
+    virtual Astro_UnitsType getMeasurementUnits(uint8_t measurementRow = 0) const override;
+
+    bool tryRegisterISR(bool anyChange = false);
+    inline void notifyISRTriggered() { takeMeasurement(true); }
+
+    void setStateStableTime(uint16_t stableTimeMs);
+    inline uint16_t getStateStableTime() const { return _stateStableTimeMs; }
+    inline bool isUsingISR() const { return _usingISR; }
+    inline bool isActive(bool poll = false) { return getMeasurementValue(getMeasurement(poll)) >= 0.5; }
     inline const AstroDigitalPin &getInputPin() const { return _inputPin; }
+    Signal<bool, ASTRO_SENSOR_SIGNAL_SLOTS> &getStateSignal();
+
 protected:
-    AstroDigitalPin _inputPin;                             // Input pin
-    virtual void saveToData(AstroData *dataOut) const override;
+    AstroDigitalPin _inputPin;                              // Input pin
+    bool _usingISR;                                         // Using ISR flag
+    bool _pendingState;                                     // Pending stable-state candidate
+    bool _hasPendingState;                                  // Pending state exists flag
+    millis_t _pendingStateStart;                            // Pending state start time
+    uint16_t _stateStableTimeMs;                            // Required stable time before accepting a state change
+    Signal<bool, ASTRO_SENSOR_SIGNAL_SLOTS> _stateSignal;   // Binary state-change signal
+
+    virtual void saveToData(AstroData *dataOut) override;
 };
 
+// Analog Sensor
+// Reads a normalized analog value and applies optional calibration/unit conversion.
 class AstroAnalogSensor : public AstroSensor {
 public:
     AstroAnalogSensor(AstroAnalogPin inputPin = AstroAnalogPin(),
@@ -128,7 +180,7 @@ public:
     inline const AstroAnalogPin &getInputPin() const { return _inputPin; }
 protected:
     AstroAnalogPin _inputPin;                              // Input pin
-    virtual void saveToData(AstroData *dataOut) const override;
+    virtual void saveToData(AstroData *dataOut) override;
 };
 
 
@@ -137,6 +189,8 @@ struct AstroSensorData : public AstroObjectData
 {
     Astro_UnitsType measurementUnits;                       // Measurement units
     AstroPinData inputPin;                                  // Input pin
+    bool usingISR;                                          // Using ISR flag (digital sensors)
+    uint16_t stateStableTimeMs;                             // Minimum stable time before state change is accepted
 
     AstroSensorData();
     virtual void toJSONObject(JsonObject &objectOut) const override;

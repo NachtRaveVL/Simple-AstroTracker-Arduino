@@ -25,18 +25,18 @@ enum Astro_String : uint16_t {
     AStr_HARD,                               // " HARD"
 
     // Defaults
-    AStr_Astruino,                           // "Astruino"
-    AStr_AstruinoDotCfg,                     // "Astruino.cfg"
+    AStr_Default_SystemName,                 // "Astruino"
+    AStr_Default_ConfigFilename,             // "Astruino.cfg"
 
 
     // Errors
-    AStr_AllocationFailure,                  // "Allocation failure"
-    AStr_AlreadyInitialized,                 // "Already initialized"
-    AStr_ExportFailure,                      // "Export failure"
-    AStr_ImportFailure,                      // "Import failure"
-    AStr_InvalidParameter,                   // "Invalid parameter"
-    AStr_NotYetInitialized,                  // "Not yet initialized"
-    AStr_OperationFailure,                   // "Operation failure"
+    AStr_Err_AllocationFailure,                  // "Allocation failure"
+    AStr_Err_AlreadyInitialized,                 // "Already initialized"
+    AStr_Err_ExportFailure,                      // "Export failure"
+    AStr_Err_ImportFailure,                      // "Import failure"
+    AStr_Err_InvalidParameter,                   // "Invalid parameter"
+    AStr_Err_NotYetInitialized,                  // "Not yet initialized"
+    AStr_Err_OperationFailure,                   // "Operation failure"
     AStr_Err_AssertionFailure,               // "Assertion failure: "
     AStr_Err_AssertionFailureHARD,           // "Assertion failure HARD: "
     AStr_Err_DataVersionMismatch,            // "Data version mismatch"
@@ -47,13 +47,13 @@ enum Astro_String : uint16_t {
     AStr_Err_UnsupportedOperation,           // "Unsupported operation"
 
     // Logs
-    AStr_SystemUptimeColon,                  // "System uptime: "
-    AStr_EnvironmentReport,                  // "Environment report"
+    AStr_Log_SystemUptime,                  // "System uptime: "
+    AStr_Log_EnvReport,                  // "Environment report"
     AStr_ObservationStarted,                 // "Observation started"
     AStr_ObservationStopped,                 // "Observation stopped"
     AStr_CoverOpening,                       // "Cover opening"
     AStr_CoverClosing,                       // "Cover closing"
-    AStr_SystemDataSaved,                    // "System data saved"
+    AStr_Log_SystemDataSaved,                    // "System data saved"
     AStr_Log_RTCBatteryFailure,              // "RTC battery failure"
 
     // Log prefixes / fields
@@ -285,6 +285,48 @@ enum Astro_String : uint16_t {
     AStr_W,                                  // "W"
     AStr_V,                                  // "V"
     AStr_A,                                  // "A"
+
+    AStr_Log_HasEnabled,                     // "has enabled"
+    AStr_Log_HasDisabled,                    // "has disabled"
+    AStr_Key_UpdatesPerSec,                  // "updatesPerSec"
+    AStr_Key_DisplayTheme,                   // "displayTheme"
+    AStr_Key_JoystickCalib,                  // "joystickCalib"
+    AStr_Key_UsingISR,                       // "usingISR"
+    AStr_Key_StateStableTimeMs,              // "stateStableTimeMs"
+
+    // Generic family strings ported for controller / UI enum conversion
+    AStr_Disabled,                           // "Disabled"
+    AStr_Err_InitializationFailure,          // "Initialization failure"
+    AStr_AC110V,                             // "AC110V"
+    AStr_AC220V,                             // "AC220V"
+    AStr_DC48V,                              // "DC48V"
+    AStr_DescOrder,                          // "DescOrder"
+    AStr_AscOrder,                           // "AscOrder"
+    AStr_LCD16x2,                            // "LCD16x2"
+    AStr_LCD20x4,                            // "LCD20x4"
+    AStr_SSD1305,                            // "SSD1305"
+    AStr_SSD1305x32Ada,                      // "SSD1305x32Ada"
+    AStr_SSD1305x64Ada,                      // "SSD1305x64Ada"
+    AStr_SSD1306,                            // "SSD1306"
+    AStr_SH1106,                             // "SH1106"
+    AStr_CustomOLED,                         // "CustomOLED"
+    AStr_SSD1607,                            // "SSD1607"
+    AStr_IL3820,                             // "IL3820"
+    AStr_IL3820V2,                           // "IL3820V2"
+    AStr_ST7735,                             // "ST7735"
+    AStr_ST7789,                             // "ST7789"
+    AStr_ILI9341,                            // "ILI9341"
+    AStr_RotaryEncoder,                      // "RotaryEncoder"
+    AStr_UpDownButtons,                      // "UpDownButtons"
+    AStr_UpDownESP32Touch,                   // "UpDownESP32Touch"
+    AStr_AnalogJoystick,                     // "AnalogJoystick"
+    AStr_Matrix2x2,                          // "Matrix2x2"
+    AStr_Matrix3x4,                          // "Matrix3x4"
+    AStr_Matrix4x4,                          // "Matrix4x4"
+    AStr_ResistiveTouch,                     // "ResistiveTouch"
+    AStr_TouchScreen,                        // "TouchScreen"
+    AStr_TFTTouch,                           // "TFTTouch"
+    AStr_RemoteControl,                      // "RemoteControl"
 
     AStr_Count                               // String count
 };

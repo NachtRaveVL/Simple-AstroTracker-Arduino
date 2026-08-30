@@ -133,9 +133,8 @@ void _setUnixTime(DateTime unixTime, bool isSigTime)
     if (rtc) {
         rtc->adjust(unixTime);
         getController()->notifyRTCTimeUpdated();
-    } else {
-        setTime(unixTime.unixtime());
     }
+    setTime(unixTime.unixtime());
 
     if (getController() && (isSigTime ||
         getLogger()->getSystemInit() <= SECS_YR_2000 ||

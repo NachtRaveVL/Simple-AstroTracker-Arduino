@@ -46,7 +46,7 @@ void AstroPublisher::update()
 
 bool AstroPublisher::beginPublishingToSDCard(String dataFilePrefix)
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
     if (hasPublisherData() && !publisherData()->pubToSDCard) {
         auto sd = Astruino::_activeInstance->getSDCard();
@@ -89,7 +89,7 @@ bool AstroPublisher::beginPublishingToSDCard(String dataFilePrefix)
 
 bool AstroPublisher::beginPublishingToWiFiStorage(String dataFilePrefix)
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
     if (hasPublisherData() && !publisherData()->pubToWiFiStorage) {
         String dataFilename = getYYMMDDFilename(dataFilePrefix, SFP(AStr_csv));
@@ -128,7 +128,7 @@ static uint32_t mqttNow()
 
 bool AstroPublisher::beginPublishingToMQTTClient(MQTTClient &client)
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
     if (hasPublisherData() && !_mqttClient) {
         _mqttClient = &client;
@@ -151,7 +151,7 @@ bool AstroPublisher::beginPublishingToMQTTClient(MQTTClient &client)
 
 void AstroPublisher::publishData(aposi_t columnIndex, AstroSingleMeasurement measurement)
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData() && _dataColumns && _columnSize, SFP(AStr_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData() && _dataColumns && _columnSize, SFP(AStr_Err_NotYetInitialized));
     if (_dataColumns && _columnSize && columnIndex >= 0 && columnIndex < _columnSize) {
         _dataColumns[columnIndex].measurement = measurement;
         publishIfNeeded();
@@ -160,7 +160,7 @@ void AstroPublisher::publishData(aposi_t columnIndex, AstroSingleMeasurement mea
 
 aposi_t AstroPublisher::getColumnIndexStart(akey_t sensorKey)
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData() && _dataColumns && _columnSize, SFP(AStr_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData() && _dataColumns && _columnSize, SFP(AStr_Err_NotYetInitialized));
     if (_dataColumns && _columnSize) {
         for (int columnIndex = 0; columnIndex < _columnSize; ++columnIndex) {
             if (_dataColumns[columnIndex].sensorKey == sensorKey) {
@@ -186,7 +186,7 @@ void AstroPublisher::notifyDateChanged()
 
 void AstroPublisher::advancePollingFrame()
 {
-    ASTRO_HARD_ASSERT(hasPublisherData(), SFP(AStr_NotYetInitialized));
+    ASTRO_HARD_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
     auto pollingFrame = Astruino::_activeInstance->getPollingFrame();
 
@@ -324,7 +324,7 @@ void AstroPublisher::publish(time_t timestamp)
 
 void AstroPublisher::performTabulation()
 {
-    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_NotYetInitialized));
+    ASTRO_SOFT_ASSERT(hasPublisherData(), SFP(AStr_Err_NotYetInitialized));
 
     bool sameOrder = _dataColumns && _columnSize ? true : false;
     int columnSize = 0;
@@ -351,7 +351,7 @@ void AstroPublisher::performTabulation()
         if (_columnSize) {
             if (!_dataColumns) {
                 _dataColumns = new AstroDataColumn[_columnSize];
-                ASTRO_SOFT_ASSERT(_dataColumns, SFP(AStr_AllocationFailure));
+                ASTRO_SOFT_ASSERT(_dataColumns, SFP(AStr_Err_AllocationFailure));
             }
             if (_dataColumns) {
                 int columnIndex = 0;
@@ -363,7 +363,7 @@ void AstroPublisher::performTabulation()
                         auto rowCount = getMeasurementRowCount(measurement);
 
                         for (int rowIndex = 0; rowIndex < rowCount; ++rowIndex) {
-                            ASTRO_HARD_ASSERT(columnIndex < _columnSize, SFP(AStr_OperationFailure));
+                            ASTRO_HARD_ASSERT(columnIndex < _columnSize, SFP(AStr_Err_OperationFailure));
                             _dataColumns[columnIndex].measurement = getAsSingleMeasurement(measurement, rowIndex);
                             _dataColumns[columnIndex].sensorKey = sensor->getKey();
                             columnIndex++;
@@ -418,7 +418,7 @@ void AstroPublisher::resetDataFile()
                         dataFile.print('_');
                         dataFile.print(unitsTypeToSymbol(getMeasurementUnits(sensor->getMeasurement(), measurementRow)));
                     } else {
-                        ASTRO_SOFT_ASSERT(false, SFP(AStr_OperationFailure));
+                        ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_OperationFailure));
                         dataFile.print(SFP(AStr_Undefined));
                     }
                 }
@@ -473,7 +473,7 @@ void AstroPublisher::resetDataFile()
                     dataFileStream.print('_');
                     dataFileStream.print(unitsTypeToSymbol(getMeasurementUnits(sensor->getMeasurement(), measurementRow)));
                 } else {
-                    ASTRO_SOFT_ASSERT(false, SFP(AStr_OperationFailure));
+                    ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_OperationFailure));
                     dataFileStream.print(SFP(AStr_Undefined));
                 }
             }

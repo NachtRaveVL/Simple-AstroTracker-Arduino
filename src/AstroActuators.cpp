@@ -8,7 +8,7 @@
 AstroActuator *newActuatorObjectFromData(const AstroActuatorData *dataIn)
 {
     if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
 
     if (dataIn && dataIn->isObjectData() && dataIn->id.object.idType == (aid_t)AstroIdentity::Actuator) {
         switch (dataIn->id.object.classType) {
@@ -33,14 +33,14 @@ AstroActuator *newActuatorObjectFromData(const AstroActuatorData *dataIn)
 
 AstroActuator::AstroActuator(Astro_ActuatorType actuatorType, aposi_t positionIndex, int classTypeIn)
     : AstroObject(AstroIdentity(actuatorType, positionIndex)), classType((typeof(classType))classTypeIn),
-      _enabled(false), _actuatorType(actuatorType), _enableMode(Astro_EnableMode_Highest), _power(0.0f), _needsUpdate(false), _handles{nullptr},
+      _enabled(false), _actuatorType(actuatorType), _enableMode(Astro_EnableMode_Highest), _power(0.0f), _needsUpdate(false),
       _contPowerUsage(), _parentRail(this)
 { ; }
 
 AstroActuator::AstroActuator(const AstroActuatorData *dataIn)
     : AstroObject(dataIn), classType(dataIn ? (typeof(classType))dataIn->id.object.classType : Unknown),
       _enabled(false), _actuatorType(dataIn ? (Astro_ActuatorType)dataIn->id.object.objType : Astro_ActuatorType_Undefined),
-      _enableMode(dataIn ? dataIn->enableMode : Astro_EnableMode_Highest), _power(0.0f), _needsUpdate(false), _handles{nullptr},
+      _enableMode(dataIn ? dataIn->enableMode : Astro_EnableMode_Highest), _power(0.0f), _needsUpdate(false),
       _contPowerUsage(), _parentRail(this)
 {
     if (dataIn) {
@@ -94,41 +94,22 @@ Signal<AstroActuator *, ASTRO_ACTUATOR_SIGNAL_SLOTS> &AstroActuator::getActivati
 
 void AstroActuator::handleActivation()
 {
-    if (!isEnabled()) {
-        for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
-            if (_handles[index]->checkTime) { _handles[index]->checkTime = 0; }
+    if (_enabled) {
+        getLogger()->logActivation(this);
+    } else {
+        for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+            if ((*handleIter)->checkTime) { (*handleIter)->checkTime = 0; }
         }
-    }
-    _activateSignal.fire(this);
-}
 
-bool AstroActuator::addActivationHandle(AstroActivationHandle *handle)
-{
-    if (!handle) { return false; }
-    for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS; ++i) {
-        if (_handles[i] == handle) { return true; }
-        if (!_handles[i]) {
-            _handles[i] = handle;
-            setNeedsUpdate();
-            return true;
-        }
+        getLogger()->logDeactivation(this);
     }
-    return false;
-}
 
-bool AstroActuator::removeActivationHandle(AstroActivationHandle *handle)
-{
-    for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS; ++i) {
-        if (_handles[i] == handle) {
-            for (size_t j = i; j + 1 < ASTRO_ACTIVATION_HANDLE_SLOTS; ++j) { _handles[j] = _handles[j + 1]; }
-            _handles[ASTRO_ACTIVATION_HANDLE_SLOTS - 1] = nullptr;
-            setNeedsUpdate();
-            return true;
-        }
-    }
-    return false;
+    #ifdef ASTRO_USE_MULTITASKING
+        scheduleSignalFireOnce<AstroActuator *>(getSharedPtr(), _activateSignal, this);
+    #else
+        _activateSignal.fire(this);
+    #endif
 }
-
 
 void AstroActuator::update()
 {
@@ -140,20 +121,23 @@ void AstroActuator::update()
 
     // Update running handles and elapse them as needed, determine forced status, and remove invalid/finished handles
     bool forced = false;
-    for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index];) {
-        AstroActivationHandle *handle = _handles[index];
-        if (_enabled && handle->isActive()) { handle->elapseTo(time); }
-        if (handle->actuator.get() != this || !handle->isValid() || handle->isDone()) {
-            if (handle->actuator.get() == this) { handle->actuator = nullptr; }
-            removeActivationHandle(handle);
-            continue;
+    if (_handles.size()) {
+        for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+            if (_enabled && (*handleIter)->isActive()) {
+                (*handleIter)->elapseTo(time);
+            }
+            if ((*handleIter)->actuator.get() != this || !(*handleIter)->isValid() || (*handleIter)->isDone()) {
+                if ((*handleIter)->actuator.get() == this) { (*handleIter)->actuator = nullptr; }
+                handleIter = _handles.erase(handleIter) - 1;
+                setNeedsUpdate();
+                continue;
+            }
+            forced = forced || (*handleIter)->isForced();
         }
-        forced = forced || handle->isForced();
-        ++index;
     }
 
     // Enablement checking
-    bool canEnable = _handles[0] && (forced || getCanEnable());
+    bool canEnable = _handles.size() && (forced || getCanEnable());
 
     if (!canEnable && (_enabled || _needsUpdate)) { // If enabled and shouldn't be (unless force enabled)
         _disableActuator();
@@ -165,9 +149,9 @@ void AstroActuator::update()
             case Astro_EnableMode_Highest:
             case Astro_EnableMode_DescOrder: {
                 drivingIntensity = -__FLT_MAX__;
-                for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
-                    if (_handles[index]->isValid() && !_handles[index]->isDone()) {
-                        auto handleIntensity = _handles[index]->getDriveIntensity();
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        auto handleIntensity = (*handleIter)->getDriveIntensity();
                         if (handleIntensity > drivingIntensity) { drivingIntensity = handleIntensity; }
                     }
                 }
@@ -176,9 +160,9 @@ void AstroActuator::update()
             case Astro_EnableMode_Lowest:
             case Astro_EnableMode_AscOrder: {
                 drivingIntensity = __FLT_MAX__;
-                for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
-                    if (_handles[index]->isValid() && !_handles[index]->isDone()) {
-                        auto handleIntensity = _handles[index]->getDriveIntensity();
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        auto handleIntensity = (*handleIter)->getDriveIntensity();
                         if (handleIntensity < drivingIntensity) { drivingIntensity = handleIntensity; }
                     }
                 }
@@ -186,9 +170,9 @@ void AstroActuator::update()
 
             case Astro_EnableMode_Average: {
                 int handleCount = 0;
-                for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
-                    if (_handles[index]->isValid() && !_handles[index]->isDone()) {
-                        drivingIntensity += _handles[index]->getDriveIntensity();
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        drivingIntensity += (*handleIter)->getDriveIntensity();
                         ++handleCount;
                     }
                 }
@@ -196,30 +180,27 @@ void AstroActuator::update()
             } break;
 
             case Astro_EnableMode_Multiply: {
-                drivingIntensity = _handles[0]->getDriveIntensity();
-                for (size_t index = 1; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
-                    if (_handles[index]->isValid() && !_handles[index]->isDone()) {
-                        drivingIntensity *= _handles[index]->getDriveIntensity();
+                drivingIntensity = (*_handles.begin())->getDriveIntensity();
+                for (auto handleIter = _handles.begin() + 1; handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        drivingIntensity *= (*handleIter)->getDriveIntensity();
                     }
                 }
             } break;
 
             case Astro_EnableMode_InOrder: {
-                for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
-                    if (_handles[index]->isValid() && !_handles[index]->isDone()) {
-                        drivingIntensity += _handles[index]->getDriveIntensity();
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        drivingIntensity += (*handleIter)->getDriveIntensity();
                         break;
                     }
                 }
             } break;
 
             case Astro_EnableMode_RevOrder: {
-                size_t count = 0;
-                while (count < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[count]) { ++count; }
-                while (count) {
-                    AstroActivationHandle *handle = _handles[--count];
-                    if (handle->isValid() && !handle->isDone()) {
-                        drivingIntensity += handle->getDriveIntensity();
+                for (auto handleIter = _handles.end() - 1; handleIter != _handles.begin() - 1; --handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        drivingIntensity += (*handleIter)->getDriveIntensity();
                         break;
                     }
                 }
@@ -234,36 +215,31 @@ void AstroActuator::update()
             case Astro_EnableMode_InOrder:
             case Astro_EnableMode_DescOrder: {
                 bool selected = false;
-                for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
-                    AstroActivationHandle *handle = _handles[index];
-                    if (!selected && handle->isValid() && !handle->isDone() && isFPEqual(handle->getDriveIntensity(), drivingIntensity)) {
-                        selected = true; handle->checkTime = time;
-                    } else if (handle->checkTime != 0) {
-                        handle->checkTime = 0;
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if (!selected && (*handleIter)->isValid() && !(*handleIter)->isDone() && isFPEqual((*handleIter)->getDriveIntensity(), drivingIntensity)) {
+                        selected = true; (*handleIter)->checkTime = time;
+                    } else if ((*handleIter)->checkTime != 0) {
+                        (*handleIter)->checkTime = 0;
                     }
                 }
             } break;
 
             case Astro_EnableMode_RevOrder:
             case Astro_EnableMode_AscOrder: {
-                size_t count = 0;
-                while (count < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[count]) { ++count; }
                 bool selected = false;
-                while (count) {
-                    AstroActivationHandle *handle = _handles[--count];
-                    if (!selected && handle->isValid() && !handle->isDone() && isFPEqual(handle->getDriveIntensity(), drivingIntensity)) {
-                        selected = true; handle->checkTime = time;
-                    } else if (handle->checkTime != 0) {
-                        handle->checkTime = 0;
+                for (auto handleIter = _handles.end() - 1; handleIter != _handles.begin() - 1; --handleIter) {
+                    if (!selected && (*handleIter)->isValid() && !(*handleIter)->isDone() && isFPEqual((*handleIter)->getDriveIntensity(), drivingIntensity)) {
+                        selected = true; (*handleIter)->checkTime = time;
+                    } else if ((*handleIter)->checkTime != 0) {
+                        (*handleIter)->checkTime = 0;
                     }
                 }
             } break;
 
             default: {
-                for (size_t index = 0; index < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[index]; ++index) {
-                    AstroActivationHandle *handle = _handles[index];
-                    if (handle->isValid() && !handle->isDone() && handle->checkTime == 0) {
-                        handle->checkTime = time;
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone() && (*handleIter)->checkTime == 0) {
+                        (*handleIter)->checkTime = time;
                     }
                 }
             } break;
@@ -273,6 +249,7 @@ void AstroActuator::update()
     }
     _needsUpdate = false;
 }
+
 
 AstroData *AstroActuator::allocateData() const
 {
