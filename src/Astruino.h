@@ -165,6 +165,7 @@ typedef Adafruit_GPS GPSClass;
 #endif
 #include "OneWire.h"                    // OneWire library
 #include "RTClib.h"                     // i2c RTC library
+#include "SolarCalculator.h"            // Solar calculator library
 #include "TimeLib.h"                    // Time library
 #ifndef ASTRO_DISABLE_GUI
 #include "tcMenu.h"                     // tcMenu library

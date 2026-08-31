@@ -184,6 +184,8 @@ typedef typeof(LOW)                     ard_pinstatus_t;    // Arduino pin statu
 #define ASTRO_TARGETS_TARGETSLIB_MAXSIZE 8                  // Maximum array size for targets library objects (max # of different kinds of targets)
 #define ASTRO_CAL_CALIBS_MAXSIZE        8                   // Maximum array size for calibration store objects (max # of different custom calibrations)
 #define ASTRO_OBJ_LINKS_MAXSIZE         8                   // Maximum array size for object linkage list, per obj (max # of linked objects)
+#define ASTRO_SCH_REQACTS_MAXSIZE       4                   // Maximum array size for scheduler required actuators list (max # of actuators active per process stage)
+#define ASTRO_SCH_PROCS_MAXSIZE         2                   // Maximum array size for scheduler feeding/lighting process lists (max # of feed reservoirs)
 #define ASTRO_SYS_ONEWIRES_MAXSIZE      2                   // Maximum array size for pin OneWire list (max # of OneWire comm pins)
 #define ASTRO_SYS_PINLOCKS_MAXSIZE      2                   // Maximum array size for pin locks list (max # of locks)
 #define ASTRO_SYS_PINMUXERS_MAXSIZE     2                   // Maximum array size for pin muxers list (max # of muxers)

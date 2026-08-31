@@ -748,7 +748,7 @@ void Astruino::commonPostInit()
         setSyncProvider(rtcNow);
     }
 
-    scheduler.updateDayTracking(); // also calls setNeedsScheduling & setNeedsRedraw
+    scheduler.updateNightTracking(); // also calls setNeedsScheduling & setNeedsRedraw
     logger.updateInitTracking();
     setNeedsTabulation();
 
