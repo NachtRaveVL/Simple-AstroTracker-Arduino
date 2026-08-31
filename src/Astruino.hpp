@@ -8,6 +8,34 @@
 
 #include "Astruino.h"
 
+inline bool Twilight::isDaytime(time_t unixTime) const {
+    DateTime time = isUTC ? DateTime((uint32_t)unixTime) : localTime(unixTime);
+    double hour = time.hour() + (time.minute() / 60.0) + (time.second() / 3600.0);
+    return sunrise <= sunset ? hour >= sunrise && hour <= sunset
+                             : hour >= sunrise || hour <= sunset;
+}
+
+inline bool Twilight::isDaytime(DateTime localTime) const
+{
+    DateTime time = isUTC ? DateTime((uint32_t)unixTime(localTime)) : localTime;
+    double hour = time.hour() + (time.minute() / 60.0) + (time.second() / 3600.0);
+    return sunrise <= sunset ? hour >= sunrise && hour <= sunset
+                             : hour >= sunrise || hour <= sunset;
+}
+
+inline time_t Twilight::hourToUnixTime(double hour, bool isUTC)
+{
+    return isUTC ? unixDayStart() + (time_t)(hour * SECS_PER_HOUR)
+                 : unixTime(localDayStart() + TimeSpan(hour * SECS_PER_HOUR));
+}
+
+inline DateTime Twilight::hourToLocalTime(double hour, bool isUTC)
+{
+    return isUTC ? localTime(unixDayStart() + (time_t)(hour * SECS_PER_HOUR))
+                 : localDayStart() + TimeSpan(hour * SECS_PER_HOUR);
+}
+
+
 #ifdef ASTRO_USE_WIFI
 
 inline WiFiClass *Astruino::getWiFi(bool begin)
@@ -88,12 +116,10 @@ inline void Astruino::notifySignificantTime(time_t time)
 {
     logger.updateInitTracking(time);
     _lastAutosave = isAutosaveEnabled() ? time : 0;
-    scheduler.broadcastDateChange();
 }
 
-inline void Astruino::notifySignificantLocation(AstroObserver observer)
+inline void Astruino::notifySignificantLocation(Location loc)
 {
-    if (_mount) { _mount->setObserver(observer); }
     if (_systemData) { _systemData->bumpRevisionIfNeeded(); }
 }
 

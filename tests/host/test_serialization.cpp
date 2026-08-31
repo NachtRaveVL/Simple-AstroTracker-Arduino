@@ -10,12 +10,13 @@ static void testSystemData()
     strncpy(data.systemName, "Backyard Tracker", sizeof(data.systemName) - 1);
     data.systemName[sizeof(data.systemName) - 1] = '\0';
     data.systemMode = Astro_SystemMode_Balancing;
-    data.measurementMode = Astro_MeasurementMode_Scientific;
-    data.observer = AstroObserver(49.2827, -123.1207, 70.0);
+    data.measureMode = Astro_MeasurementMode_Scientific;
+    data.latitude = 49.2827;
+    data.longitude = -123.1207;
+    data.altitude = 70.0;
     data.scheduler.deploySunAltitudeDegrees = -12.0;
     data.scheduler.settleSeconds = 12;
     data.logger.logLevel = Astro_LogLevel_Warnings;
-    data.publisher.pubToMQTT = true;
 
     StaticJsonDocument<1024> doc;
     JsonObject object = doc.to<JsonObject>();
@@ -27,7 +28,7 @@ static void testSystemData()
     assert(decoded.isSystemData());
     assert(strcmp(decoded.systemName, data.systemName) == 0);
     assert(decoded.systemMode == data.systemMode);
-    assert(decoded.measurementMode == data.measurementMode);
+    assert(decoded.measureMode == data.measureMode);
     assert(isFPEqual(decoded.observer.latitudeDegrees, data.observer.latitudeDegrees));
     assert(isFPEqual(decoded.observer.longitudeDegrees, data.observer.longitudeDegrees));
     assert(decoded.scheduler.settleSeconds == data.scheduler.settleSeconds);

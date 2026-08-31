@@ -216,7 +216,7 @@ From Astruino.h, in class Astruino:
 
 ```Arduino
 void init(Astro_SystemMode systemMode = Astro_SystemMode_Tracking,
-          Astro_MeasurementMode measurementMode = Astro_MeasurementMode_Metric);
+          Astro_MeasurementMode measureMode = Astro_MeasurementMode_Metric);
 ```
 
 A fixed installation can then provide its observer location directly:

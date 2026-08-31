@@ -18,7 +18,7 @@ void handleInterrupt(pintype_t pin)
             if (iter->second->isSensorType()) {
                 auto sensor = static_pointer_cast<AstroSensor>(iter->second);
                 if (sensor->isBinaryClass()) {
-                    auto binarySensor = static_pointer_cast<AstroDigitalSensor>(sensor);
+                    auto binarySensor = static_pointer_cast<AstroBinarySensor>(sensor);
                     if (binarySensor && binarySensor->getInputPin().pin == pin) { binarySensor->notifyISRTriggered(); }
                 }
             }
@@ -50,13 +50,13 @@ void handleInterrupt(pintype_t pin)
 Astruino *Astruino::_activeInstance = nullptr;
 
 Astruino::Astruino(pintype_t piezoBuzzerPin,
-                       Astro_EEPROMType eepromType, DeviceSetup eepromSetup,
-                       Astro_RTCType rtcType, DeviceSetup rtcSetup,
-                       DeviceSetup sdSetup,
-                       DeviceSetup netSetup,
-                       DeviceSetup gpsSetup,
-                       pintype_t *ctrlInputPins,
-                       DeviceSetup displaySetup)
+                   Astro_EEPROMType eepromType, DeviceSetup eepromSetup,
+                   Astro_RTCType rtcType, DeviceSetup rtcSetup,
+                   DeviceSetup sdSetup,
+                   DeviceSetup netSetup,
+                   DeviceSetup gpsSetup,
+                   pintype_t *ctrlInputPins,
+                   DeviceSetup displaySetup)
     : _piezoBuzzerPin(piezoBuzzerPin),
       _eepromType(eepromType), _eepromSetup(eepromSetup), _eeprom(nullptr), _eepromBegan(false),
       _rtcType(rtcType), _rtcSetup(rtcSetup), _rtc(nullptr), _rtcBegan(false), _rtcBattFail(false),
@@ -73,17 +73,10 @@ Astruino::Astruino(pintype_t piezoBuzzerPin,
 #ifdef ASTRO_USE_MULTITASKING
       _controlTaskId(TASKMGR_INVALIDID), _dataTaskId(TASKMGR_INVALIDID), _miscTaskId(TASKMGR_INVALIDID),
 #endif
-      _systemData(nullptr), _defaultMountType(Astro_MountType_Unknown), _mount(nullptr), _cover(), _camera(nullptr), _thermal(),
-      _suspend(true), _pollingFrame(0), _lastSpaceCheck(0), _lastAutosave(0),
+      _systemData(nullptr), _suspend(true), _pollingFrame(0), _lastSpaceCheck(0), _lastAutosave(0),
       _sysConfigFilename(SFP(AStr_Default_ConfigFilename)), _sysDataAddress(-1)
 {
     _activeInstance = this;
-}
-
-Astruino::Astruino(Astro_MountType mountType, Astro_RTCType rtcType, DeviceSetup rtcSetup)
-    : Astruino(-1, Astro_EEPROMType_None, DeviceSetup(), rtcType, rtcSetup)
-{
-    _defaultMountType = mountType;
 }
 
 Astruino::~Astruino()
@@ -219,9 +212,9 @@ void Astruino::deallocateGPS()
 #endif
 
 void Astruino::init(Astro_SystemMode systemMode,
-                      Astro_MeasurementMode measureMode,
-                      Astro_DisplayOutputMode dispOutMode,
-                      Astro_ControlInputMode ctrlInMode)
+                    Astro_MeasurementMode measureMode,
+                    Astro_DisplayOutputMode dispOutMode,
+                    Astro_ControlInputMode ctrlInMode)
 {
     ASTRO_HARD_ASSERT(!_systemData, SFP(AStr_Err_AlreadyInitialized));
 
@@ -685,9 +678,9 @@ void Astruino::commonPreInit()
         }
     #endif
     if (_sdSetup.cfgType == DeviceSetup::SPISetup && isValidPin(_sdSetup.cfgAs.spi.cs)) {
-        if (began.find((uintptr_t)_sdSetup.cfgAs.spi.spi) == began.end()) {
+        if (began.find((uintptr_t)_rtcSetup.cfgAs.spi.spi) == began.end()) {
             _sdSetup.cfgAs.spi.spi->begin();
-            began[(uintptr_t)_sdSetup.cfgAs.spi.spi] = 0;
+            began[(uintptr_t)_rtcSetup.cfgAs.spi.spi] = 0;
         }
         pinMode(_sdSetup.cfgAs.spi.cs, OUTPUT);
         digitalWrite(_sdSetup.cfgAs.spi.cs, HIGH);
@@ -749,48 +742,11 @@ static void printDeviceSetup(String prefix, const DeviceSetup &devSetup)
 }
 #endif
 
-void Astruino::resolveAstronomyObjects()
-{
-    _mount = nullptr;
-    _camera = nullptr;
-
-    for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
-        if (!_mount && iter->second->isMountType()) {
-            _mount = static_pointer_cast<AstroMount>(iter->second);
-        } else if (!_camera && iter->second->isObservationDeviceType()) {
-            _camera = static_pointer_cast<AstroCameraTrigger>(iter->second);
-        }
-    }
-
-    scheduler.setMount(_mount);
-    scheduler.setCover(&_cover);
-    scheduler.setObservationDevice(_camera);
-    scheduler.setThermalBalancer(&_thermal);
-}
-
-void Astruino::applySystemData()
-{
-    if (!_systemData) { return; }
-
-    resolveAstronomyObjects();
-
-    if (!_mount && _defaultMountType != Astro_MountType_Unknown) { _mount = addMount(_defaultMountType); }
-    if (!_camera && _defaultMountType != Astro_MountType_Unknown) { _camera = addCameraTrigger(); }
-
-    resolveAstronomyObjects();
-
-    if (_mount) {
-        _mount->setObserver(AstroObserver(_systemData->latitude, _systemData->longitude, _systemData->altitude));
-    }
-}
-
 void Astruino::commonPostInit()
 {
     if ((_rtcSyncProvider = getRTC())) {
         setSyncProvider(rtcNow);
     }
-
-    applySystemData();
 
     scheduler.updateDayTracking(); // also calls setNeedsScheduling & setNeedsRedraw
     logger.updateInitTracking();
@@ -908,7 +864,6 @@ void controlLoop()
             yieldIfNeeded(lastYield);
         }
 
-        Astruino::_activeInstance->_cover.update();
         Astruino::_activeInstance->scheduler.update();
 
         #ifdef ASTRO_USE_VERBOSE_OUTPUT
@@ -997,25 +952,6 @@ void miscLoop()
     tightUpdates();
 }
 
-bool Astruino::unregisterObject(SharedPtr<AstroObject> object)
-{
-    if (!object) { return false; }
-
-    bool wasMount = _mount && _mount.get() == object.get();
-    bool wasCamera = _camera && _camera.get() == object.get();
-
-    _cover.unresolveAny(object.get());
-    _thermal.unresolveAny(object.get());
-    scheduler.unresolveAny(object.get());
-
-    if (!AstroObjectRegistration::unregisterObject(object)) { return false; }
-
-    if (wasMount) { _mount = nullptr; }
-    if (wasCamera) { _camera = nullptr; }
-    resolveAstronomyObjects();
-    return true;
-}
-
 void Astruino::launch()
 {
     // Forces all sensors to get a new measurement
@@ -1049,8 +985,6 @@ void Astruino::launch()
 void Astruino::suspend()
 {
     _suspend = true;
-    if (_camera) { _camera->stopObservation(); }
-    if (_mount) { _mount->stow(); }
     #ifdef ASTRO_USE_MULTITASKING
         if (isValidTask(_controlTaskId)) {
             taskManager.setTaskEnabled(_controlTaskId, false);
@@ -1139,7 +1073,7 @@ void Astruino::setAutosaveEnabled(Astro_Autosave autosaveEnabled, Astro_Autosave
 
 void Astruino::setRTCTime(DateTime time)
 {
-    if (getRTC()) { _setUnixTime(DateTime((uint32_t)unixTime(time)), true); }
+    _setUnixTime(DateTime((uint32_t)unixTime(time)), true);
 }
 
 #ifdef ASTRO_USE_WIFI
@@ -1208,7 +1142,7 @@ void Astruino::setSystemLocation(double latitude, double longitude, double altit
         _systemData->latitude = latitude;
         _systemData->longitude = longitude;
         _systemData->altitude = altitude;
-        if (isSigChange) { notifySignificantLocation(AstroObserver(_systemData->latitude, _systemData->longitude, _systemData->altitude)); }
+        if (isSigChange) { notifySignificantLocation(*((Location *)&_systemData->latitude)); }
     }
 }
 
@@ -1349,7 +1283,7 @@ WiFiClass *Astruino::getWiFi(String ssid, String pass, bool begin)
 EthernetClass *Astruino::getEthernet(const uint8_t *macAddress, bool begin)
 {
     int status = Ethernet.linkStatus();
-    
+
     if (begin && (!_netBegan || status != LinkON)) {
         if (status == LinkON) {
             _netBegan = true;
@@ -1487,10 +1421,10 @@ const uint8_t *Astruino::getMACAddress() const
 
 #endif
 
-AstroObserver Astruino::getSystemLocation() const
+Location Astruino::getSystemLocation() const
 {
     ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
-    return _systemData ? AstroObserver(_systemData->latitude, _systemData->longitude, _systemData->altitude) : AstroObserver();
+    return _systemData ? Location(_systemData->latitude, _systemData->longitude, _systemData->altitude) : Location();
 }
 
 void Astruino::checkFreeMemory()

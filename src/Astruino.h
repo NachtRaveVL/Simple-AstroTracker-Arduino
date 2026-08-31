@@ -116,7 +116,7 @@ typedef int uartmode_t;
 #define ASTRO_USE_WIFI
 #define ASTRO_USE_NET
 #elif defined(ASTRO_ENABLE_ETHERNET)
-#include <Ethernet.h>                   // https://reference.arduino.cc/reference/en/libraries/ethernet/
+#include <Ethernet.h>                   // https://github.com/arduino-libraries/Ethernet
 #define ASTRO_USE_ETHERNET
 #define ASTRO_USE_NET
 #endif // /ifdef ASTRO_ENABLE_WIFI
@@ -216,13 +216,13 @@ extern void miscLoop();
 #include "AstroTriggers.h"
 #include "AstroDrivers.h"
 #include "AstroActuators.h"
-#include "AstroSensors.h"
-#include "AstroCoreLogic.h"
-#include "AstroMounts.h"
 #include "AstroCamera.h"
-#include "AstroThermal.h"
-#include "AstroTargets.h"
+#include "AstroMounts.h"
 #include "AstroRails.h"
+#include "AstroSensors.h"
+#include "AstroTargets.h"
+#include "AstroThermal.h"
+#include "AstroTargetsLibrary.h"
 #include "AstroModules.h"
 #include "AstroScheduler.h"
 #include "AstroLogger.h"
@@ -231,9 +231,7 @@ extern void miscLoop();
 
 
 // Astruino Controller
-// Main controller interface for DIY astronomical tracking systems. Networking, displays,
-// remote transports, and external services remain optional so normal tracking, thermal,
-// scheduling, logging, and control behavior can remain local.
+// Main controller interface of the Astruino astronomical tracker system.
 class Astruino : public AstroFactory, public AstroCalibrations, public AstroObjectRegistration, public AstroPinHandlers {
 public:
     AstroScheduler scheduler;                                       // Scheduler public instance
@@ -241,19 +239,16 @@ public:
     AstroPublisher publisher;                                       // Publisher public instance
 
     // Controller constructor. Typically called during class instantiation, before setup().
-    Astruino(pintype_t piezoBuzzerPin = -1,                       // Piezo buzzer pin, else -1
-               Astro_EEPROMType eepromType = Astro_EEPROMType_None, // EEPROM device type/size, else None
-               DeviceSetup eepromSetup = DeviceSetup(),             // EEPROM device setup (i2c only)
-               Astro_RTCType rtcType = Astro_RTCType_None,          // RTC device type, else None
-               DeviceSetup rtcSetup = DeviceSetup(),                // RTC device setup (i2c only)
-               DeviceSetup sdSetup = DeviceSetup(),                 // SD card device setup (spi only)
-               DeviceSetup netSetup = DeviceSetup(),                // Network device setup (spi/uart)
-               DeviceSetup gpsSetup = DeviceSetup(),                // GPS device setup (uart/i2c/spi)
-               pintype_t *ctrlInputPins = nullptr,                  // Control input pins, else nullptr
-               DeviceSetup displaySetup = DeviceSetup());           // Display device setup (i2c/spi)
-    Astruino(Astro_MountType mountType,                             // Default primary mount type
+    Astruino(pintype_t piezoBuzzerPin = -1,                         // Piezo buzzer pin, else -1
+             Astro_EEPROMType eepromType = Astro_EEPROMType_None,   // EEPROM device type/size, else None
+             DeviceSetup eepromSetup = DeviceSetup(),               // EEPROM device setup (i2c only)
              Astro_RTCType rtcType = Astro_RTCType_None,            // RTC device type, else None
-             DeviceSetup rtcSetup = DeviceSetup());                  // RTC device setup (i2c only)
+             DeviceSetup rtcSetup = DeviceSetup(),                  // RTC device setup (i2c only)
+             DeviceSetup sdSetup = DeviceSetup(),                   // SD card device setup (spi only)
+             DeviceSetup netSetup = DeviceSetup(),                  // Network device setup (spi/uart)
+             DeviceSetup gpsSetup = DeviceSetup(),                  // GPS device setup (uart/i2c/spi)
+             pintype_t *ctrlInputPins = nullptr,                    // Control input pins, else nullptr
+             DeviceSetup displaySetup = DeviceSetup());             // Display device setup (i2c/spi)
     // Library destructor. Just in case.
     ~Astruino();
 
@@ -295,9 +290,6 @@ public:
     bool saveToJSONStream(Stream *streamOut, bool compact = true);
     // Saves current system setup to custom binary stream, returning success flag
     bool saveToBinaryStream(Stream *streamOut);
-
-    // Removes an object after releasing astronomy subsystem references.
-    bool unregisterObject(SharedPtr<AstroObject> object);
 
     // System Operation.
 
@@ -380,9 +372,8 @@ public:
 #endif
     // Sets system location (lat/long/alt, note: only triggers update if significant or forced)
     void setSystemLocation(double latitude, double longitude, double altitude = DBL_UNDEF, bool isSigChange = false);
-    // Sets system observer location (note: only triggers update if significant or forced)
-    inline void setSystemLocation(AstroObserver observer, bool isSigChange = false) { setSystemLocation(observer.latitudeDegrees, observer.longitudeDegrees, observer.elevationMeters, isSigChange); }
-    inline void setObserver(const AstroObserver &observer) { setSystemLocation(observer); }
+    // Sets system location (Location data, note: only triggers update if significant or forced)
+    inline void setSystemLocation(Location location, bool isSigChange = false) { setSystemLocation(location.latitude, location.longitude, location.altitude, isSigChange); }
 
     // Accessors.
 
@@ -476,21 +467,8 @@ public:
     // MAC address for Ethernet connection
     const uint8_t *getMACAddress() const;
 #endif
-    // System observer location (lat/long/alt)
-    AstroObserver getSystemLocation() const;
-    inline AstroObserver getObserver() const { return getSystemLocation(); }
-
-    // Primary astronomy subsystem accessors.
-    inline SharedPtr<AstroMount> getMountPtr() const { return _mount; }
-    inline AstroMount &getMount() { return *_mount; }
-    inline const AstroMount &getMount() const { return *_mount; }
-    inline AstroCover &getCover() { return _cover; }
-    inline const AstroCover &getCover() const { return _cover; }
-    inline SharedPtr<AstroCameraTrigger> getCameraPtr() const { return _camera; }
-    inline AstroCameraTrigger &getCamera() { return *_camera; }
-    inline const AstroCameraTrigger &getCamera() const { return *_camera; }
-    inline AstroThermalBalancer &getThermalBalancer() { return _thermal; }
-    inline const AstroThermalBalancer &getThermalBalancer() const { return _thermal; }
+    // System location (lat/long/alt)
+    Location getSystemLocation() const;
 
 protected:
     static Astruino *_activeInstance;                     // Current active instance (set after init, weak)
@@ -499,12 +477,6 @@ protected:
     AstroUIData *_uiData;                                   // UI data (owned)
 #endif
     AstroSystemData *_systemData;                           // System data (owned, saved to storage)
-    Astro_MountType _defaultMountType;                      // Default primary mount type for convenience constructor
-
-    SharedPtr<AstroMount> _mount;                            // Primary telescope/tracker mount
-    AstroCover _cover;                                      // Observatory/enclosure cover
-    SharedPtr<AstroCameraTrigger> _camera;                   // Primary observation trigger device
-    AstroThermalBalancer _thermal;                          // Environmental/thermal balancer
 
     const pintype_t _piezoBuzzerPin;                        // Piezo buzzer pin (default: Disabled)
     const Astro_EEPROMType _eepromType;                     // EEPROM device type
@@ -554,9 +526,6 @@ protected:
     String _sysConfigFilename;                              // System config filename used in serialization (default: "Astruino.cfg")
     uint16_t _sysDataAddress;                               // EEPROM system data address used in serialization (default: -1/disabled)
 
-    void resolveAstronomyObjects();
-    void applySystemData();
-
     void allocateEEPROM();
     void deallocateEEPROM();
     void allocateRTC();
@@ -599,7 +568,7 @@ public: // consider protected
     inline void notifyRTCTimeUpdated();
     inline void broadcastDateChanged();
     inline void notifySignificantTime(time_t time);
-    inline void notifySignificantLocation(AstroObserver observer);
+    inline void notifySignificantLocation(Location loc);
 };
 
 // Template implementations
