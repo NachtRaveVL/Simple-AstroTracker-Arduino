@@ -13,6 +13,7 @@ struct AstroMountData;
 #include "Astruino.h"
 #include "AstroCoreLogic.h"
 #include "AstroDrivers.h"
+#include "AstroCamera.h"
 #include "AstroThermal.h"
 
 // Creates mount object from passed mount data (return ownership transfer - user code *must* delete returned object)
@@ -43,8 +44,7 @@ struct AstroAxisState {
 class AstroMount : public AstroObject,
                    public AstroMountObjectInterface,
                    public AstroTemperatureSensorAttachmentInterface,
-                   public AstroWindSpeedSensorAttachmentInterface,
-                   public AstroObservationDeviceAttachmentInterface {
+                   public AstroWindSpeedSensorAttachmentInterface {
 public:
     const enum : signed char { Mount, Unknown = -1 } classType; // Mount class type (custom RTTI)
 
@@ -52,7 +52,6 @@ public:
                aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);
     AstroMount(const AstroMountData *dataIn);
 
-    void setObserver(const AstroObserver &observer);
     virtual void setTarget(Astro_TargetType targetType) override;
     void setAxisRates(double primaryDegreesPerSecond, double secondaryDegreesPerSecond);
     void setAxisPosition(uint8_t axisIndex, double positionDegrees);
@@ -64,6 +63,7 @@ public:
 
     inline AstroCover &getMountCover() { return _mountCoverDriver; }
     inline AstroCover *getMountCoverDriver() { return _mountCoverDriver.isConfigured() ? &_mountCoverDriver : nullptr; }
+    inline AstroCamera &getCamera() { return _camera; }
     inline AstroThermalBalancer &getThermalBalancer() { return _thermalBalancer; }
 
     template<class U> inline void setHeatingTrigger(U heatingTrigger) { _heatingTrigger.setObject(heatingTrigger); }
@@ -90,7 +90,6 @@ public:
 
     virtual AstroSensorAttachment &getTemperatureSensorAttachment() override { return _thermalBalancer.getAmbientTemperatureSensorAttachment(); }
     virtual AstroSensorAttachment &getWindSpeedSensorAttachment() override { return _windSpeed; }
-    virtual AstroObservationDeviceAttachment &getObservationDeviceAttachment() override { return _observationDevice; }
 
     inline Astro_MountType getMountType() const { return _mountType; }
     inline Astro_TargetType getTargetType() const { return _targetType; }
@@ -106,7 +105,6 @@ public:
 
 protected:
     Astro_MountType _mountType;                             // Mount geometry
-    AstroObserver _observer;                                // Observer location
     Astro_TargetType _targetType;                           // Active target
     AstroAxisState _primaryAxis;                            // Primary/right-ascension/azimuth axis
     AstroAxisState _secondaryAxis;                          // Secondary/declination/altitude axis
@@ -121,11 +119,11 @@ protected:
     AstroAxisDriverAttachment _primaryDriver;               // Primary axis driver
     AstroAxisDriverAttachment _secondaryDriver;             // Secondary axis driver
     AstroCover _mountCoverDriver;                           // Mount/telescope cover driver
+    AstroCamera _camera;                                    // Mount/telescope camera controller
     AstroThermalBalancer _thermalBalancer;                  // Mount/telescope thermal balancer
     AstroSensorAttachment _windSpeed;                       // Local wind speed sensor attachment
     AstroTriggerAttachment _heatingTrigger;                 // Mount needs-heating/dew-control trigger attachment
     AstroTriggerAttachment _stormingTrigger;                // Mount storming/wind/rain trigger attachment
-    AstroObservationDeviceAttachment _observationDevice;    // Mount observation device attachment
     millis_t _lastUpdate;                                   // Last update time
 
     bool applyAxisTarget(uint8_t axisIndex, double targetDegrees);
@@ -152,6 +150,7 @@ struct AstroMountData : public AstroObjectData {
     double secondaryMaximum;                                // Secondary axis maximum, degrees
     bool primaryLimitsEnabled;                              // Primary axis limits enabled
     bool secondaryLimitsEnabled;                            // Secondary axis limits enabled
+    AstroCameraSubData camera;                              // Mount camera controller
 
     AstroMountData();
     virtual void toJSONObject(JsonObject &objectOut) const override;

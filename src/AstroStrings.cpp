@@ -405,6 +405,10 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr_Key_CalibrationUnits[] PROGMEM = {"calibrationUnits"};
             return flashStr_Key_CalibrationUnits;
         } break;
+        case AStr_Key_Camera: {
+            static const char flashStr_Key_Camera[] PROGMEM = {"camera"};
+            return flashStr_Key_Camera;
+        } break;
         case AStr_Key_CatalogId: {
             static const char flashStr_Key_CatalogId[] PROGMEM = {"catalogId"};
             return flashStr_Key_CatalogId;
@@ -449,6 +453,10 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr_Key_EnableMode[] PROGMEM = {"enableMode"};
             return flashStr_Key_EnableMode;
         } break;
+        case AStr_Key_ExposureMillis: {
+            static const char flashStr_Key_ExposureMillis[] PROGMEM = {"exposureMillis"};
+            return flashStr_Key_ExposureMillis;
+        } break;
         case AStr_Key_Id: {
             static const char flashStr_Key_Id[] PROGMEM = {"id"};
             return flashStr_Key_Id;
@@ -456,6 +464,10 @@ const char *pgmAddrForStr(Astro_String strNum)
         case AStr_Key_InputPin: {
             static const char flashStr_Key_InputPin[] PROGMEM = {"inputPin"};
             return flashStr_Key_InputPin;
+        } break;
+        case AStr_Key_IntervalMillis: {
+            static const char flashStr_Key_IntervalMillis[] PROGMEM = {"intervalMillis"};
+            return flashStr_Key_IntervalMillis;
         } break;
         case AStr_Key_JoystickCalib: {
             static const char flashStr_Key_JoystickCalib[] PROGMEM = {"joystickCalib"};
@@ -528,6 +540,14 @@ const char *pgmAddrForStr(Astro_String strNum)
         case AStr_Key_Mode: {
             static const char flashStr_Key_Mode[] PROGMEM = {"mode"};
             return flashStr_Key_Mode;
+        } break;
+        case AStr_Key_MountAxisIndex: {
+            static const char flashStr_Key_MountAxisIndex[] PROGMEM = {"mountAxisIndex"};
+            return flashStr_Key_MountAxisIndex;
+        } break;
+        case AStr_Key_MountName: {
+            static const char flashStr_Key_MountName[] PROGMEM = {"mountName"};
+            return flashStr_Key_MountName;
         } break;
         case AStr_Key_MovingTarget: {
             static const char flashStr_Key_MovingTarget[] PROGMEM = {"movingTarget"};
@@ -653,6 +673,14 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr_Key_SensorName[] PROGMEM = {"sensorName"};
             return flashStr_Key_SensorName;
         } break;
+        case AStr_Key_ShutterName: {
+            static const char flashStr_Key_ShutterName[] PROGMEM = {"shutterName"};
+            return flashStr_Key_ShutterName;
+        } break;
+        case AStr_Key_ShutterPulseMillis: {
+            static const char flashStr_Key_ShutterPulseMillis[] PROGMEM = {"shutterPulseMillis"};
+            return flashStr_Key_ShutterPulseMillis;
+        } break;
         case AStr_Key_StateStableTimeMs: {
             static const char flashStr_Key_StateStableTimeMs[] PROGMEM = {"stateStableTimeMs"};
             return flashStr_Key_StateStableTimeMs;
@@ -748,14 +776,6 @@ const char *pgmAddrForStr(Astro_String strNum)
         case AStr_Mount: {
             static const char flashStr_Mount[] PROGMEM = {"Mount"};
             return flashStr_Mount;
-        } break;
-        case AStr_ObservationDevice: {
-            static const char flashStr_ObservationDevice[] PROGMEM = {"ObservationDevice"};
-            return flashStr_ObservationDevice;
-        } break;
-        case AStr_ObservationDeviceDisplay: {
-            static const char flashStr_ObservationDeviceDisplay[] PROGMEM = {"Observation Device"};
-            return flashStr_ObservationDeviceDisplay;
         } break;
         case AStr_Rail: {
             static const char flashStr_Rail[] PROGMEM = {"Rail"};
@@ -856,6 +876,10 @@ const char *pgmAddrForStr(Astro_String strNum)
         case AStr_Enum_CameraCooler: {
             static const char flashStr_Enum_CameraCooler[] PROGMEM = {"CameraCooler"};
             return flashStr_Enum_CameraCooler;
+        } break;
+        case AStr_Enum_CameraShutter: {
+            static const char flashStr_Enum_CameraShutter[] PROGMEM = {"CameraShutter"};
+            return flashStr_Enum_CameraShutter;
         } break;
         case AStr_Enum_CameraTemperature: {
             static const char flashStr_Enum_CameraTemperature[] PROGMEM = {"CameraTemperature"};
@@ -1793,7 +1817,6 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr_Unit_Undefined[] PROGMEM = {"[undef]"};
             return flashStr_Unit_Undefined;
         } break;
-
         default:
             return AStr_Blank;
     }

@@ -1,25 +1,9 @@
 /*  Astruino: Simple automation controller for DIY astronomical tracking systems.
     Copyright (C) 2026 NachtRaveVL
-    Astruino Observation Devices
+    Astruino Camera
 */
 
 #include "Astruino.h"
-
-AstroObject *newObservationDeviceObjectFromData(const AstroObservationDeviceData *dataIn)
-{
-    if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
-    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
-
-    if (dataIn && dataIn->isObjectData() && dataIn->id.object.idType == (aid_t)AstroIdentity::ObservationDevice) {
-        switch (dataIn->id.object.classType) {
-            case (aid_t)AstroObservationDevice::CameraTrigger:
-                return new AstroCameraTrigger(dataIn);
-            default: break;
-        }
-    }
-
-    return nullptr;
-}
 
 AstroCover::AstroCover(AstroObjInterface *parent)
     : AstroSubObject(parent), _position(0.0f), _target(0.0f), _travelRate(ASTRO_COVER_TRAVEL_RATE),
@@ -176,60 +160,147 @@ void AstroCover::unresolveAny(AstroObject *object)
     AstroSubObject::unresolveAny(object);
 }
 
-AstroCameraTrigger::AstroCameraTrigger(TriggerCallback callback, void *context, aposi_t positionIndex)
-    : AstroObject(AstroIdentity(AstroIdentity::ObservationDevice, 0, positionIndex)), AstroObservationDevice(CameraTrigger),
-      _callback(callback), _context(context), _ready(true), _capturing(false)
+
+AstroCamera::AstroCamera(AstroObjInterface *parent, int mode)
+    : AstroSubObject(parent), _mode((int8_t)mode), _intervalMillis(0), _exposureMillis(0),
+      _shutterPulseMillis(0), _observing(false), _lastCapture(0), _shutter(parent ? parent : this)
 { ; }
 
-AstroCameraTrigger::AstroCameraTrigger(const AstroObservationDeviceData *dataIn)
-    : AstroObject(dataIn), AstroObservationDevice(dataIn ? dataIn->id.object.classType : Unknown),
-      _callback(nullptr), _context(nullptr), _ready(true), _capturing(false)
+AstroCamera::AstroCamera(AstroObjInterface *parent, const AstroCameraSubData *dataIn)
+    : AstroSubObject(parent), _mode(dataIn ? dataIn->type : Unknown),
+      _intervalMillis(dataIn ? dataIn->intervalMillis : 0), _exposureMillis(dataIn ? dataIn->exposureMillis : 0),
+      _shutterPulseMillis(dataIn ? dataIn->shutterPulseMillis : 0), _observing(false), _lastCapture(0),
+      _shutter(parent ? parent : this)
+{
+    if (dataIn) { _shutter.initObject(dataIn->shutterName); }
+}
+
+void AstroCamera::setMode(int mode)
+{
+    int8_t nextMode = mode == Interval || mode == Exposure ? (int8_t)mode : (int8_t)Unknown;
+    if (_mode != nextMode) {
+        stopObservation();
+        _mode = nextMode;
+        bumpRevisionIfNeeded();
+    }
+}
+
+void AstroCamera::setInterval(millis_t intervalMillis)
+{
+    if (_intervalMillis != intervalMillis) {
+        _intervalMillis = intervalMillis;
+        _lastCapture = 0;
+        bumpRevisionIfNeeded();
+    }
+}
+
+void AstroCamera::setExposureTime(millis_t exposureMillis)
+{
+    if (_exposureMillis != exposureMillis) {
+        _exposureMillis = exposureMillis;
+        _lastCapture = 0;
+        bumpRevisionIfNeeded();
+    }
+}
+
+void AstroCamera::setShutterPulseTime(millis_t shutterPulseMillis)
+{
+    if (_shutterPulseMillis != shutterPulseMillis) {
+        _shutterPulseMillis = shutterPulseMillis;
+        _lastCapture = 0;
+        bumpRevisionIfNeeded();
+    }
+}
+
+bool AstroCamera::ready() const
+{
+    return _shutter.isSet() &&
+           ((_mode == Interval && _intervalMillis && _shutterPulseMillis) ||
+            (_mode == Exposure && _exposureMillis));
+}
+
+void AstroCamera::startObservation()
+{
+    if (!ready() || _observing) { return; }
+    _observing = true;
+    _lastCapture = 0;
+}
+
+void AstroCamera::stopObservation()
+{
+    if (!_observing && !_shutter.isActivated()) { return; }
+    _observing = false;
+    _lastCapture = 0;
+    _shutter.disableActivation();
+}
+
+void AstroCamera::triggerShutter(millis_t duration)
+{
+    if (!duration || !_shutter.isSet()) { return; }
+    _shutter.setupActivation(duration);
+    _shutter.enableActivation();
+}
+
+void AstroCamera::update()
+{
+    _shutter.updateIfNeeded();
+    if (!_observing || !ready() || _shutter.isActivated()) { return; }
+
+    millis_t now = nzMillis();
+    if (_mode == Interval) {
+        if (!_lastCapture || (millis_t)(now - _lastCapture) >= _intervalMillis) {
+            triggerShutter(_shutterPulseMillis);
+            _lastCapture = now;
+        }
+    } else if (_mode == Exposure) {
+        if (!_lastCapture) {
+            triggerShutter(_exposureMillis);
+            _lastCapture = now;
+        } else {
+            _observing = false;
+        }
+    }
+}
+
+void AstroCamera::unresolveAny(AstroObject *object)
+{
+    _shutter.unresolveIf(object);
+    AstroSubObject::unresolveAny(object);
+}
+
+void AstroCamera::saveToData(AstroCameraSubData *dataOut) const
+{
+    if (!dataOut) { return; }
+    dataOut->type = _mode;
+    dataOut->intervalMillis = _intervalMillis;
+    dataOut->exposureMillis = _exposureMillis;
+    dataOut->shutterPulseMillis = _shutterPulseMillis;
+    if (_shutter.isSet()) {
+        strncpy(dataOut->shutterName, _shutter.getKeyString().c_str(), ASTRO_NAME_MAXSIZE - 1);
+        dataOut->shutterName[ASTRO_NAME_MAXSIZE - 1] = '\0';
+    }
+}
+
+
+AstroCameraSubData::AstroCameraSubData()
+    : AstroSubData(AstroCamera::Unknown), shutterName{0}, intervalMillis(0), exposureMillis(0), shutterPulseMillis(0)
 { ; }
 
-void AstroCameraTrigger::startObservation()
+void AstroCameraSubData::toJSONObject(JsonObject &objectOut) const
 {
-    if (!_ready || _capturing) { return; }
-    _capturing = true;
-    if (_callback) { _callback(_context, true); }
+    AstroSubData::toJSONObject(objectOut);
+    if (shutterName[0]) { objectOut[SFP(AStr_Key_ShutterName)] = shutterName; }
+    if (intervalMillis) { objectOut[SFP(AStr_Key_IntervalMillis)] = intervalMillis; }
+    if (exposureMillis) { objectOut[SFP(AStr_Key_ExposureMillis)] = exposureMillis; }
+    if (shutterPulseMillis) { objectOut[SFP(AStr_Key_ShutterPulseMillis)] = shutterPulseMillis; }
 }
 
-void AstroCameraTrigger::stopObservation()
+void AstroCameraSubData::fromJSONObject(JsonObjectConst &objectIn)
 {
-    if (!_capturing) { return; }
-    _capturing = false;
-    if (_callback) { _callback(_context, false); }
-}
-
-void AstroCameraTrigger::setReady(bool ready)
-{
-    _ready = ready;
-    if (!_ready) { stopObservation(); }
-}
-
-void AstroCameraTrigger::setTriggerCallback(TriggerCallback callback, void *context)
-{
-    _callback = callback;
-    _context = context;
-}
-
-AstroData *AstroCameraTrigger::allocateData() const
-{
-    return _allocateDataForObjType((aid_t)AstroIdentity::ObservationDevice, (aid_t)classType);
-}
-
-void AstroCameraTrigger::saveToData(AstroData *dataOut)
-{
-    AstroObject::saveToData(dataOut);
-    if (dataOut) { dataOut->id.object.classType = (aid_t)classType; }
-}
-
-
-AstroObservationDeviceData::AstroObservationDeviceData()
-    : AstroObjectData()
-{
-    _size = sizeof(*this);
-    id.object.idType = (aid_t)AstroIdentity::ObservationDevice;
-    id.object.objType = 0;
-    id.object.posIndex = aposi_none;
-    id.object.classType = (aid_t)AstroObservationDevice::CameraTrigger;
+    AstroSubData::fromJSONObject(objectIn);
+    const char *shutter = objectIn[SFP(AStr_Key_ShutterName)] | nullptr;
+    if (shutter) { strncpy(shutterName, shutter, ASTRO_NAME_MAXSIZE - 1); shutterName[ASTRO_NAME_MAXSIZE - 1] = '\0'; }
+    intervalMillis = objectIn[SFP(AStr_Key_IntervalMillis)] | intervalMillis;
+    exposureMillis = objectIn[SFP(AStr_Key_ExposureMillis)] | exposureMillis;
+    shutterPulseMillis = objectIn[SFP(AStr_Key_ShutterPulseMillis)] | shutterPulseMillis;
 }

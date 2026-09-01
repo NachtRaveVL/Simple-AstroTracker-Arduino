@@ -94,14 +94,6 @@ AstroData *_allocateDataForObjType(int8_t idType, int8_t classType)
             }
             break;
 
-        case (aid_t)AstroIdentity::ObservationDevice:
-            switch (classType) {
-                case (aid_t)AstroObservationDevice::CameraTrigger:
-                    return new AstroObservationDeviceData();
-                default: break;
-            }
-            break;
-
         default: break;
     }
 

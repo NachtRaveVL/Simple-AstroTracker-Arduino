@@ -231,8 +231,8 @@ Vector<AstroObject *, N> linksFilterActuatorsByMountAndType(Pair<uint8_t, Pair<A
         if (links.second[linksIndex].first->isActuatorType()) {
             auto actuator = static_cast<AstroActuator *>(links.second[linksIndex].first);
 
-            if (mount && mount->hasLinkage(actuator) && actuator->getActuatorType() == actuatorType) {
-                retVal.push_back(actuator);
+            if (actuator->getActuatorType() == actuatorType && actuator->getParentMount().get() == mount) {
+                retVal.push_back(links.second[linksIndex].first);
             }
         }
     }

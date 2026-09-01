@@ -1217,6 +1217,8 @@ String actuatorTypeToString(Astro_ActuatorType actuatorType, bool excludeSpecial
             return SFP(AStr_Enum_Fan);
         case Astro_ActuatorType_Focuser:
             return SFP(AStr_Enum_Focuser);
+        case Astro_ActuatorType_CameraShutter:
+            return SFP(AStr_Enum_CameraShutter);
         case Astro_ActuatorType_Count:
             return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
         case Astro_ActuatorType_Undefined:
@@ -2085,7 +2087,13 @@ Astro_ActuatorType actuatorTypeFromString(String actuatorTypeStr)
         case 'C':
             switch (actuatorTypeStr.length() >= 2 ? actuatorTypeStr[1] : '\000') {
                 case 'a':
-                    return Astro_ActuatorType_CameraCooler;
+                    switch (actuatorTypeStr.length() >= 7 ? actuatorTypeStr[6] : '\000') {
+                        case 'C':
+                            return Astro_ActuatorType_CameraCooler;
+                        case 'S':
+                            return Astro_ActuatorType_CameraShutter;
+                    }
+                    break;
                 case 'o':
                     switch (actuatorTypeStr.length() >= 3 ? actuatorTypeStr[2] : '\000') {
                         case 'u':

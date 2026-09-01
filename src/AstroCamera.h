@@ -1,21 +1,17 @@
 /*  Astruino: Simple automation controller for DIY astronomical tracking systems.
     Copyright (C) 2026 NachtRaveVL
-    Astruino Observation Devices
+    Astruino Camera
 */
 
 #ifndef AstroCamera_H
 #define AstroCamera_H
 
 class AstroCover;
-class AstroObservationDevice;
-class AstroCameraTrigger;
+class AstroCamera;
 
-struct AstroObservationDeviceData;
+struct AstroCameraSubData;
 
 #include "Astruino.h"
-
-// Creates observation device object from passed data (return ownership transfer - user code *must* delete returned object)
-extern AstroObject *newObservationDeviceObjectFromData(const AstroObservationDeviceData *dataIn);
 
 
 // Equipment Cover
@@ -65,51 +61,62 @@ protected:
     void applyActuatorPower(float power);
 };
 
-// Observation Device Base
-// Abstracts a camera, recorder, spectrometer, or other observing equipment.
-class AstroObservationDevice : public AstroObservationDeviceInterface {
+// Camera Control
+// Mount-owned camera timing controller that drives a standard CameraShutter actuator.
+// Interval mode pulses the shutter at a fixed cadence, while Exposure mode holds the
+// shutter active once for the requested bulb exposure duration.
+class AstroCamera : public AstroSubObject {
 public:
-    const enum : signed char { CameraTrigger, Unknown = -1 } classType; // Observation device class type (custom RTTI)
+    enum : signed char { Interval, Exposure, Unknown = -1 };
 
-    AstroObservationDevice(int classTypeIn = Unknown) : classType((decltype(CameraTrigger))classTypeIn) { ; }
-    virtual ~AstroObservationDevice() { ; }
-    virtual bool ready() const = 0;
-    virtual void startObservation() = 0;
-    virtual void stopObservation() = 0;
-};
+    AstroCamera(AstroObjInterface *parent = nullptr, int mode = Unknown);
+    AstroCamera(AstroObjInterface *parent, const AstroCameraSubData *dataIn);
 
-// Camera Trigger
-// Provides a simple start/stop observation signal suitable for shutters, relays, or adapters.
-class AstroCameraTrigger : public AstroObject, public AstroObservationDevice {
-public:
-    typedef void (*TriggerCallback)(void *context, bool active);
+    void update();
+    virtual void unresolveAny(AstroObject *object) override;
 
-    AstroCameraTrigger(TriggerCallback callback = nullptr, void *context = nullptr,
-                       aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
-    AstroCameraTrigger(const AstroObservationDeviceData *dataIn);
+    void startObservation();
+    void stopObservation();
+    bool ready() const;
 
-    virtual bool ready() const override { return _ready; }
-    virtual void startObservation() override;
-    virtual void stopObservation() override;
+    void setMode(int mode);
+    void setInterval(millis_t intervalMillis);
+    void setExposureTime(millis_t exposureMillis);
+    void setShutterPulseTime(millis_t shutterPulseMillis);
+    template<class U> inline void setShutter(U shutter) { _shutter.setObject(shutter, true); }
 
-    void setReady(bool ready);
-    void setTriggerCallback(TriggerCallback callback, void *context = nullptr);
-    inline bool isCapturing() const { return _capturing; }
+    inline int getMode() const { return _mode; }
+    inline millis_t getInterval() const { return _intervalMillis; }
+    inline millis_t getExposureTime() const { return _exposureMillis; }
+    inline millis_t getShutterPulseTime() const { return _shutterPulseMillis; }
+    inline bool isObserving() const { return _observing; }
+    inline AstroActuatorAttachment &getShutterAttachment() { return _shutter; }
+
+    void saveToData(AstroCameraSubData *dataOut) const;
 
 protected:
-    TriggerCallback _callback;                               // Callback function
-    void *_context;                                          // Callback user context
-    bool _ready;                                             // Device ready state
-    bool _capturing;                                         // Observation active state
+    int8_t _mode;                                           // Camera timing mode
+    millis_t _intervalMillis;                               // Interval between interval captures
+    millis_t _exposureMillis;                               // Bulb exposure duration
+    millis_t _shutterPulseMillis;                           // Interval-mode shutter pulse duration
+    bool _observing;                                        // Observation sequence active flag
+    millis_t _lastCapture;                                  // Last capture start time
+    AstroActuatorAttachment _shutter;                       // Camera shutter actuator attachment
 
-    virtual AstroData *allocateData() const override;
-    virtual void saveToData(AstroData *dataOut) override;
+    void triggerShutter(millis_t duration);
 };
 
 
-// Observation Device Serialization Data
-struct AstroObservationDeviceData : public AstroObjectData {
-    AstroObservationDeviceData();
+// Camera Serialization Data
+struct AstroCameraSubData : public AstroSubData {
+    char shutterName[ASTRO_NAME_MAXSIZE];                   // Camera shutter actuator
+    millis_t intervalMillis;                                // Interval capture cadence, in milliseconds
+    millis_t exposureMillis;                                // Bulb exposure duration, in milliseconds
+    millis_t shutterPulseMillis;                            // Interval-mode shutter pulse duration, in milliseconds
+
+    AstroCameraSubData();
+    void toJSONObject(JsonObject &objectOut) const;
+    void fromJSONObject(JsonObjectConst &objectIn);
 };
 
 #endif // /ifndef AstroCamera_H

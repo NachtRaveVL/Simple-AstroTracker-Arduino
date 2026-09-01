@@ -13,7 +13,6 @@ class AstroActuatorAttachment;
 class AstroSensorAttachment;
 class AstroAxisDriverAttachment;
 class AstroTriggerAttachment;
-class AstroObservationDeviceAttachment;
 
 #include "Astruino.h"
 #include "AstroObject.h"
@@ -340,19 +339,6 @@ public:
     inline AstroTriggerAttachment &operator=(const char *rhs) { setObject(rhs); return *this; }
     template<class U> inline AstroTriggerAttachment &operator=(SharedPtr<U> rhs) { setObject(rhs); return *this; }
     template<class U> inline AstroTriggerAttachment &operator=(const U *rhs) { setObject(rhs); return *this; }
-};
-
-
-// Observation Device Attachment Point
-// Observation devices are registered Astro objects but expose the observation-device interface.
-class AstroObservationDeviceAttachment : public AstroAttachment {
-public:
-    AstroObservationDeviceAttachment(AstroObjInterface *parent = nullptr, aposi_t subIndex = 0) : AstroAttachment(parent, subIndex) { ; }
-
-    template<class U> inline void setObject(SharedPtr<U> object, bool modify = false) { AstroAttachment::setObject(object, modify); }
-    inline SharedPtr<AstroCameraTrigger> getObject() { return AstroAttachment::getObject<AstroCameraTrigger>(); }
-    AstroObservationDevice *get();
-    inline AstroObservationDevice *operator->() { return get(); }
 };
 
 #endif // /ifndef AstroAttachments_H

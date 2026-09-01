@@ -243,7 +243,7 @@ void AstroTracking::setupStaging()
 
     bool isStorming = mount->getStormingTriggerAttachment().isTriggered();
     auto coverDriver = mount->getMountCoverDriver();
-    auto observationDevice = mount->getObservationDevice();
+    auto &camera = mount->getCamera();
     auto &thermalBalancer = mount->getThermalBalancer();
 
     Vector<AstroActuatorAttachment, ASTRO_SCH_REQACTS_MAXSIZE> newActuatorReqs;
@@ -251,32 +251,28 @@ void AstroTracking::setupStaging()
     switch (stage) {
         case Init:
         case Stow: {
-            if (observationDevice) { observationDevice->stopObservation(); }
+            camera.stopObservation();
             mount->park();
             thermalBalancer.setMode(isStorming ? Astro_ThermalMode_SafeStowed : Astro_ThermalMode_DayStorage);
             if (coverDriver && coverDriver->isMoving()) { coverDriver->stop(); }
         } break;
 
         case Warm: {
-            if (observationDevice) { observationDevice->stopObservation(); }
+            camera.stopObservation();
             mount->park();
             thermalBalancer.setMode(Astro_ThermalMode_DayStorage);
             if (coverDriver && mount->isParked() && thermalBalancer.cameraSafeToStow()) { coverDriver->close(); }
-
-            {   auto mountHeaters = linksFilterActuatorsByMountAndType<ASTRO_SCH_REQACTS_MAXSIZE>(mount->getLinkages(), mount.get(), Astro_ActuatorType_DewHeater);
-                linksResolveActuatorsToAttachments<ASTRO_SCH_REQACTS_MAXSIZE>(mountHeaters, nullptr, 0, newActuatorReqs);
-            }
         } break;
 
         case Deploy: {
-            if (observationDevice) { observationDevice->stopObservation(); }
+            camera.stopObservation();
             mount->park();
             thermalBalancer.setMode(Astro_ThermalMode_NightObserving);
             if (coverDriver) { coverDriver->open(); }
         } break;
 
         case Acquire: {
-            if (observationDevice) { observationDevice->stopObservation(); }
+            camera.stopObservation();
             thermalBalancer.setMode(Astro_ThermalMode_NightObserving);
             if (coverDriver) { coverDriver->open(); }
             mount->unpark();
@@ -288,7 +284,7 @@ void AstroTracking::setupStaging()
             if (coverDriver) { coverDriver->open(); }
             mount->unpark();
             mount->track();
-            if (observationDevice && observationDevice->ready()) { observationDevice->startObservation(); }
+            if (camera.ready()) { camera.startObservation(); }
         } break;
 
         default:

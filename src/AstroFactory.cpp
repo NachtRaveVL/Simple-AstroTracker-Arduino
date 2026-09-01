@@ -54,6 +54,22 @@ SharedPtr<AstroRelayMotorActuator> AstroFactory::addCoverMotorRelay(pintype_t fo
     return nullptr;
 }
 
+SharedPtr<AstroDigitalActuator> AstroFactory::addCameraShutterRelay(pintype_t outputPin, bool activeLow)
+{
+    if (!getController()) { return nullptr; }
+    aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_ActuatorType_CameraShutter));
+    ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
+
+    if (isValidIndex(positionIndex)) {
+        auto actuator = SharedPtr<AstroDigitalActuator>(new AstroDigitalActuator(
+            AstroDigitalPin(outputPin, Astro_PinMode_Digital_Output, activeLow),
+            Astro_ActuatorType_CameraShutter, positionIndex));
+        if (getController()->registerObject(actuator)) { return actuator; }
+    }
+
+    return nullptr;
+}
+
 SharedPtr<AstroAnalogActuator> AstroFactory::addCameraCoolerPWM(pintype_t outputPin, uint8_t outputBitRes)
 {
     if (!getController()) { return nullptr; }
@@ -237,20 +253,6 @@ SharedPtr<AstroRegulatedRail> AstroFactory::addRegulatedPowerRail(Astro_RailType
     if (isValidIndex(positionIndex)) {
         auto rail = SharedPtr<AstroRegulatedRail>(new AstroRegulatedRail(railType, positionIndex, maxPower));
         if (getController()->registerObject(rail)) { return rail; }
-    }
-
-    return nullptr;
-}
-
-SharedPtr<AstroCameraTrigger> AstroFactory::addCameraTrigger()
-{
-    if (!getController()) { return nullptr; }
-    aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(AstroIdentity::ObservationDevice, 0));
-    ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
-
-    if (isValidIndex(positionIndex)) {
-        auto camera = SharedPtr<AstroCameraTrigger>(new AstroCameraTrigger(nullptr, nullptr, positionIndex));
-        if (getController()->registerObject(camera)) { return camera; }
     }
 
     return nullptr;

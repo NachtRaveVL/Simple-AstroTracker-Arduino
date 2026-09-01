@@ -13,8 +13,6 @@ class AstroMount;
 class AstroRail;
 class AstroAxisDriver;
 class AstroTrigger;
-class AstroCameraTrigger;
-class AstroObservationDevice;
 class AstroFocuser;
 
 class AstroAttachment;
@@ -22,7 +20,6 @@ class AstroActuatorAttachment;
 class AstroSensorAttachment;
 class AstroAxisDriverAttachment;
 class AstroTriggerAttachment;
-class AstroObservationDeviceAttachment;
 
 struct AstroIdentity;
 struct AstroMeasurement;
@@ -56,7 +53,6 @@ class AstroMountObjectInterface;
 class AstroRailObjectInterface;
 class AstroDriverObjectInterface;
 class AstroTriggerObjectInterface;
-class AstroObservationDeviceInterface;
 class AstroFocuserObjectInterface;
 
 class AstroParentActuatorAttachmentInterface;
@@ -76,7 +72,6 @@ class AstroPowerUsageSensorAttachmentInterface;
 class AstroAxisDriverAttachmentInterface;
 class AstroTriggerAttachmentInterface;
 class AstroLimitTriggerAttachmentInterface;
-class AstroObservationDeviceAttachmentInterface;
 
 #include "Astruino.h"
 
@@ -312,15 +307,6 @@ public:
     inline bool isTriggered(bool poll = false) { return getTriggerState(poll) == Astro_TriggerState_Triggered; }
 };
 
-// Observation Device Interface
-class AstroObservationDeviceInterface {
-public:
-    virtual ~AstroObservationDeviceInterface() { ; }
-    virtual bool ready() const = 0;
-    virtual void startObservation() = 0;
-    virtual void stopObservation() = 0;
-};
-
 // Focuser Object Interface
 // Common absolute-position interface for telescope focus mechanisms.
 class AstroFocuserObjectInterface {
@@ -469,15 +455,6 @@ public:
 
     inline void setLimitTrigger(SharedPtr<AstroTrigger> trigger);
     inline SharedPtr<AstroTrigger> getLimitTrigger(bool poll = false);
-};
-
-// Observation Device Attachment Interface
-class AstroObservationDeviceAttachmentInterface {
-public:
-    virtual AstroObservationDeviceAttachment &getObservationDeviceAttachment() = 0;
-
-    template<class U> inline void setObservationDevice(SharedPtr<U> device);
-    template<class U = AstroCameraTrigger> inline SharedPtr<U> getObservationDevice();
 };
 
 #endif // /ifndef AstroInterfaces_H

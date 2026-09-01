@@ -22,24 +22,24 @@ AstroMount *newMountObjectFromData(const AstroMountData *dataIn)
 }
 
 AstroMount::AstroMount(Astro_MountType mountType, aposi_t positionIndex)
-    : AstroObject(AstroIdentity(mountType, positionIndex)), classType(Mount), _mountType(mountType), _observer(), _targetType(Astro_TargetType_M42),
+    : AstroObject(AstroIdentity(mountType, positionIndex)), classType(Mount), _mountType(mountType), _targetType(Astro_TargetType_M42),
       _primaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS), _secondaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS),
       _parkPrimary(0.0), _parkSecondary(0.0), _guidePrimary(0.0), _guideSecondary(0.0),
       _tracking(false), _parking(false), _parked(true), _limitHit(false), _primaryDriver(this, 0), _secondaryDriver(this, 1),
-      _mountCoverDriver(this), _thermalBalancer(this), _windSpeed(this), _heatingTrigger(this), _stormingTrigger(this), _observationDevice(this),
+      _mountCoverDriver(this), _camera(this), _thermalBalancer(this), _windSpeed(this), _heatingTrigger(this), _stormingTrigger(this),
       _lastUpdate(0)
 { ; }
 
 AstroMount::AstroMount(const AstroMountData *dataIn)
     : AstroObject(dataIn), classType(dataIn ? (decltype(Mount))dataIn->id.object.classType : Unknown),
-      _mountType(dataIn ? (Astro_MountType)dataIn->id.object.objType : Astro_MountType_Unknown), _observer(),
+      _mountType(dataIn ? (Astro_MountType)dataIn->id.object.objType : Astro_MountType_Unknown),
       _targetType(dataIn ? dataIn->targetType : Astro_TargetType_M42),
       _primaryAxis(dataIn ? dataIn->primaryAxisRate : ASTRO_MOUNT_AXIS_RATE_DEGPS),
       _secondaryAxis(dataIn ? dataIn->secondaryAxisRate : ASTRO_MOUNT_AXIS_RATE_DEGPS),
       _parkPrimary(dataIn ? dataIn->parkPrimary : 0.0), _parkSecondary(dataIn ? dataIn->parkSecondary : 0.0),
       _guidePrimary(0.0), _guideSecondary(0.0), _tracking(false), _parking(false), _parked(true), _limitHit(false),
-      _primaryDriver(this, 0), _secondaryDriver(this, 1), _mountCoverDriver(this), _thermalBalancer(this), _windSpeed(this),
-      _heatingTrigger(this), _stormingTrigger(this), _observationDevice(this), _lastUpdate(0)
+      _primaryDriver(this, 0), _secondaryDriver(this, 1), _mountCoverDriver(this), _camera(this, dataIn ? &dataIn->camera : nullptr),
+      _thermalBalancer(this), _windSpeed(this), _heatingTrigger(this), _stormingTrigger(this), _lastUpdate(0)
 {
     if (dataIn) {
         _primaryAxis.minimumDegrees = dataIn->primaryMinimum;
@@ -49,11 +49,6 @@ AstroMount::AstroMount(const AstroMountData *dataIn)
         _secondaryAxis.maximumDegrees = dataIn->secondaryMaximum;
         _secondaryAxis.limitsEnabled = dataIn->secondaryLimitsEnabled;
     }
-}
-
-void AstroMount::setObserver(const AstroObserver &observer)
-{
-    _observer = observer;
 }
 
 void AstroMount::setTarget(Astro_TargetType targetType)
@@ -182,17 +177,21 @@ void AstroMount::updateTarget(int64_t unixTime, double elapsedSeconds)
         return;
     }
 
+    Location location = getController()->getSystemLocation();
+    if (!location.hasPosition()) { return; }
+
     const AstroTargetsLibData *target = AstroTargetsLib.checkoutTargetsData(_targetType);
     if (!target) { return; }
     AstroEquatorialCoordinates equatorial = target->getCoordinates(unixTime);
     AstroTargetsLib.returnTargetsData(target);
 
     if (_mountType == Astro_MountType_AltAzimuth) {
-        AstroHorizontalCoordinates horizontal = astroEquatorialToHorizontal(equatorial, _observer, unixTime);
+        AstroObserver observer(location.latitude, location.longitude, location.hasAltitude() ? location.altitude : 0.0);
+        AstroHorizontalCoordinates horizontal = astroEquatorialToHorizontal(equatorial, observer, unixTime);
         applyAxisTarget(0, wrapBy360<double>(horizontal.azimuthDegrees + _guidePrimary));
         applyAxisTarget(1, horizontal.altitudeDegrees + _guideSecondary);
     } else {
-        double localSidereal = astroLocalSiderealDegrees(unixTime, _observer.longitudeDegrees);
+        double localSidereal = astroLocalSiderealDegrees(unixTime, location.longitude);
         applyAxisTarget(0, wrapBy180Neg180<double>(localSidereal - equatorial.rightAscensionHours * 15.0 + _guidePrimary));
         applyAxisTarget(1, equatorial.declinationDegrees + _guideSecondary);
     }
@@ -248,6 +247,7 @@ void AstroMount::update()
     AstroObject::update();
 
     _mountCoverDriver.update();
+    _camera.update();
     _thermalBalancer.update();
 
     const millis_t now = nzMillis();
@@ -286,11 +286,11 @@ void AstroMount::update()
 void AstroMount::unresolveAny(AstroObject *object)
 {
     _mountCoverDriver.unresolveAny(object);
+    _camera.unresolveAny(object);
     _thermalBalancer.unresolveAny(object);
     _windSpeed.unresolveIf(object);
     _heatingTrigger.unresolveIf(object);
     _stormingTrigger.unresolveIf(object);
-    _observationDevice.unresolveIf(object);
     AstroObject::unresolveAny(object);
 }
 
@@ -335,6 +335,7 @@ void AstroMount::saveToData(AstroData *dataOut)
     mountData->secondaryMaximum = _secondaryAxis.maximumDegrees;
     mountData->primaryLimitsEnabled = _primaryAxis.limitsEnabled;
     mountData->secondaryLimitsEnabled = _secondaryAxis.limitsEnabled;
+    _camera.saveToData(&mountData->camera);
 }
 
 
@@ -342,7 +343,7 @@ AstroMountData::AstroMountData()
     : AstroObjectData(), targetType(Astro_TargetType_M42),
       primaryAxisRate(ASTRO_MOUNT_AXIS_RATE_DEGPS), secondaryAxisRate(ASTRO_MOUNT_AXIS_RATE_DEGPS),
       parkPrimary(0.0), parkSecondary(0.0), primaryMinimum(0.0), primaryMaximum(0.0),
-      secondaryMinimum(0.0), secondaryMaximum(0.0), primaryLimitsEnabled(false), secondaryLimitsEnabled(false)
+      secondaryMinimum(0.0), secondaryMaximum(0.0), primaryLimitsEnabled(false), secondaryLimitsEnabled(false), camera()
 {
     _size = sizeof(*this);
     id.object.idType = (aid_t)AstroIdentity::Mount;
@@ -369,6 +370,9 @@ void AstroMountData::toJSONObject(JsonObject &objectOut) const
         objectOut[SFP(AStr_Key_SecondaryMaximum)] = secondaryMaximum;
         objectOut[SFP(AStr_Key_SecondaryLimitsEnabled)] = secondaryLimitsEnabled;
     }
+
+    JsonObject cameraObj = objectOut.createNestedObject(SFP(AStr_Key_Camera));
+    camera.toJSONObject(cameraObj); if (!cameraObj.size()) { objectOut.remove(SFP(AStr_Key_Camera)); }
 }
 
 void AstroMountData::fromJSONObject(JsonObjectConst &objectIn)
@@ -386,4 +390,7 @@ void AstroMountData::fromJSONObject(JsonObjectConst &objectIn)
     secondaryMaximum = objectIn[SFP(AStr_Key_SecondaryMaximum)] | secondaryMaximum;
     primaryLimitsEnabled = objectIn[SFP(AStr_Key_PrimaryLimitsEnabled)] | primaryLimitsEnabled;
     secondaryLimitsEnabled = objectIn[SFP(AStr_Key_SecondaryLimitsEnabled)] | secondaryLimitsEnabled;
+
+    JsonObjectConst cameraObj = objectIn[SFP(AStr_Key_Camera)];
+    if (!cameraObj.isNull()) { camera.fromJSONObject(cameraObj); }
 }

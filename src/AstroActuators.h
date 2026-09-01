@@ -22,7 +22,8 @@ extern AstroActuator *newActuatorObjectFromData(const AstroActuatorData *dataIn)
 // Base class for controllable outputs such as motors, relays, heaters, and other equipment.
 class AstroActuator : public AstroObject,
                       public AstroActuatorObjectInterface,
-                      public AstroParentRailAttachmentInterface {
+                      public AstroParentRailAttachmentInterface,
+                      public AstroParentMountAttachmentInterface {
 public:
     const enum : signed char { Base, Callback, Digital, RelayMotor, Analog, Focuser, Unknown = -1 } classType; // Actuator class type (custom RTTI)
 
@@ -41,6 +42,7 @@ public:
     virtual void setContinuousPowerUsage(AstroSingleMeasurement contPowerUsage) override;
     virtual const AstroSingleMeasurement &getContinuousPowerUsage() override;
     virtual AstroAttachment &getParentRailAttachment() override;
+    virtual AstroAttachment &getParentMountAttachment() override;
 
     Signal<AstroActuator *, ASTRO_ACTUATOR_SIGNAL_SLOTS> &getActivationSignal();
 
@@ -62,6 +64,7 @@ protected:
     Vector<AstroActivationHandle *> _handles;               // Activation handles array
     AstroSingleMeasurement _contPowerUsage;                 // Continuous power draw
     AstroAttachment _parentRail;                            // Parent power rail attachment
+    AstroAttachment _parentMount;                           // Parent mount attachment
     Signal<AstroActuator *, ASTRO_ACTUATOR_SIGNAL_SLOTS> _activateSignal; // Activation update signal
 
     virtual AstroData *allocateData() const override;
@@ -201,7 +204,7 @@ protected:
     int32_t _position;                                      // Current measured/estimated focuser position, in steps
     int32_t _targetPosition;                                // Current focuser target position, in steps
     int32_t _minimumPosition;                               // Minimum allowed focuser position, in steps
-    int32_t _maximumPosition;                               // Maximum allowed focuser position, in steps
+    int32_t _maximumPosition;                               // Maximum focuser position, in steps
     bool _moving;                                           // Focuser movement active flag
     MoveCallback _moveCallback;                             // Absolute move callback
     StopCallback _stopCallback;                             // Stop/halt callback
@@ -220,6 +223,8 @@ struct AstroActuatorData : public AstroObjectData {
     int32_t maximumPosition;                                // Maximum focuser position, in steps
     AstroMeasurementData contPowerUsage;                    // Continuous power usage
     char railName[ASTRO_NAME_MAXSIZE];                      // Parent rail
+    char mountName[ASTRO_NAME_MAXSIZE];                     // Parent mount
+    aposi_t mountAxisIndex;                                 // Parent mount axis index
 
     AstroActuatorData();
     virtual void toJSONObject(JsonObject &objectOut) const override;

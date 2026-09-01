@@ -616,6 +616,7 @@ enum Astro_ActuatorType : signed char {
     Astro_ActuatorType_CameraCooler,                        // Camera cooler
     Astro_ActuatorType_Fan,                                 // Fan
     Astro_ActuatorType_Focuser,                             // Focuser
+    Astro_ActuatorType_CameraShutter,                       // Camera shutter
 
     Astro_ActuatorType_Count,                               // Placeholder
     Astro_ActuatorType_Undefined = -1                       // Placeholder

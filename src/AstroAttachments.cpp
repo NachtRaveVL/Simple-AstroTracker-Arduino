@@ -301,10 +301,3 @@ void AstroTriggerAttachment::updateIfNeeded(bool poll)
 {
     if (poll && resolve()) { get()->update(); }
 }
-
-
-AstroObservationDevice *AstroObservationDeviceAttachment::get()
-{
-    auto object = getObject();
-    return object ? static_cast<AstroObservationDevice *>(object.get()) : nullptr;
-}

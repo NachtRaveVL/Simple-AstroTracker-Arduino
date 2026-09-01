@@ -28,6 +28,9 @@ public:
     SharedPtr<AstroRelayMotorActuator> addCoverMotorRelay(pintype_t forwardPin,
                                                           pintype_t reversePin,
                                                           bool activeLow = false);
+    // Creates a binary camera-shutter output for a relay, optocoupler, or transistor interface.
+    SharedPtr<AstroDigitalActuator> addCameraShutterRelay(pintype_t outputPin,
+                                                          bool activeLow = false);
     // Creates a variable camera-cooler output suitable for a TEC controller input.
     SharedPtr<AstroAnalogActuator> addCameraCoolerPWM(pintype_t outputPin,
                                                       uint8_t outputBitRes = 8);
@@ -67,8 +70,6 @@ public:
     // Creates a sensor-regulated power rail.
     SharedPtr<AstroRegulatedRail> addRegulatedPowerRail(Astro_RailType railType,
                                                         float maxPower);
-    // Creates an observation trigger device.
-    SharedPtr<AstroCameraTrigger> addCameraTrigger();
 
     // Driver and trigger helpers (sub-objects, not registered as main system objects).
 

@@ -34,18 +34,20 @@ AstroActuator *newActuatorObjectFromData(const AstroActuatorData *dataIn)
 AstroActuator::AstroActuator(Astro_ActuatorType actuatorType, aposi_t positionIndex, int classTypeIn)
     : AstroObject(AstroIdentity(actuatorType, positionIndex)), classType((typeof(classType))classTypeIn),
       _enabled(false), _actuatorType(actuatorType), _enableMode(Astro_EnableMode_Highest), _power(0.0f), _needsUpdate(false),
-      _contPowerUsage(), _parentRail(this)
+      _contPowerUsage(), _parentRail(this), _parentMount(this)
 { ; }
 
 AstroActuator::AstroActuator(const AstroActuatorData *dataIn)
     : AstroObject(dataIn), classType(dataIn ? (typeof(classType))dataIn->id.object.classType : Unknown),
       _enabled(false), _actuatorType(dataIn ? (Astro_ActuatorType)dataIn->id.object.objType : Astro_ActuatorType_Undefined),
       _enableMode(dataIn ? dataIn->enableMode : Astro_EnableMode_Highest), _power(0.0f), _needsUpdate(false),
-      _contPowerUsage(), _parentRail(this)
+      _contPowerUsage(), _parentRail(this), _parentMount(this)
 {
     if (dataIn) {
         if (dataIn->contPowerUsage.units != Astro_UnitsType_Undefined) { _contPowerUsage = AstroSingleMeasurement(&dataIn->contPowerUsage); }
         _parentRail.initObject(dataIn->railName);
+        _parentMount.initObject(dataIn->mountName);
+        _parentMount.setParentSubIndex(dataIn->mountAxisIndex);
     }
 }
 
@@ -87,6 +89,11 @@ AstroAttachment &AstroActuator::getParentRailAttachment()
     return _parentRail;
 }
 
+AstroAttachment &AstroActuator::getParentMountAttachment()
+{
+    return _parentMount;
+}
+
 Signal<AstroActuator *, ASTRO_ACTUATOR_SIGNAL_SLOTS> &AstroActuator::getActivationSignal()
 {
     return _activateSignal;
@@ -116,6 +123,7 @@ void AstroActuator::update()
     AstroObject::update();
 
     _parentRail.resolve();
+    _parentMount.resolve();
 
     millis_t time = nzMillis();
 
@@ -267,6 +275,11 @@ void AstroActuator::saveToData(AstroData *dataOut)
     if (_parentRail.isSet()) {
         strncpy(actuatorData->railName, _parentRail.getKeyString().c_str(), ASTRO_NAME_MAXSIZE - 1);
         actuatorData->railName[ASTRO_NAME_MAXSIZE - 1] = '\0';
+    }
+    if (_parentMount.isSet()) {
+        strncpy(actuatorData->mountName, _parentMount.getKeyString().c_str(), ASTRO_NAME_MAXSIZE - 1);
+        actuatorData->mountName[ASTRO_NAME_MAXSIZE - 1] = '\0';
+        actuatorData->mountAxisIndex = _parentMount.getParentSubIndex();
     }
 }
 
@@ -564,7 +577,7 @@ void AstroFocuser::saveToData(AstroData *dataOut)
 
 AstroActuatorData::AstroActuatorData()
     : AstroObjectData(), enableMode(Astro_EnableMode_Highest), outputPin(), outputPin2(),
-      minimumPosition(0), maximumPosition(10000), contPowerUsage(), railName{0}
+      minimumPosition(0), maximumPosition(10000), contPowerUsage(), railName{0}, mountName{0}, mountAxisIndex(aposi_none)
 {
     _size = sizeof(*this);
     id.object.idType = (aid_t)AstroIdentity::Actuator;
@@ -584,6 +597,10 @@ void AstroActuatorData::toJSONObject(JsonObject &objectOut) const
         contPowerUsage.toJSONObject(powerObj);
     }
     if (railName[0]) { objectOut[SFP(AStr_Key_RailName)] = railName; }
+    if (mountName[0]) {
+        objectOut[SFP(AStr_Key_MountName)] = mountName;
+        if (isValidIndex(mountAxisIndex)) { objectOut[SFP(AStr_Key_MountAxisIndex)] = mountAxisIndex; }
+    }
     if (id.object.classType == (aid_t)AstroActuator::Focuser) {
         objectOut[SFP(AStr_Key_MinimumPosition)] = minimumPosition;
         objectOut[SFP(AStr_Key_MaximumPosition)] = maximumPosition;
@@ -606,6 +623,12 @@ void AstroActuatorData::fromJSONObject(JsonObjectConst &objectIn)
         strncpy(railName, railNameIn, ASTRO_NAME_MAXSIZE - 1);
         railName[ASTRO_NAME_MAXSIZE - 1] = '\0';
     }
+    const char *mountNameIn = objectIn[SFP(AStr_Key_MountName)] | nullptr;
+    if (mountNameIn) {
+        strncpy(mountName, mountNameIn, ASTRO_NAME_MAXSIZE - 1);
+        mountName[ASTRO_NAME_MAXSIZE - 1] = '\0';
+    }
+    mountAxisIndex = objectIn[SFP(AStr_Key_MountAxisIndex)] | mountAxisIndex;
     minimumPosition = objectIn[SFP(AStr_Key_MinimumPosition)] | minimumPosition;
     maximumPosition = objectIn[SFP(AStr_Key_MaximumPosition)] | maximumPosition;
 }

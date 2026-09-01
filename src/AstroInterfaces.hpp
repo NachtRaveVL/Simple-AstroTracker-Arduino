@@ -226,16 +226,4 @@ inline SharedPtr<AstroTrigger> AstroLimitTriggerAttachmentInterface::getLimitTri
     return getLimitTriggerAttachment().getObject();
 }
 
-template<class U>
-inline void AstroObservationDeviceAttachmentInterface::setObservationDevice(SharedPtr<U> device)
-{
-    getObservationDeviceAttachment().setObject(device);
-}
-
-template<class U>
-inline SharedPtr<U> AstroObservationDeviceAttachmentInterface::getObservationDevice()
-{
-    return getObservationDeviceAttachment().AstroAttachment::getObject<U>();
-}
-
 #endif // /ifndef AstroInterfaces_HPP
