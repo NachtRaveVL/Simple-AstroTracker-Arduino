@@ -6,7 +6,7 @@
 #include "Astruino.h"
 
 static char _blank = '\000';
-const char *HStr_Blank = &_blank;
+const char *AStr_Blank = &_blank;
 
 static uint16_t _strDataAddress((uint16_t)-1);
 void beginStringsFromEEPROM(uint16_t dataAddress)
@@ -22,7 +22,7 @@ void beginStringsFromSDCard(String dataFilePrefix)
 
 inline String getStringsFilename()
 {
-    String filename; filename.reserve(_strDataFilePrefix.length() + 12);
+    String filename; filename.reserve(_strDataFilePrefix.length() + 11 + 1);
     filename.concat(_strDataFilePrefix);
     filename.concat('s'); // Cannot use SFP here so have to do it the long way
     filename.concat('t');
@@ -150,8 +150,8 @@ const char *pgmAddrForStr(Astro_String strNum)
             return flashStr_ColonSpace;
         } break;
         case AStr_DoubleSpace: {
-            static const char flashStr_Blank2[] PROGMEM = {"  "};
-            return flashStr_Blank2;
+            static const char flashStr_DoubleSpace[] PROGMEM = {"  "};
+            return flashStr_DoubleSpace;
         } break;
         case AStr_csv: {
             static const char flashStr_csv[] PROGMEM = {"csv"};
@@ -164,6 +164,10 @@ const char *pgmAddrForStr(Astro_String strNum)
         case AStr_Disabled: {
             static const char flashStr_Disabled[] PROGMEM = {"Disabled"};
             return flashStr_Disabled;
+        } break;
+        case AStr_raw: {
+            static const char flashStr_raw[] PROGMEM = {"raw"};
+            return flashStr_raw;
         } break;
         case AStr_txt: {
             static const char flashStr_txt[] PROGMEM = {"txt"};
@@ -1729,6 +1733,10 @@ const char *pgmAddrForStr(Astro_String strNum)
             static const char flashStr_Enum_Tracking[] PROGMEM = {"Tracking"};
             return flashStr_Enum_Tracking;
         } break;
+        case AStr_Enum_Unknown: {
+            static const char flashStr_Enum_Unknown[] PROGMEM = {"Unknown"};
+            return flashStr_Enum_Unknown;
+        } break;
         case AStr_Enum_UpDownButtons: {
             static const char flashStr_Enum_UpDownButtons[] PROGMEM = {"UpDownButtons"};
             return flashStr_Enum_UpDownButtons;
@@ -1762,71 +1770,27 @@ const char *pgmAddrForStr(Astro_String strNum)
             return flashStr_Enum_WindSpeed;
         } break;
         case AStr_Unit_Count: {
-            static const char flashStr_Unit_Count[] PROGMEM = {"Count"};
+            static const char flashStr_Unit_Count[] PROGMEM = {"[qty]"};
             return flashStr_Unit_Count;
         } break;
-        case AStr_Unit_A: {
-            static const char flashStr_Unit_A[] PROGMEM = {"A"};
-            return flashStr_Unit_A;
+        case AStr_Unit_Degree: {
+            static const char flashStr_Unit_Degree[] PROGMEM = {"\xC2\xB0"};
+            return flashStr_Unit_Degree;
         } break;
-        case AStr_Unit_C: {
-            static const char flashStr_Unit_C[] PROGMEM = {"C"};
-            return flashStr_Unit_C;
+        case AStr_Unit_Feet: {
+            static const char flashStr_Unit_Feet[] PROGMEM = {"ft"};
+            return flashStr_Unit_Feet;
         } break;
-        case AStr_Unit_deg: {
-            static const char flashStr_Unit_deg[] PROGMEM = {"deg"};
-            return flashStr_Unit_deg;
+        case AStr_Unit_PerSecond: {
+            static const char flashStr_Unit_PerSecond[] PROGMEM = {"/s"};
+            return flashStr_Unit_PerSecond;
         } break;
-        case AStr_Unit_F: {
-            static const char flashStr_Unit_F[] PROGMEM = {"F"};
-            return flashStr_Unit_F;
-        } break;
-        case AStr_Unit_ft: {
-            static const char flashStr_Unit_ft[] PROGMEM = {"ft"};
-            return flashStr_Unit_ft;
-        } break;
-        case AStr_Unit_ftPers: {
-            static const char flashStr_Unit_ftPers[] PROGMEM = {"ft/s"};
-            return flashStr_Unit_ftPers;
-        } break;
-        case AStr_Unit_K: {
-            static const char flashStr_Unit_K[] PROGMEM = {"K"};
-            return flashStr_Unit_K;
-        } break;
-        case AStr_Unit_m: {
-            static const char flashStr_Unit_m[] PROGMEM = {"m"};
-            return flashStr_Unit_m;
-        } break;
-        case AStr_Unit_mPers: {
-            static const char flashStr_Unit_mPers[] PROGMEM = {"m/s"};
-            return flashStr_Unit_mPers;
-        } break;
-        case AStr_Unit_N1: {
-            static const char flashStr_Unit_N1[] PROGMEM = {"1"};
-            return flashStr_Unit_N1;
-        } break;
-        case AStr_Unit_Percent: {
-            static const char flashStr_Unit_Percent[] PROGMEM = {"%"};
-            return flashStr_Unit_Percent;
-        } break;
-        case AStr_Unit_PercentRH: {
-            static const char flashStr_Unit_PercentRH[] PROGMEM = {"%RH"};
-            return flashStr_Unit_PercentRH;
-        } break;
-        case AStr_Unit_rad: {
-            static const char flashStr_Unit_rad[] PROGMEM = {"rad"};
-            return flashStr_Unit_rad;
-        } break;
-        case AStr_Unit_V: {
-            static const char flashStr_Unit_V[] PROGMEM = {"V"};
-            return flashStr_Unit_V;
-        } break;
-        case AStr_Unit_W: {
-            static const char flashStr_Unit_W[] PROGMEM = {"W"};
-            return flashStr_Unit_W;
+        case AStr_Unit_Radians: {
+            static const char flashStr_Unit_Radians[] PROGMEM = {"rad"};
+            return flashStr_Unit_Radians;
         } break;
         case AStr_Unit_Undefined: {
-            static const char flashStr_Unit_Undefined[] PROGMEM = {"Undefined"};
+            static const char flashStr_Unit_Undefined[] PROGMEM = {"[undef]"};
             return flashStr_Unit_Undefined;
         } break;
 

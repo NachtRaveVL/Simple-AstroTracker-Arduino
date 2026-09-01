@@ -17,6 +17,7 @@ enum Astro_String : uint16_t {
     AStr_csv,                                    // "csv"
     AStr_dat,                                    // "dat"
     AStr_Disabled,                               // "Disabled"
+    AStr_raw,                                    // "raw"
     AStr_txt,                                    // "txt"
     AStr_Undefined,                              // "Undefined"
     AStr_null,                                   // "null"
@@ -424,6 +425,7 @@ enum Astro_String : uint16_t {
     AStr_Enum_TouchScreen,                       // "TouchScreen"
     AStr_Enum_Track,                             // "Track"
     AStr_Enum_Tracking,                          // "Tracking"
+    AStr_Enum_Unknown,                           // "Unknown"
     AStr_Enum_UpDownButtons,                     // "UpDownButtons"
     AStr_Enum_UpDownESP32Touch,                  // "UpDownESP32Touch"
     AStr_Enum_Uranus,                            // "Uranus"
@@ -433,26 +435,17 @@ enum Astro_String : uint16_t {
     AStr_Enum_Warm,                              // "Warm"
     AStr_Enum_WindSpeed,                         // "WindSpeed"
 
-    // Unit strings
-    AStr_Unit_Count,                             // "Count"
-    AStr_Unit_A,                                 // "A"
-    AStr_Unit_C,                                 // "C"
-    AStr_Unit_deg,                               // "deg"
-    AStr_Unit_F,                                 // "F"
-    AStr_Unit_ft,                                // "ft"
-    AStr_Unit_ftPers,                            // "ft/s"
-    AStr_Unit_K,                                 // "K"
-    AStr_Unit_m,                                 // "m"
-    AStr_Unit_mPers,                             // "m/s"
-    AStr_Unit_N1,                                // "1"
-    AStr_Unit_Percent,                           // "%"
-    AStr_Unit_PercentRH,                         // "%RH"
-    AStr_Unit_rad,                               // "rad"
-    AStr_Unit_V,                                 // "V"
-    AStr_Unit_W,                                 // "W"
-    AStr_Unit_Undefined,                         // "Undefined"
 
-    AStr_Count                                   // String count
+
+    // Unit strings
+    AStr_Unit_Count,                             // "[qty]"
+    AStr_Unit_Degree,                            // "°"
+    AStr_Unit_Feet,                              // "ft"
+    AStr_Unit_PerSecond,                         // "/s"
+    AStr_Unit_Radians,                           // "rad"
+    AStr_Unit_Undefined,                         // "[undef]"
+
+    AStr_Count                               // String count
 };
 
 // Blank string pointer used when no Flash string is available.
@@ -469,7 +462,7 @@ extern String stringFromPGMAddr(const char *flashStr);
 extern void beginStringsFromEEPROM(uint16_t dataAddress);
 
 // Makes string lookup go through an SD card strings file at the specified file prefix.
-extern void beginStringsFromSDCard(const String &dataFilePrefix);
+extern void beginStringsFromSDCard(String dataFilePrefix);
 
 #ifndef ASTRO_DISABLE_BUILTIN_DATA
 // Returns string from given PROGMEM (Flash) string address.

@@ -1597,7 +1597,7 @@ String targetClassToString(Astro_TargetClass targetClass, bool excludeSpecial)
         case Astro_TargetClass_Unknown:
             break;
     }
-    return !excludeSpecial ? SFP(AStr_Unknown) : String();
+    return !excludeSpecial ? SFP(AStr_Enum_Unknown) : String();
 }
 
 aposi_t getMountAxisCountFromType(Astro_MountType mountType)
@@ -1627,7 +1627,7 @@ String mountTypeToString(Astro_MountType mountType, bool excludeSpecial)
         case Astro_MountType_Unknown:
             break;
     }
-    return !excludeSpecial ? SFP(AStr_Unknown) : String();
+    return !excludeSpecial ? SFP(AStr_Enum_Unknown) : String();
 }
 
 float getRailVoltageFromType(Astro_RailType railType)
@@ -1768,35 +1768,62 @@ String unitsTypeToSymbol(Astro_UnitsType unitsType, bool excludeSpecial)
 {
     switch (unitsType) {
         case Astro_UnitsType_Raw_1:
-            return SFP(AStr_Unit_N1);
+            return SFP(AStr_raw);
         case Astro_UnitsType_Angle_Degrees_360:
-            return SFP(AStr_Unit_deg);
-        case Astro_UnitsType_Angle_Radians_2pi:
-            return SFP(AStr_Unit_rad);
+            return SFP(AStr_Unit_Degree);
+        case Astro_UnitsType_Angle_Radians_2pi: {
+            String retVal(SFP(AStr_Unit_Degree));
+            String concat(SFP(AStr_Unit_Radians));
+            retVal.reserve(retVal.length() + concat.length() + 1);
+            retVal.concat(concat);
+            return retVal;
+        }
         case Astro_UnitsType_Distance_Meters:
-            return SFP(AStr_Unit_m);
+            return String('m');
         case Astro_UnitsType_Distance_Feet:
-            return SFP(AStr_Unit_ft);
+            return SFP(AStr_Unit_Feet);
         case Astro_UnitsType_Percentile_100:
-            return SFP(AStr_Unit_Percent);
-        case Astro_UnitsType_Speed_MetersPerSec:
-            return SFP(AStr_Unit_mPers);
-        case Astro_UnitsType_Speed_FeetPerSec:
-            return SFP(AStr_Unit_ftPers);
-        case Astro_UnitsType_Temperature_Celsius:
-            return SFP(AStr_Unit_C);
-        case Astro_UnitsType_Temperature_Fahrenheit:
-            return SFP(AStr_Unit_F);
-        case Astro_UnitsType_Temperature_Kelvin:
-            return SFP(AStr_Unit_K);
+            return String('%');
+        case Astro_UnitsType_Speed_MetersPerSec: {
+            String retVal('m');
+            String concat(SFP(AStr_Unit_PerSecond));
+            retVal.reserve(retVal.length() + concat.length() + 1);
+            retVal.concat(concat);
+            return retVal;
+        }
+        case Astro_UnitsType_Speed_FeetPerSec: {
+            String retVal(SFP(AStr_Unit_Feet));
+            String concat(SFP(AStr_Unit_PerSecond));
+            retVal.reserve(retVal.length() + concat.length() + 1);
+            retVal.concat(concat);
+            return retVal;
+        }
+        case Astro_UnitsType_Temperature_Celsius: {
+            String retVal(SFP(AStr_Unit_Degree));
+            retVal.reserve(retVal.length() + 1 + 1);
+            retVal.concat('C');
+            return retVal;
+        }
+        case Astro_UnitsType_Temperature_Fahrenheit: {
+            String retVal(SFP(AStr_Unit_Degree));
+            retVal.reserve(retVal.length() + 1 + 1);
+            retVal.concat('F');
+            return retVal;
+        }
+        case Astro_UnitsType_Temperature_Kelvin: {
+            String retVal(SFP(AStr_Unit_Degree));
+            retVal.reserve(retVal.length() + 1 + 1);
+            retVal.concat('K');
+            return retVal;
+        }
         case Astro_UnitsType_Humidity_RH:
-            return SFP(AStr_Unit_PercentRH);
+            return String(F("%RH"));
         case Astro_UnitsType_Power_Wattage:
-            return SFP(AStr_Unit_W);
+            return String('W'); // alt: J/s
         case Astro_UnitsType_Voltage_Volts:
-            return SFP(AStr_Unit_V);
+            return String('V');
         case Astro_UnitsType_Current_Amperage:
-            return SFP(AStr_Unit_A);
+            return String('A');
         case Astro_UnitsType_Count:
             return !excludeSpecial ? SFP(AStr_Unit_Count) : String();
         case Astro_UnitsType_Undefined:
@@ -2766,32 +2793,22 @@ Astro_UnitsType unitsTypeFromSymbol(String unitsSymbolStr)
                     return Astro_UnitsType_Percentile_100;
             }
             break;
-        case '1':
-            return Astro_UnitsType_Raw_1;
         case 'A':
             return Astro_UnitsType_Current_Amperage;
-        case 'C':
-            switch (unitsSymbolStr.length() >= 2 ? unitsSymbolStr[1] : '\000') {
-                case 'o':
-                    return Astro_UnitsType_Count;
-                case '\000':
-                    return Astro_UnitsType_Temperature_Celsius;
-            }
-            break;
-        case 'F':
-            return Astro_UnitsType_Temperature_Fahrenheit;
         case 'J':
             return Astro_UnitsType_Power_Wattage;
-        case 'K':
-            return Astro_UnitsType_Temperature_Kelvin;
-        case 'U':
-            return Astro_UnitsType_Undefined;
         case 'V':
             return Astro_UnitsType_Voltage_Volts;
         case 'W':
             return Astro_UnitsType_Power_Wattage;
-        case 'd':
-            return Astro_UnitsType_Angle_Degrees_360;
+        case '[':
+            switch (unitsSymbolStr.length() >= 2 ? unitsSymbolStr[1] : '\000') {
+                case 'q':
+                    return Astro_UnitsType_Count;
+                case 'u':
+                    return Astro_UnitsType_Undefined;
+            }
+            break;
         case 'f':
             switch (unitsSymbolStr.length() >= 3 ? unitsSymbolStr[2] : '\000') {
                 case '/':
@@ -2809,7 +2826,27 @@ Astro_UnitsType unitsTypeFromSymbol(String unitsSymbolStr)
             }
             break;
         case 'r':
-            return Astro_UnitsType_Angle_Radians_2pi;
+            switch (unitsSymbolStr.length() >= 3 ? unitsSymbolStr[2] : '\000') {
+                case 'd':
+                    return Astro_UnitsType_Angle_Radians_2pi;
+                case 'w':
+                    return Astro_UnitsType_Raw_1;
+            }
+            break;
+        default:
+            switch (unitsSymbolStr.length() >= 3 ? unitsSymbolStr[2] : '\000') {
+                case '\000':
+                    return Astro_UnitsType_Angle_Degrees_360;
+                case 'C':
+                    return Astro_UnitsType_Temperature_Celsius;
+                case 'F':
+                    return Astro_UnitsType_Temperature_Fahrenheit;
+                case 'K':
+                    return Astro_UnitsType_Temperature_Kelvin;
+                case 'r':
+                    return Astro_UnitsType_Angle_Radians_2pi;
+            }
+            break;
     }
     return Astro_UnitsType_Undefined;
 }
