@@ -15,9 +15,13 @@
     },
     "authors": [
         {
-            "name": "NachtRaveVL"
+            "name": "NachtRaveVL",
+            "email": "nachtravevl@gmail.com",
+            "url": "https://github.com/NachtRaveVL",
+            "maintainer": true
         }
     ],
+    "homepage": "https://github.com/NachtRaveVL/Simple-AstroTracker-Arduino/",
     "license": "MIT",
     "frameworks": "arduino",
     "platforms": "*",
@@ -30,10 +34,10 @@
             ]
         },
         {
-            "name": "AstroTargetsLibraryLookup",
-            "base": "examples/AstroTargetsLibraryLookup",
+            "name": "AstroLibLookup",
+            "base": "examples/AstroLibLookup",
             "files": [
-                "AstroTargetsLibraryLookup.ino"
+                "AstroLibLookup.ino"
             ]
         },
         {
