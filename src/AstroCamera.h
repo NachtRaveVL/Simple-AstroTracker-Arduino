@@ -20,11 +20,11 @@ extern AstroObject *newObservationDeviceObjectFromData(const AstroObservationDev
 
 // Equipment Cover
 // Generic open/close mechanism for telescope caps, roof panels, dome shutters, or similar enclosures.
-// Cover control is part of the base Astruino system rather than a registered object family.
+// Cover control is a mount-owned sub-object rather than a registered object family.
 // Optional open/closed limit sensors override simulated travel so scheduler state reflects real hardware.
 class AstroCover : public AstroSubObject {
 public:
-    AstroCover();
+    AstroCover(AstroObjInterface *parent = nullptr);
 
     void open();
     void close();
@@ -39,9 +39,11 @@ public:
     template<class U> inline void setClosedSensor(U sensor) { _closedSensor.setObject(sensor); _closedLimitActive = false; }
     void clearFault();
 
+    inline bool isConfigured() const { return _actuator.isSet() || _openSensor.isSet() || _closedSensor.isSet(); }
     bool isOpen() const;
     bool isClosed() const;
     bool isMoving() const;
+    inline bool isAligned() const { return !_faulted && !isMoving(); }
     inline bool isFaulted() const { return _faulted; }
     inline float getPosition() const { return _position; }
 

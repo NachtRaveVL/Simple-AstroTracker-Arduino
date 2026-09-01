@@ -177,7 +177,6 @@ inline void setLocalTime(DateTime localTime, bool isSigTime = false);
 extern String getYYMMDDFilename(String prefix, String ext);
 // Returns a proper filename for a storage library data file that uses ## as filename.
 extern String getNNFilename(String prefix, unsigned int value, String ext);
-
 // Creates intermediate folders given a filename. Currently only supports a single folder depth.
 extern void createDirectoryFor(SDClass *sd, String filename);
 
@@ -340,6 +339,8 @@ inline String roundToString(float value, unsigned int additionalDecPlaces = 0) {
 
 // Returns linkages list filtered down to just actuators.
 template<size_t N = ASTRO_DEFAULT_MAXSIZE> Vector<AstroObject *, N> linksFilterActuators(Pair<uint8_t, Pair<AstroObject *, int8_t> *> links);
+// Returns linkages list filtered down to just actuators of a certain type that operate on a specific mount.
+template<size_t N = ASTRO_DEFAULT_MAXSIZE> Vector<AstroObject *, N> linksFilterActuatorsByMountAndType(Pair<uint8_t, Pair<AstroObject *, int8_t> *> links, AstroMount *mount, Astro_ActuatorType actuatorType);
 
 // Returns linkages list filtered down to just actuators of a certain motor'ed/or not type that operate on a specific mount.
 template<size_t N = ASTRO_DEFAULT_MAXSIZE> Vector<AstroObject *, N>  linksFilterActuatorsByTypeMountAndMotor(Pair<uint8_t, Pair<AstroObject *, int8_t> *> links, Astro_ActuatorType actuatorType, AstroMount *mount, bool isMotor);
@@ -396,10 +397,10 @@ extern String controlInputModeToString(Astro_ControlInputMode controlInMode, boo
 // Converts back to control input mode enum from string.
 extern Astro_ControlInputMode controlInputModeFromString(String controlInModeStr);
 
-// Returns true for actuators that are motorized (thus must do track checks) as derived from actuator type enumeration.
-inline bool getActuatorIsMotorFromType(Astro_ActuatorType actuatorType) { return actuatorType == Astro_ActuatorType_ContinuousServo || actuatorType == Astro_ActuatorType_LinearActuator; }
-// Returns true for actuators that are servo based (thus have a 2.5%-12.5% phase calibration) as derived from actuator type enumeration.
-inline bool getActuatorIsServoFromType(Astro_ActuatorType actuatorType) { return actuatorType == Astro_ActuatorType_ContinuousServo || actuatorType == Astro_ActuatorType_PositionalServo; }
+// Returns true for actuators whose equipment role is inherently motorized.
+inline bool getActuatorIsMotorFromType(Astro_ActuatorType actuatorType) { return actuatorType == Astro_ActuatorType_MountAxis || actuatorType == Astro_ActuatorType_Cover || actuatorType == Astro_ActuatorType_Focuser; }
+// Actuator equipment type does not encode the concrete servo/driver implementation.
+inline bool getActuatorIsServoFromType(Astro_ActuatorType actuatorType) { (void)actuatorType; return false; }
 // Returns true for actuators that operate activation handles serially (as opposed to in-parallel) as derived from enabled mode enumeration.
 inline bool getActuatorIsSerialFromMode(Astro_EnableMode enableMode) { return enableMode >= Astro_EnableMode_Serial; }
 
@@ -418,15 +419,15 @@ extern aposi_t getMountAxisCountFromType(Astro_MountType mountType);
 // Returns if mount coords are in equatorial (RA/dec) mode or not from mount type enumeration.
 inline bool getIsEquatorialCoordsFromType(Astro_MountType mountType) { return mountType == Astro_MountType_Equatorial; }
 // Returns if mount coords are in horizontal (azi/ele) mode or not from mount type enumeration.
-inline bool getIsHorizontalCoordsFromType(Astro_MountType mountType) { return mountType == Astro_MountType_Gimballed || mountType == Astro_MountType_Horizontal || mountType == Astro_MountType_Vertical; };
-// Returns if mount type uses a driver for horizontal axis control (axis 1, azi or RA) or not from mount type enumeration.
-inline bool getDrivesHorizontalAxis(Astro_MountType mountType) { return mountType == Astro_MountType_Equatorial || mountType == Astro_MountType_Gimballed || mountType == Astro_MountType_Horizontal; }
-// Returns if mount type uses a driver for vertical axis control (axis 2, ele or dec) or not from mount type enumeration.
-inline bool getDrivesVerticalAxis(Astro_MountType mountType) { return mountType == Astro_MountType_Equatorial || mountType == Astro_MountType_Gimballed || mountType == Astro_MountType_Vertical; }
+inline bool getIsHorizontalCoordsFromType(Astro_MountType mountType) { return mountType == Astro_MountType_AltAzimuth; }
+// Returns if mount type uses a driver for horizontal/primary axis control (azi, RA, or single tracking axis) or not from mount type enumeration.
+inline bool getDrivesHorizontalAxis(Astro_MountType mountType) { return mountType == Astro_MountType_Equatorial || mountType == Astro_MountType_AltAzimuth || mountType == Astro_MountType_SingleAxis; }
+// Returns if mount type uses a driver for vertical/secondary axis control (ele or dec) or not from mount type enumeration.
+inline bool getDrivesVerticalAxis(Astro_MountType mountType) { return mountType == Astro_MountType_Equatorial || mountType == Astro_MountType_AltAzimuth; }
 
-// Converts from fluid mount enum to string, with optional exclude for special types (instead returning "").
+// Converts from mount enum to string, with optional exclude for special types (instead returning "").
 extern String mountTypeToString(Astro_MountType mountType, bool excludeSpecial = false);
-// Converts back to fluid mount enum from string.
+// Converts back to mount enum from string.
 extern Astro_MountType mountTypeFromString(String mountTypeStr);
 
 // Returns nominal rail voltage as derived from rail type enumeration.

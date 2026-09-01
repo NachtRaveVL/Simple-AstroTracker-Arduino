@@ -129,27 +129,18 @@ void AstroScheduler::performScheduling()
 
             {   auto trackingIter = _trackings.find(mount->getKey());
 
-                if (linksCountTravelActuators(mount->getLinkages())) {
-                    if (trackingIter != _trackings.end()) {
-                        if (trackingIter->second) {
-                            trackingIter->second->setupStaging();
-                        }
-                    } else {
-                        #ifdef ASTRO_USE_VERBOSE_OUTPUT
-                            Serial.print(F("Scheduler::performScheduling Travel actuator linkages found for: ")); Serial.print(iter->second->getId().getDisplayString());
-                            Serial.print(':'); Serial.print(' '); Serial.println(linksCountTravelActuators(mount->getLinkages())); flushYield();
-                        #endif
-
-                        AstroTracking *tracking = new AstroTracking(mount);
-                        ASTRO_SOFT_ASSERT(tracking, SFP(AStr_Err_AllocationFailure));
-                        if (tracking) { _trackings[mount->getKey()] = tracking; }
+                if (trackingIter != _trackings.end()) {
+                    if (trackingIter->second) {
+                        trackingIter->second->setupStaging();
                     }
-                } else if (trackingIter != _trackings.end()) { // No travel actuators to warrant process -> delete if exists
+                } else {
                     #ifdef ASTRO_USE_VERBOSE_OUTPUT
-                        Serial.print(F("Scheduler::performScheduling NO travel actuator linkages found for: ")); Serial.println(iter->second->getId().getDisplayString()); flushYield();
+                        Serial.print(F("Scheduler::performScheduling Mount found for: ")); Serial.println(iter->second->getId().getDisplayString()); flushYield();
                     #endif
-                    if (trackingIter->second) { delete trackingIter->second; }
-                    _trackings.erase(trackingIter);
+
+                    AstroTracking *tracking = new AstroTracking(mount);
+                    ASTRO_SOFT_ASSERT(tracking, SFP(AStr_Err_AllocationFailure));
+                    if (tracking) { _trackings[mount->getKey()] = tracking; }
                 }
             }
         }
@@ -250,96 +241,54 @@ void AstroTracking::setupStaging()
         Serial.print(F("Tracking::setupStaging stage: ")); Serial.println((_stageFS1 = (int8_t)stage)); flushYield(); } }
     #endif
 
-    // TODO: Fix all the below.
-
-    auto trackingMount = mount->isAnyTrackingClass() ? static_pointer_cast<AstroTrackingMount>(mount) : nullptr;
-    bool isStorming = trackingMount && trackingMount->getStormingTriggerAttachment().isTriggered();
-    bool canUncover = stage >= Uncover && stage < Cover && !isStorming;
-
-    if (mount->drivesHorizontalAxis()) {
-        auto axisHorz = linksFilterTravelActuatorsByMountAxisAndMotor<ASTRO_DRV_ACTUATORS_MAXSIZE>(mount->getLinkages(), mount.get(), 0, true);
-        bool anyMotors = axisHorz.size();
-        if (!anyMotors) { axisHorz = linksFilterTravelActuatorsByMountAxisAndMotor<ASTRO_DRV_ACTUATORS_MAXSIZE>(mount->getLinkages(), mount.get(), 0, false); }
-        if (axisHorz.size()) {
-            auto horzDriver = mount->getAxisDriver(0);
-            if (!horzDriver || horzDriver->isIncrementalType() != anyMotors) {
-                if (anyMotors) { horzDriver = SharedPtr<AstroIncrementalDriver>(new AstroIncrementalDriver()); }
-                else { horzDriver = SharedPtr<AstroAbsoluteDriver>(new AstroAbsoluteDriver()); }
-                ASTRO_SOFT_ASSERT(horzDriver, SFP(AStr_Err_AllocationFailure));
-                horzDriver->setEnabled(true);
-                mount->setAxisDriver(horzDriver, 0);
-            }
-            Vector<AstroActuatorAttachment,ASTRO_DRV_ACTUATORS_MAXSIZE> horzActivations;
-            linksResolveActuatorsToAttachments<ASTRO_DRV_ACTUATORS_MAXSIZE>(axisHorz, mount.get(), 0, horzActivations);
-            horzDriver->setActuators(horzActivations);
-        } else {
-            auto horzDriver = mount->getAxisDriver(0);
-            if (horzDriver) { horzDriver->setEnabled(false); }
-        }
-    }
-
-    if (mount->drivesVerticalAxis()) {
-        auto axisVert = linksFilterTravelActuatorsByMountAxisAndMotor<ASTRO_DRV_ACTUATORS_MAXSIZE>(mount->getLinkages(), mount.get(), 1, true);
-        bool anyMotors = axisVert.size();
-        if (!anyMotors) { axisVert = linksFilterTravelActuatorsByMountAxisAndMotor<ASTRO_DRV_ACTUATORS_MAXSIZE>(mount->getLinkages(), mount.get(), 1, false); }
-        if (axisVert.size()) {
-            auto vertDriver = mount->getAxisDriver(1);
-            if (!vertDriver || vertDriver->isIncrementalType() != anyMotors) {
-                if (anyMotors) { vertDriver = SharedPtr<AstroIncrementalDriver>(new AstroIncrementalDriver()); }
-                else { vertDriver = SharedPtr<AstroAbsoluteDriver>(new AstroAbsoluteDriver()); }
-                ASTRO_SOFT_ASSERT(vertDriver, SFP(AStr_Err_AllocationFailure));
-                vertDriver->setEnabled(true);
-                mount->setAxisDriver(vertDriver, 1);
-            }
-            Vector<AstroActuatorAttachment,ASTRO_DRV_ACTUATORS_MAXSIZE> vertActivations;
-            linksResolveActuatorsToAttachments<ASTRO_DRV_ACTUATORS_MAXSIZE>(axisVert, mount.get(), 1, vertActivations);
-            vertDriver->setActuators(vertActivations);
-        } else {
-            auto vertDriver = mount->getAxisDriver(1);
-            if (vertDriver) { vertDriver->setEnabled(false); }
-        }
-    }
-
-    {   auto mountCovers = linksFilterActuatorsByMountAndType<ASTRO_DRV_ACTUATORS_MAXSIZE>(mount->getLinkages(), mount.get(), Astro_ActuatorType_MountCover);
-        if (mountCovers.size()) {
-            bool hasMotor = false;
-            for (auto obj : mountCovers) { if (((AstroActuator *)obj)->isMotorType()) { hasMotor = true; break; } }
-            auto coverDriver = mount->getMountCoverDriver();
-            if (!coverDriver || coverDriver->isIncrementalType() != hasMotor) {
-                if (hasMotor) { coverDriver = SharedPtr<AstroIncrementalDriver>(new AstroIncrementalDriver()); }
-                else { coverDriver = SharedPtr<AstroAbsoluteDriver>(new AstroAbsoluteDriver()); }
-                ASTRO_SOFT_ASSERT(coverDriver, SFP(AStr_Err_AllocationFailure));
-                coverDriver->setEnabled(true);
-                mount->setMountCoverDriver(coverDriver);
-            }
-            Vector<AstroActuatorAttachment,ASTRO_DRV_ACTUATORS_MAXSIZE> coverActivations;
-            linksResolveActuatorsToAttachments<ASTRO_DRV_ACTUATORS_MAXSIZE>(mountCovers, mount.get(), 0, coverActivations);
-            coverDriver->setActuators(coverActivations);
-            coverDriver->setTargetSetpoint(canUncover ? coverDriver->getTrackRange().first : coverDriver->getTrackRange().second);
-        } else {
-            auto coverDriver = mount->getMountCoverDriver();
-            if (coverDriver) { coverDriver->setEnabled(false); }
-        }
-    }
+    bool isStorming = mount->getStormingTriggerAttachment().isTriggered();
+    auto coverDriver = mount->getMountCoverDriver();
+    auto observationDevice = mount->getObservationDevice();
+    auto &thermalBalancer = mount->getThermalBalancer();
 
     Vector<AstroActuatorAttachment, ASTRO_SCH_REQACTS_MAXSIZE> newActuatorReqs;
 
     switch (stage) {
-        case Warm:
-        case Deploy:
-        case Acquire: {
+        case Init:
+        case Stow: {
+            if (observationDevice) { observationDevice->stopObservation(); }
+            mount->park();
+            thermalBalancer.setMode(isStorming ? Astro_ThermalMode_SafeStowed : Astro_ThermalMode_DayStorage);
+            if (coverDriver && coverDriver->isMoving()) { coverDriver->stop(); }
+        } break;
+
+        case Warm: {
+            if (observationDevice) { observationDevice->stopObservation(); }
+            mount->park();
+            thermalBalancer.setMode(Astro_ThermalMode_DayStorage);
+            if (coverDriver && mount->isParked() && thermalBalancer.cameraSafeToStow()) { coverDriver->close(); }
+
             {   auto mountHeaters = linksFilterActuatorsByMountAndType<ASTRO_SCH_REQACTS_MAXSIZE>(mount->getLinkages(), mount.get(), Astro_ActuatorType_DewHeater);
                 linksResolveActuatorsToAttachments<ASTRO_SCH_REQACTS_MAXSIZE>(mountHeaters, nullptr, 0, newActuatorReqs);
             }
         } break;
 
+        case Deploy: {
+            if (observationDevice) { observationDevice->stopObservation(); }
+            mount->park();
+            thermalBalancer.setMode(Astro_ThermalMode_NightObserving);
+            if (coverDriver) { coverDriver->open(); }
+        } break;
+
+        case Acquire: {
+            if (observationDevice) { observationDevice->stopObservation(); }
+            thermalBalancer.setMode(Astro_ThermalMode_NightObserving);
+            if (coverDriver) { coverDriver->open(); }
+            mount->unpark();
+            mount->track();
+        } break;
+
         case Track: {
-            {   auto mountHeaters = linksFilterActuatorsByMountAndType<ASTRO_SCH_REQACTS_MAXSIZE>(mount->getLinkages(), mount.get(), Astro_ActuatorType_DewHeater);
-                linksResolveActuatorsToAttachments<ASTRO_SCH_REQACTS_MAXSIZE>(mountHeaters, nullptr, 0, newActuatorReqs);
-            }
-            {   auto mountFocusers = linksFilterActuatorsByMountAndType<ASTRO_SCH_REQACTS_MAXSIZE>(mount->getLinkages(), mount.get(), Astro_ActuatorType_Focuser);
-                linksResolveActuatorsToAttachments<ASTRO_SCH_REQACTS_MAXSIZE>(mountFocusers, nullptr, 0, newActuatorReqs);
-            }
+            thermalBalancer.setMode(Astro_ThermalMode_NightObserving);
+            if (coverDriver) { coverDriver->open(); }
+            mount->unpark();
+            mount->track();
+            if (observationDevice && observationDevice->ready()) { observationDevice->startObservation(); }
         } break;
 
         default:
@@ -347,7 +296,6 @@ void AstroTracking::setupStaging()
     }
 
     setActuatorReqs(newActuatorReqs);
-    //mount->setInDaytimeMode(stage == Track && canUncover); // FIXME: Do mounts have nighttime mode boolean?
     canProcessAfter = unixNow();
 
     #ifdef ASTRO_USE_VERBOSE_OUTPUT
@@ -364,26 +312,27 @@ void AstroTracking::update()
     #endif
 
     time_t time = unixNow();
-    auto trackingMount = mount->isAnyTrackingClass() ? static_pointer_cast<AstroTrackingMount>(mount) : nullptr;
+    bool reportDue = (!lastEnvReport || time >= lastEnvReport + getScheduler()->schedulerData()->reportInterval) &&
+                     getScheduler()->schedulerData()->reportInterval > 0; // 0 disables
+    auto temperatureSensor = mount->getTemperatureSensor();
+    auto windSpeedSensor = mount->getWindSpeedSensor();
 
-    if (trackingMount && (!lastEnvReport || time >= lastEnvReport + getScheduler()->schedulerData()->reportInterval) &&
-        (getScheduler()->schedulerData()->reportInterval > 0) && // 0 disables
-        (mount->isAnyTrackingClass() && static_pointer_cast<AstroTrackingMount>(mount)->getTemperatureSensor()) ||
-        (mount->isAnyTrackingClass() && static_pointer_cast<AstroTrackingMount>(mount)->getWindSpeedSensor())) {
+    if (reportDue && (temperatureSensor || windSpeedSensor)) {
         getLogger()->logProcess(mount.get(), SFP(AStr_Log_EnvReport));
-        if (trackingMount->getTemperatureSensor(true)) {
+        if (mount->getTemperatureSensor(true)) {
             #ifdef ASTRO_USE_MULTITASKING
-                trackingMount->getTemperatureSensor()->yieldForMeasurement();
+                mount->getTemperatureSensor()->yieldForMeasurement();
             #endif
-            auto temp = trackingMount->getTemperatureSensorAttachment().getMeasurement();
-            convertUnits(&temp, trackingMount->getTemperatureUnits());
+            auto temp = mount->getTemperatureSensorAttachment().getMeasurement();
+            convertUnits(&temp, defaultTemperatureUnits());
             getLogger()->logMessage(SFP(AStr_Log_Field_Temp_Measured), measurementToString(temp));
         }
-        if (trackingMount->getWindSpeedSensor(true)) {
+        if (mount->getWindSpeedSensor(true)) {
             #ifdef ASTRO_USE_MULTITASKING
-                trackingMount->getWindSpeedSensor()->yieldForMeasurement();
+                mount->getWindSpeedSensor()->yieldForMeasurement();
             #endif
-            auto windSpeed = trackingMount->getWindSpeedSensorAttachment().getMeasurement();
+            auto windSpeed = mount->getWindSpeedSensorAttachment().getMeasurement();
+            convertUnits(&windSpeed, defaultSpeedUnits());
             getLogger()->logMessage(SFP(AStr_Log_Field_WindSpeed_Measured), measurementToString(windSpeed));
         }
         lastEnvReport = time;
@@ -399,14 +348,19 @@ void AstroTracking::update()
         bool afterSunset = currTime >= sunset;
         bool nighttime = beforeSunrise || afterSunset;
         auto nextSunrise = beforeSunrise ? sunrise : getScheduler()->getTomorrowTwilight().getSunriseLocalTime();
-        bool preHeatingDue = trackingMount && currTime >= sunset - TimeSpan(0,0,getScheduler()->schedulerData()->preDuskHeatingMins,0) &&
-                             trackingMount->getHeatingTriggerAttachment().isTriggered() &&
-                             linksFilterActuatorsByMountAndType(trackingMount->getLinkages(), trackingMount.get(), Astro_ActuatorType_DewHeater).size();
-        bool isStorming = trackingMount && trackingMount->getStormingTriggerAttachment().isTriggered();
+        bool preHeatingDue = !nighttime && currTime >= sunset - TimeSpan(0,0,getScheduler()->schedulerData()->preDuskHeatingMins,0) &&
+                             mount->getHeatingTriggerAttachment().isTriggered() &&
+                             linksFilterActuatorsByMountAndType(mount->getLinkages(), mount.get(), Astro_ActuatorType_DewHeater).size();
+        bool isStorming = mount->getStormingTriggerAttachment().isTriggered();
+        auto coverDriver = mount->getMountCoverDriver();
+        auto &thermalBalancer = mount->getThermalBalancer();
 
         switch (stage) {
             case Init: {
-                if (nighttime) { // storm trigger handled in later update
+                if (isStorming) {
+                    stage = Stow; stageStart = time;
+                    setupStaging();
+                } else if (nighttime) {
                     stage = Deploy; stageStart = time;
                     setupStaging();
                 } else if (preHeatingDue) {
@@ -419,12 +373,15 @@ void AstroTracking::update()
             } break;
 
             case Warm: {
-                if (!nighttime || isStorming) {
+                if (isStorming) {
                     stage = Stow; stageStart = time;
                     setupStaging(); logStage = true;
                 } else if (nighttime) {
                     stage = Deploy; stageStart = time;
-                    setupStaging();  logStage = true;
+                    setupStaging(); logStage = true;
+                } else if (!preHeatingDue) {
+                    stage = Stow; stageStart = time;
+                    setupStaging(); logStage = true;
                 } // else running heating
             } break;
 
@@ -442,10 +399,10 @@ void AstroTracking::update()
                 if (!nighttime || isStorming) {
                     stage = Stow; stageStart = time;
                     setupStaging(); logStage = true;
-                } if (!mount->getTarget() || mount->getTarget()->isAligned()) {
+                } else if (mount->isAligned()) {
                     stage = Track; stageStart = time;
                     setupStaging(); logStage = true;
-                } // else running cleaning
+                } // else acquiring target
             } break;
 
             case Track: {
@@ -456,11 +413,26 @@ void AstroTracking::update()
             } break;
 
             case Stow: {
-                if (!nighttime || isStorming) { // running cover
-                    if (!nighttime && !daytimeSeqReported) { stormingReported = false; logStage = true; }
-                } // else after-sunrise / running cover
+                if (mount->isParked() && thermalBalancer.cameraSafeToStow() && coverDriver) {
+                    coverDriver->close();
+                }
 
-                if (stowageSeqReported && mount->getMountCoverDriver() && mount->getMountCoverDriver()->isAligned()) {
+                bool stowed = mount->isParked() && thermalBalancer.cameraSafeToStow() &&
+                              (!coverDriver || coverDriver->isClosed());
+
+                if (stowed && !isStorming) {
+                    if (nighttime) {
+                        stage = Deploy; stageStart = time;
+                        setupStaging(); logStage = true;
+                    } else if (preHeatingDue) {
+                        stage = Warm; stageStart = time;
+                        setupStaging(); logStage = true;
+                    } else if (!daytimeSeqReported) {
+                        stormingReported = false; logStage = true;
+                    }
+                }
+
+                if (stowageSeqReported && (!coverDriver || coverDriver->isClosed())) {
                     getLogger()->logProcess(mount.get(), SFP(AStr_Log_StowSequence), SFP(AStr_Log_HasEnded));
                     getLogger()->logMessage(SFP(AStr_Log_Field_Time_Measured), timeSpanToString(TimeSpan(time - stageStart)));
                     stowageSeqReported = false;
@@ -522,7 +494,7 @@ void AstroTracking::update()
                 } break;
 
                 case Deploy: {
-                    if (mount->getMountCoverDriver() && mount->getMountCoverDriver()->getActuators().size()) {
+                    if (mount->getMountCoverDriver() && !mount->getMountCoverDriver()->isAligned()) {
                         getLogger()->logProcess(mount.get(), SFP(AStr_Log_DeploySequence), SFP(AStr_Log_HasBegan));
                     }
                 } break;
@@ -548,7 +520,7 @@ void AstroTracking::update()
                         getLogger()->logProcess(mount.get(), SFP(AStr_Log_DaytimeSequence), SFP(AStr_Log_HasBegan));
                         daytimeSeqReported = true;
                     }
-                    if (mount->getMountCoverDriver() && !mount->getMountCoverDriver()->isAligned() && !stowageSeqReported) {
+                    if (mount->getMountCoverDriver() && !mount->getMountCoverDriver()->isClosed() && !stowageSeqReported) {
                         getLogger()->logProcess(mount.get(), SFP(AStr_Log_StowSequence), SFP(AStr_Log_HasBegan));
                         stowageSeqReported = true;
                     }

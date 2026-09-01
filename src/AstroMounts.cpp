@@ -26,6 +26,7 @@ AstroMount::AstroMount(Astro_MountType mountType, aposi_t positionIndex)
       _primaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS), _secondaryAxis(ASTRO_MOUNT_AXIS_RATE_DEGPS),
       _parkPrimary(0.0), _parkSecondary(0.0), _guidePrimary(0.0), _guideSecondary(0.0),
       _tracking(false), _parking(false), _parked(true), _limitHit(false), _primaryDriver(this, 0), _secondaryDriver(this, 1),
+      _mountCoverDriver(this), _thermalBalancer(this), _windSpeed(this), _heatingTrigger(this), _stormingTrigger(this), _observationDevice(this),
       _lastUpdate(0)
 { ; }
 
@@ -37,7 +38,8 @@ AstroMount::AstroMount(const AstroMountData *dataIn)
       _secondaryAxis(dataIn ? dataIn->secondaryAxisRate : ASTRO_MOUNT_AXIS_RATE_DEGPS),
       _parkPrimary(dataIn ? dataIn->parkPrimary : 0.0), _parkSecondary(dataIn ? dataIn->parkSecondary : 0.0),
       _guidePrimary(0.0), _guideSecondary(0.0), _tracking(false), _parking(false), _parked(true), _limitHit(false),
-      _primaryDriver(this, 0), _secondaryDriver(this, 1), _lastUpdate(0)
+      _primaryDriver(this, 0), _secondaryDriver(this, 1), _mountCoverDriver(this), _thermalBalancer(this), _windSpeed(this),
+      _heatingTrigger(this), _stormingTrigger(this), _observationDevice(this), _lastUpdate(0)
 {
     if (dataIn) {
         _primaryAxis.minimumDegrees = dataIn->primaryMinimum;
@@ -243,6 +245,11 @@ void AstroMount::moveAxis(AstroAxisState *axis, double elapsedSeconds, bool wrap
 
 void AstroMount::update()
 {
+    AstroObject::update();
+
+    _mountCoverDriver.update();
+    _thermalBalancer.update();
+
     const millis_t now = nzMillis();
     const double elapsedSeconds = _lastUpdate ? (double)(now - _lastUpdate) / 1000.0 : 0.0;
     _lastUpdate = now;
@@ -274,6 +281,17 @@ void AstroMount::update()
     } else if (_parked && !isAtParkPosition()) {
         _parked = false;
     }
+}
+
+void AstroMount::unresolveAny(AstroObject *object)
+{
+    _mountCoverDriver.unresolveAny(object);
+    _thermalBalancer.unresolveAny(object);
+    _windSpeed.unresolveIf(object);
+    _heatingTrigger.unresolveIf(object);
+    _stormingTrigger.unresolveIf(object);
+    _observationDevice.unresolveIf(object);
+    AstroObject::unresolveAny(object);
 }
 
 void AstroMount::notifyDateChanged()

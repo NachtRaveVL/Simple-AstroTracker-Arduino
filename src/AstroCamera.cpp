@@ -21,11 +21,11 @@ AstroObject *newObservationDeviceObjectFromData(const AstroObservationDeviceData
     return nullptr;
 }
 
-AstroCover::AstroCover()
-    : AstroSubObject(), _position(0.0f), _target(0.0f), _travelRate(ASTRO_COVER_TRAVEL_RATE),
+AstroCover::AstroCover(AstroObjInterface *parent)
+    : AstroSubObject(parent), _position(0.0f), _target(0.0f), _travelRate(ASTRO_COVER_TRAVEL_RATE),
       _travelTimeout(ASTRO_COVER_TRAVEL_TIMEOUT_SECS), _travelElapsed(0.0),
       _openLimitActive(false), _closedLimitActive(false), _faulted(false),
-      _actuator(this), _openSensor(this), _closedSensor(this), _lastUpdate(nzMillis())
+      _actuator(parent ? parent : this), _openSensor(parent ? parent : this), _closedSensor(parent ? parent : this), _lastUpdate(nzMillis())
 { ; }
 
 void AstroCover::open()
@@ -170,9 +170,9 @@ void AstroCover::update()
 
 void AstroCover::unresolveAny(AstroObject *object)
 {
-    _actuator.unresolveAny(object);
-    _openSensor.unresolveAny(object);
-    _closedSensor.unresolveAny(object);
+    _actuator.unresolveIf(object);
+    _openSensor.unresolveIf(object);
+    _closedSensor.unresolveIf(object);
     AstroSubObject::unresolveAny(object);
 }
 

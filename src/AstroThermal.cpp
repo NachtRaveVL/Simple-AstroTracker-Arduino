@@ -21,9 +21,10 @@ AstroThermalBalancer::AstroThermalBalancer(AstroObjInterface *parent)
       _maxOpticsAboveAmbientC(ASTRO_THERMAL_OPTICS_MAX_C), _cameraRequestedTargetC(ASTRO_THERMAL_CAMERA_TARGET_C),
       _cameraCommandTargetC(10.0), _cameraCoolingRampCPerMinute(ASTRO_THERMAL_CAMERA_RAMP_CPM),
       _electronicsMinimumC(ASTRO_THERMAL_ELECTRONICS_MIN_C), _lastUpdate(0),
-      _ambientTemperature(this), _humidity(this), _opticsTemperature(this),
-      _cameraSensorTemperature(this), _cameraBodyTemperature(this),
-      _dewHeater(this), _electronicsHeater(this), _cameraCooler(this), _cameraFan(this),
+      _ambientTemperature(parent ? parent : this), _humidity(parent ? parent : this), _opticsTemperature(parent ? parent : this),
+      _cameraSensorTemperature(parent ? parent : this), _cameraBodyTemperature(parent ? parent : this),
+      _dewHeater(parent ? parent : this), _electronicsHeater(parent ? parent : this),
+      _cameraCooler(parent ? parent : this), _cameraFan(parent ? parent : this),
       _readings(), _outputs()
 { ; }
 
@@ -196,13 +197,13 @@ bool AstroThermalBalancer::cameraSafeToStow() const
 
 void AstroThermalBalancer::unresolveAny(AstroObject *object)
 {
-    _ambientTemperature.unresolveAny(object);
-    _humidity.unresolveAny(object);
-    _opticsTemperature.unresolveAny(object);
-    _cameraSensorTemperature.unresolveAny(object);
-    _cameraBodyTemperature.unresolveAny(object);
-    _dewHeater.unresolveAny(object);
-    _electronicsHeater.unresolveAny(object);
-    _cameraCooler.unresolveAny(object);
-    _cameraFan.unresolveAny(object);
+    _ambientTemperature.unresolveIf(object);
+    _humidity.unresolveIf(object);
+    _opticsTemperature.unresolveIf(object);
+    _cameraSensorTemperature.unresolveIf(object);
+    _cameraBodyTemperature.unresolveIf(object);
+    _dewHeater.unresolveIf(object);
+    _electronicsHeater.unresolveIf(object);
+    _cameraCooler.unresolveIf(object);
+    _cameraFan.unresolveIf(object);
 }

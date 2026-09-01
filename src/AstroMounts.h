@@ -13,6 +13,7 @@ struct AstroMountData;
 #include "Astruino.h"
 #include "AstroCoreLogic.h"
 #include "AstroDrivers.h"
+#include "AstroThermal.h"
 
 // Creates mount object from passed mount data (return ownership transfer - user code *must* delete returned object)
 extern AstroMount *newMountObjectFromData(const AstroMountData *dataIn);
@@ -40,7 +41,10 @@ struct AstroAxisState {
 // Telescope Mount
 // Base tracking object for equatorial, alt/azimuth, and single-axis mounts.
 class AstroMount : public AstroObject,
-                   public AstroMountObjectInterface {
+                   public AstroMountObjectInterface,
+                   public AstroTemperatureSensorAttachmentInterface,
+                   public AstroWindSpeedSensorAttachmentInterface,
+                   public AstroObservationDeviceAttachmentInterface {
 public:
     const enum : signed char { Mount, Unknown = -1 } classType; // Mount class type (custom RTTI)
 
@@ -58,6 +62,18 @@ public:
     void setAxisDriver(uint8_t axisIndex, SharedPtr<AstroAxisDriver> driver);
     SharedPtr<AstroAxisDriver> getAxisDriver(uint8_t axisIndex) const;
 
+    inline AstroCover &getMountCover() { return _mountCoverDriver; }
+    inline AstroCover *getMountCoverDriver() { return _mountCoverDriver.isConfigured() ? &_mountCoverDriver : nullptr; }
+    inline AstroThermalBalancer &getThermalBalancer() { return _thermalBalancer; }
+
+    template<class U> inline void setHeatingTrigger(U heatingTrigger) { _heatingTrigger.setObject(heatingTrigger); }
+    inline SharedPtr<AstroTrigger> getHeatingTrigger() { return _heatingTrigger.getObject(); }
+    inline AstroTriggerAttachment &getHeatingTriggerAttachment() { return _heatingTrigger; }
+
+    template<class U> inline void setStormingTrigger(U stormingTrigger) { _stormingTrigger.setObject(stormingTrigger); }
+    inline SharedPtr<AstroTrigger> getStormingTrigger() { return _stormingTrigger.getObject(); }
+    inline AstroTriggerAttachment &getStormingTriggerAttachment() { return _stormingTrigger; }
+
     virtual void park() override;
     virtual void unpark() override;
     inline virtual void stow() override { park(); }
@@ -67,12 +83,22 @@ public:
     void clearGuideOffset(uint8_t axisIndex = 0xff);
 
     virtual void update() override;
+    virtual void unresolveAny(AstroObject *object) override;
     void notifyDateChanged();
     virtual bool isAligned(double toleranceDegrees = ASTRO_SCH_ALIGN_TOL_DEG) const override;
     virtual bool isParked() const override { return _parked; }
 
+    virtual AstroSensorAttachment &getTemperatureSensorAttachment() override { return _thermalBalancer.getAmbientTemperatureSensorAttachment(); }
+    virtual AstroSensorAttachment &getWindSpeedSensorAttachment() override { return _windSpeed; }
+    virtual AstroObservationDeviceAttachment &getObservationDeviceAttachment() override { return _observationDevice; }
+
     inline Astro_MountType getMountType() const { return _mountType; }
     inline Astro_TargetType getTargetType() const { return _targetType; }
+    inline aposi_t getAxisCount() const { return getMountAxisCountFromType(getMountType()); }
+    inline bool isHorizontalCoords() const { return getIsHorizontalCoordsFromType(getMountType()); }
+    inline bool isEquatorialCoords() const { return getIsEquatorialCoordsFromType(getMountType()); }
+    inline bool drivesHorizontalAxis() const { return getDrivesHorizontalAxis(getMountType()); }
+    inline bool drivesVerticalAxis() const { return getDrivesVerticalAxis(getMountType()); }
     inline bool isTracking() const { return _tracking; }
     inline bool isParking() const { return _parking; }
     inline bool isLimitHit() const { return _limitHit; }
@@ -94,6 +120,12 @@ protected:
     bool _limitHit;                                         // Axis limit fault flag
     AstroAxisDriverAttachment _primaryDriver;               // Primary axis driver
     AstroAxisDriverAttachment _secondaryDriver;             // Secondary axis driver
+    AstroCover _mountCoverDriver;                           // Mount/telescope cover driver
+    AstroThermalBalancer _thermalBalancer;                  // Mount/telescope thermal balancer
+    AstroSensorAttachment _windSpeed;                       // Local wind speed sensor attachment
+    AstroTriggerAttachment _heatingTrigger;                 // Mount needs-heating/dew-control trigger attachment
+    AstroTriggerAttachment _stormingTrigger;                // Mount storming/wind/rain trigger attachment
+    AstroObservationDeviceAttachment _observationDevice;    // Mount observation device attachment
     millis_t _lastUpdate;                                   // Last update time
 
     bool applyAxisTarget(uint8_t axisIndex, double targetDegrees);

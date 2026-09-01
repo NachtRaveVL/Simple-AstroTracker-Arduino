@@ -223,6 +223,24 @@ Vector<AstroObject *, N> linksFilterActuators(Pair<uint8_t, Pair<AstroObject *, 
 }
 
 template<size_t N = ASTRO_DEFAULT_MAXSIZE>
+Vector<AstroObject *, N> linksFilterActuatorsByMountAndType(Pair<uint8_t, Pair<AstroObject *, int8_t> *> links, AstroMount *mount, Astro_ActuatorType actuatorType)
+{
+    Vector<AstroObject *, N> retVal;
+
+    for (aposi_t linksIndex = 0; linksIndex < links.first && links.second[linksIndex].first; ++linksIndex) {
+        if (links.second[linksIndex].first->isActuatorType()) {
+            auto actuator = static_cast<AstroActuator *>(links.second[linksIndex].first);
+
+            if (mount && mount->hasLinkage(actuator) && actuator->getActuatorType() == actuatorType) {
+                retVal.push_back(actuator);
+            }
+        }
+    }
+
+    return retVal;
+}
+
+template<size_t N = ASTRO_DEFAULT_MAXSIZE>
 void linksResolveActuatorsByType(Vector<AstroObject *, N> &actuatorsIn, Vector<AstroActuatorAttachment, N> &activationsOut, Astro_ActuatorType actuatorType)
 {
     for (auto actIter = actuatorsIn.begin(); actIter != actuatorsIn.end(); ++actIter) {
