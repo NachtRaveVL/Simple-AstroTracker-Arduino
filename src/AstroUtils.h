@@ -414,6 +414,11 @@ extern String sensorTypeToString(Astro_SensorType sensorType, bool excludeSpecia
 // Converts back to sensor type enum from string.
 extern Astro_SensorType sensorTypeFromString(String sensorTypeStr);
 
+// Converts from target class enum to string, with optional exclude for special types (instead returning "").
+extern String targetClassToString(Astro_TargetClass targetClass, bool excludeSpecial = false);
+// Converts back to target class enum from string.
+extern Astro_TargetClass targetClassFromString(String targetClassStr);
+
 // Returns axis count as derived from mount type enumeration.
 extern aposi_t getMountAxisCountFromType(Astro_MountType mountType);
 // Returns if mount coords are in equatorial (RA/dec) mode or not from mount type enumeration.
