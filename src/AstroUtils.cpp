@@ -819,7 +819,7 @@ int linksCountTravelActuators(Pair<uint8_t, Pair<AstroObject *, int8_t> *> links
         if (links.second[linksIndex].first->isActuatorType()) {
             auto actuator = static_cast<AstroActuator *>(links.second[linksIndex].first);
 
-            if (actuator->isTravelType()) {
+            if (getActuatorIsMotorFromType(actuator->getActuatorType())) {
                 retVal++;
             }
         }
@@ -836,7 +836,7 @@ int linksCountActuatorsByMountAndType(Pair<uint8_t, Pair<AstroObject *, int8_t> 
         if (links.second[linksIndex].first->isActuatorType()) {
             auto actuator = static_cast<AstroActuator *>(links.second[linksIndex].first);
 
-            if (actuator->getActuatorType() == actuatorType && actuator->getParentMount().get() == mount) {
+            if (mount && mount->hasLinkage(actuator) && actuator->getActuatorType() == actuatorType) {
                 retVal++;
             }
         }
@@ -1008,8 +1008,10 @@ String systemModeToString(Astro_SystemMode systemMode, bool excludeSpecial)
             return SFP(AStr_Enum_Tracking);
         case Astro_SystemMode_Balancing:
             return SFP(AStr_Enum_Balancing);
+        case Astro_SystemMode_Manual:
+            return SFP(AStr_Enum_Manual);
         case Astro_SystemMode_Count:
-            return !excludeSpecial ? SFP(AStr_Count) : String();
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
         case Astro_SystemMode_Undefined:
             break;
     }
@@ -1026,7 +1028,7 @@ String measurementModeToString(Astro_MeasurementMode measurementMode, bool exclu
         case Astro_MeasurementMode_Scientific:
             return SFP(AStr_Enum_Scientific);
         case Astro_MeasurementMode_Count:
-            return !excludeSpecial ? SFP(AStr_Count) : String();
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
         case Astro_MeasurementMode_Undefined:
             break;
     }
@@ -1092,7 +1094,7 @@ String displayOutputModeToString(Astro_DisplayOutputMode displayOutMode, bool ex
             return retVal;
         }
         case Astro_DisplayOutputMode_Count:
-            return !excludeSpecial ? SFP(AStr_Count) : String();
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
         case Astro_DisplayOutputMode_Undefined:
             break;
     }
@@ -1193,7 +1195,7 @@ String controlInputModeToString(Astro_ControlInputMode controlInMode, bool exclu
         case Astro_ControlInputMode_RemoteControl:
             return SFP(AStr_Enum_RemoteControl);
         case Astro_ControlInputMode_Count:
-            return !excludeSpecial ? SFP(AStr_Count) : String();
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
         case Astro_ControlInputMode_Undefined:
             break;
     }
@@ -1203,22 +1205,20 @@ String controlInputModeToString(Astro_ControlInputMode controlInMode, bool exclu
 String actuatorTypeToString(Astro_ActuatorType actuatorType, bool excludeSpecial)
 {
     switch (actuatorType) {
-        case Astro_ActuatorType_ContinuousServo:
-            return SFP(AStr_Enum_ContinuousServo);
-        case Astro_ActuatorType_LinearActuator:
-            return SFP(AStr_Enum_LinearActuator);
-        case Astro_ActuatorType_MountBrake:
-            return SFP(AStr_Enum_MountBrake);
-        case Astro_ActuatorType_MountCover:
-            return SFP(AStr_Enum_MountCover);
-        case Astro_ActuatorType_MountHeater:
-            return SFP(AStr_Enum_MountHeater);
-        case Astro_ActuatorType_MountSprayer:
-            return SFP(AStr_Enum_MountSprayer);
-        case Astro_ActuatorType_PositionalServo:
-            return SFP(AStr_Enum_PositionalServo);
+        case Astro_ActuatorType_MountAxis:
+            return SFP(AStr_Enum_MountAxis);
+        case Astro_ActuatorType_Cover:
+            return SFP(AStr_Enum_Cover);
+        case Astro_ActuatorType_DewHeater:
+            return SFP(AStr_Enum_DewHeater);
+        case Astro_ActuatorType_CameraCooler:
+            return SFP(AStr_Enum_CameraCooler);
+        case Astro_ActuatorType_Fan:
+            return SFP(AStr_Enum_Fan);
+        case Astro_ActuatorType_Focuser:
+            return SFP(AStr_Enum_Focuser);
         case Astro_ActuatorType_Count:
-            return !excludeSpecial ? SFP(AStr_Count) : String();
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
         case Astro_ActuatorType_Undefined:
             break;
     }
@@ -1228,38 +1228,68 @@ String actuatorTypeToString(Astro_ActuatorType actuatorType, bool excludeSpecial
 String sensorTypeToString(Astro_SensorType sensorType, bool excludeSpecial)
 {
     switch (sensorType) {
-        case Astro_SensorType_IceDetector:
-            return SFP(AStr_Enum_IceDetector);
-        case Astro_SensorType_LightIntensity:
-            return SFP(AStr_Enum_LightIntensity);
-        case Astro_SensorType_PowerProduction:
-            return SFP(AStr_Enum_PowerProduction);
-        case Astro_SensorType_PowerUsage:
-            return SFP(AStr_Enum_PowerUsage);
-        case Astro_SensorType_TravelPosition:
-            return SFP(AStr_Enum_TravelPosition);
-        case Astro_SensorType_TemperatureHumidity:
+        case Astro_SensorType_Temperature:
             return SFP(AStr_Enum_Temperature);
-        case Astro_SensorType_TiltAngle:
-            return SFP(AStr_Enum_TiltAngle);
+        case Astro_SensorType_Humidity:
+            return SFP(AStr_Enum_Humidity);
+        case Astro_SensorType_Position:
+            return SFP(AStr_Enum_Position);
+        case Astro_SensorType_LimitSwitch:
+            return SFP(AStr_Enum_LimitSwitch);
+        case Astro_SensorType_Rain:
+            return SFP(AStr_Enum_Rain);
         case Astro_SensorType_WindSpeed:
             return SFP(AStr_Enum_WindSpeed);
+        case Astro_SensorType_Light:
+            return SFP(AStr_Enum_Light);
+        case Astro_SensorType_Voltage:
+            return SFP(AStr_Enum_Voltage);
+        case Astro_SensorType_Current:
+            return SFP(AStr_Enum_Current);
+        case Astro_SensorType_CameraTemperature:
+            return SFP(AStr_Enum_CameraTemperature);
         case Astro_SensorType_Count:
-            return !excludeSpecial ? SFP(AStr_Count) : String();
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
         case Astro_SensorType_Undefined:
             break;
     }
     return !excludeSpecial ? SFP(AStr_Undefined) : String();
 }
 
+String targetClassToString(Astro_TargetClass targetClass, bool excludeSpecial)
+{
+    switch (targetClass) {
+        case Astro_TargetClass_Star:
+            return SFP(AStr_Enum_Star);
+        case Astro_TargetClass_OpenCluster:
+            return SFP(AStr_Enum_OpenCluster);
+        case Astro_TargetClass_GlobularCluster:
+            return SFP(AStr_Enum_GlobularCluster);
+        case Astro_TargetClass_Nebula:
+            return SFP(AStr_Enum_Nebula);
+        case Astro_TargetClass_PlanetaryNebula:
+            return SFP(AStr_Enum_PlanetaryNebula);
+        case Astro_TargetClass_Galaxy:
+            return SFP(AStr_Enum_Galaxy);
+        case Astro_TargetClass_SolarSystem:
+            return SFP(AStr_Enum_SolarSystem);
+        case Astro_TargetClass_Other:
+            return SFP(AStr_Enum_Other);
+        case Astro_TargetClass_Count:
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
+        case Astro_TargetClass_Unknown:
+            break;
+    }
+    return !excludeSpecial ? SFP(AStr_Unknown) : String();
+}
+
 aposi_t getMountAxisCountFromType(Astro_MountType mountType)
 {
     switch (mountType) {
-        case Astro_MountType_Horizontal:
-        case Astro_MountType_Vertical:
+        case Astro_MountType_SingleAxis:
             return 1;
-        case Astro_MountType_Gimballed:
         case Astro_MountType_Equatorial:
+        case Astro_MountType_AltAzimuth:
             return 2;
         default:
             return 0;
@@ -1269,20 +1299,18 @@ aposi_t getMountAxisCountFromType(Astro_MountType mountType)
 String mountTypeToString(Astro_MountType mountType, bool excludeSpecial)
 {
     switch (mountType) {
-        case Astro_MountType_Horizontal:
-            return SFP(AStr_Enum_Horizontal);
-        case Astro_MountType_Vertical:
-            return SFP(AStr_Enum_Vertical);
-        case Astro_MountType_Gimballed:
-            return SFP(AStr_Enum_Gimballed);
         case Astro_MountType_Equatorial:
             return SFP(AStr_Enum_Equatorial);
+        case Astro_MountType_AltAzimuth:
+            return SFP(AStr_Enum_AltAzimuth);
+        case Astro_MountType_SingleAxis:
+            return SFP(AStr_Enum_SingleAxis);
         case Astro_MountType_Count:
-            return !excludeSpecial ? SFP(AStr_Count) : String();
-        case Astro_MountType_Undefined:
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
+        case Astro_MountType_Unknown:
             break;
     }
-    return !excludeSpecial ? SFP(AStr_Undefined) : String();
+    return !excludeSpecial ? SFP(AStr_Unknown) : String();
 }
 
 float getRailVoltageFromType(Astro_RailType railType)
@@ -1325,7 +1353,7 @@ String railTypeToString(Astro_RailType railType, bool excludeSpecial)
         case Astro_RailType_DC48V:
             return SFP(AStr_Enum_DC48V);
         case Astro_RailType_Count:
-            return !excludeSpecial ? SFP(AStr_Count) : String();
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
         case Astro_RailType_Undefined:
             break;
     }
@@ -1350,7 +1378,7 @@ String pinModeToString(Astro_PinMode pinMode, bool excludeSpecial)
         case Astro_PinMode_Analog_Output:
             return SFP(AStr_Enum_AnalogOutput);
         case Astro_PinMode_Count:
-            return !excludeSpecial ? SFP(AStr_Count) : String();
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
         case Astro_PinMode_Undefined:
             break;
         default:
@@ -1379,7 +1407,7 @@ String enableModeToString(Astro_EnableMode enableMode, bool excludeSpecial)
         case Astro_EnableMode_AscOrder:
             return SFP(AStr_Enum_AscOrder);
         case Astro_EnableMode_Count:
-            return !excludeSpecial ? SFP(AStr_Count) : String();
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
         case Astro_EnableMode_Undefined:
             break;
         default:
@@ -1392,25 +1420,25 @@ String unitsCategoryToString(Astro_UnitsCategory unitsCategory, bool excludeSpec
 {
     switch (unitsCategory) {
         case Astro_UnitsCategory_Raw:
-            return SFP(AStr_Raw);
+            return SFP(AStr_Enum_Raw);
         case Astro_UnitsCategory_Angle:
-            return SFP(AStr_Angle);
+            return SFP(AStr_Enum_Angle);
         case Astro_UnitsCategory_Distance:
-            return SFP(AStr_Distance);
+            return SFP(AStr_Enum_Distance);
         case Astro_UnitsCategory_Percentile:
-            return SFP(AStr_Percentile);
+            return SFP(AStr_Enum_Percentile);
         case Astro_UnitsCategory_Speed:
-            return SFP(AStr_Speed);
+            return SFP(AStr_Enum_Speed);
         case Astro_UnitsCategory_Temperature:
-            return SFP(AStr_Temperature);
+            return SFP(AStr_Enum_Temperature);
         case Astro_UnitsCategory_Humidity:
-            return SFP(AStr_Humidity);
+            return SFP(AStr_Enum_Humidity);
         case Astro_UnitsCategory_Power:
-            return SFP(AStr_Power);
+            return SFP(AStr_Enum_Power);
         case Astro_UnitsCategory_Voltage:
-            return SFP(AStr_Voltage);
+            return SFP(AStr_Enum_Voltage);
         case Astro_UnitsCategory_Current:
-            return SFP(AStr_Current);
+            return SFP(AStr_Enum_Current);
         case Astro_UnitsCategory_Count:
             return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
         case Astro_UnitsCategory_Undefined:
@@ -1423,41 +1451,41 @@ String unitsTypeToSymbol(Astro_UnitsType unitsType, bool excludeSpecial)
 {
     switch (unitsType) {
         case Astro_UnitsType_Raw_1:
-            return SFP(AStr_N1);
+            return SFP(AStr_Unit_N1);
         case Astro_UnitsType_Angle_Degrees_360:
-            return SFP(AStr_deg);
+            return SFP(AStr_Unit_deg);
         case Astro_UnitsType_Angle_Radians_2pi:
-            return SFP(AStr_rad);
+            return SFP(AStr_Unit_rad);
         case Astro_UnitsType_Distance_Meters:
-            return SFP(AStr_m);
+            return SFP(AStr_Unit_m);
         case Astro_UnitsType_Distance_Feet:
-            return SFP(AStr_ft);
+            return SFP(AStr_Unit_ft);
         case Astro_UnitsType_Percentile_100:
-            return SFP(AStr_Percent);
+            return SFP(AStr_Unit_Percent);
         case Astro_UnitsType_Speed_MetersPerSec:
-            return SFP(AStr_mPers);
+            return SFP(AStr_Unit_mPers);
         case Astro_UnitsType_Speed_FeetPerSec:
-            return SFP(AStr_ftPers);
+            return SFP(AStr_Unit_ftPers);
         case Astro_UnitsType_Temperature_Celsius:
-            return SFP(AStr_C);
+            return SFP(AStr_Unit_C);
         case Astro_UnitsType_Temperature_Fahrenheit:
-            return SFP(AStr_F);
+            return SFP(AStr_Unit_F);
         case Astro_UnitsType_Temperature_Kelvin:
-            return SFP(AStr_K);
+            return SFP(AStr_Unit_K);
         case Astro_UnitsType_Humidity_RH:
-            return SFP(AStr_PercentRH);
+            return SFP(AStr_Unit_PercentRH);
         case Astro_UnitsType_Power_Wattage:
-            return SFP(AStr_W);
+            return SFP(AStr_Unit_W);
         case Astro_UnitsType_Voltage_Volts:
-            return SFP(AStr_V);
+            return SFP(AStr_Unit_V);
         case Astro_UnitsType_Current_Amperage:
-            return SFP(AStr_A);
+            return SFP(AStr_Unit_A);
         case Astro_UnitsType_Count:
-            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
+            return !excludeSpecial ? SFP(AStr_Unit_Count) : String();
         case Astro_UnitsType_Undefined:
             break;
     }
-    return !excludeSpecial ? SFP(AStr_Undefined) : String();
+    return !excludeSpecial ? SFP(AStr_Unit_Undefined) : String();
 }
 
 String positionIndexToString(aposi_t positionIndex, bool excludeSpecial)
@@ -1466,7 +1494,7 @@ String positionIndexToString(aposi_t positionIndex, bool excludeSpecial)
         return String(positionIndex + ASTRO_POS_EXPORT_BEGFROM);
     } else if (!excludeSpecial) {
         if (positionIndex == ASTRO_POS_MAXSIZE) {
-            return SFP(AStr_Count);
+            return SFP(AStr_Enum_Count);
         } else {
             return SFP(AStr_Undefined);
         }
@@ -1492,14 +1520,16 @@ aposi_t positionIndexFromString(String positionIndexStr)
 Astro_SystemMode systemModeFromString(String systemModeStr)
 {
     switch (systemModeStr.length() >= 1 ? systemModeStr[0] : '\000') {
-        case 'U':
-            return (Astro_SystemMode)-1;
-        case 'T':
-            return (Astro_SystemMode)0;
         case 'B':
-            return (Astro_SystemMode)1;
+            return Astro_SystemMode_Balancing;
         case 'C':
-            return (Astro_SystemMode)2;
+            return Astro_SystemMode_Count;
+        case 'M':
+            return Astro_SystemMode_Manual;
+        case 'T':
+            return Astro_SystemMode_Tracking;
+        case 'U':
+            return Astro_SystemMode_Undefined;
     }
     return Astro_SystemMode_Undefined;
 }
@@ -1508,15 +1538,15 @@ Astro_MeasurementMode measurementModeFromString(String measurementModeStr)
 {
     switch (measurementModeStr.length() >= 1 ? measurementModeStr[0] : '\000') {
         case 'C':
-            return (Astro_MeasurementMode)3;
+            return Astro_MeasurementMode_Count;
         case 'I':
-            return (Astro_MeasurementMode)0;
+            return Astro_MeasurementMode_Imperial;
         case 'M':
-            return (Astro_MeasurementMode)1;
+            return Astro_MeasurementMode_Metric;
         case 'S':
-            return (Astro_MeasurementMode)2;
+            return Astro_MeasurementMode_Scientific;
         case 'U':
-            return (Astro_MeasurementMode)-1;
+            return Astro_MeasurementMode_Undefined;
     }
     return Astro_MeasurementMode_Undefined;
 }
@@ -1527,25 +1557,25 @@ Astro_DisplayOutputMode displayOutputModeFromString(String displayOutModeStr)
         case 'C':
             switch (displayOutModeStr.length() >= 2 ? displayOutModeStr[1] : '\000') {
                 case 'o':
-                    return (Astro_DisplayOutputMode)18;
+                    return Astro_DisplayOutputMode_Count;
                 case 'u':
-                    return (Astro_DisplayOutputMode)10;
+                    return Astro_DisplayOutputMode_CustomOLED;
             }
             break;
         case 'D':
-            return (Astro_DisplayOutputMode)0;
+            return Astro_DisplayOutputMode_Disabled;
         case 'I':
             switch (displayOutModeStr.length() >= 3 ? displayOutModeStr[2] : '\000') {
                 case '3':
                     switch (displayOutModeStr.length() >= 7 ? displayOutModeStr[6] : '\000') {
-                        case '\000':
-                            return (Astro_DisplayOutputMode)12;
                         case 'V':
-                            return (Astro_DisplayOutputMode)13;
+                            return Astro_DisplayOutputMode_IL3820_V2;
+                        case '\000':
+                            return Astro_DisplayOutputMode_IL3820;
                     }
                     break;
                 case 'I':
-                    return (Astro_DisplayOutputMode)16;
+                    return Astro_DisplayOutputMode_ILI9341;
             }
             break;
         case 'L':
@@ -1553,17 +1583,17 @@ Astro_DisplayOutputMode displayOutputModeFromString(String displayOutModeStr)
                 case '1':
                     switch (displayOutModeStr.length() >= 8 ? displayOutModeStr[7] : '\000') {
                         case 'E':
-                            return (Astro_DisplayOutputMode)1;
+                            return Astro_DisplayOutputMode_LCD16x2_EN;
                         case 'R':
-                            return (Astro_DisplayOutputMode)2;
+                            return Astro_DisplayOutputMode_LCD16x2_RS;
                     }
                     break;
                 case '2':
                     switch (displayOutModeStr.length() >= 8 ? displayOutModeStr[7] : '\000') {
                         case 'E':
-                            return (Astro_DisplayOutputMode)3;
+                            return Astro_DisplayOutputMode_LCD20x4_EN;
                         case 'R':
-                            return (Astro_DisplayOutputMode)4;
+                            return Astro_DisplayOutputMode_LCD20x4_RS;
                     }
                     break;
             }
@@ -1571,47 +1601,47 @@ Astro_DisplayOutputMode displayOutputModeFromString(String displayOutModeStr)
         case 'S':
             switch (displayOutModeStr.length() >= 2 ? displayOutModeStr[1] : '\000') {
                 case 'H':
-                    return (Astro_DisplayOutputMode)9;
+                    return Astro_DisplayOutputMode_SH1106;
                 case 'S':
                     switch (displayOutModeStr.length() >= 5 ? displayOutModeStr[4] : '\000') {
                         case '3':
                             switch (displayOutModeStr.length() >= 7 ? displayOutModeStr[6] : '\000') {
                                 case '5':
                                     switch (displayOutModeStr.length() >= 8 ? displayOutModeStr[7] : '\000') {
-                                        case '\000':
-                                            return (Astro_DisplayOutputMode)5;
                                         case 'x':
                                             switch (displayOutModeStr.length() >= 9 ? displayOutModeStr[8] : '\000') {
                                                 case '3':
-                                                    return (Astro_DisplayOutputMode)6;
+                                                    return Astro_DisplayOutputMode_SSD1305_x32Ada;
                                                 case '6':
-                                                    return (Astro_DisplayOutputMode)7;
+                                                    return Astro_DisplayOutputMode_SSD1305_x64Ada;
                                             }
                                             break;
+                                        case '\000':
+                                            return Astro_DisplayOutputMode_SSD1305;
                                     }
                                     break;
                                 case '6':
-                                    return (Astro_DisplayOutputMode)8;
+                                    return Astro_DisplayOutputMode_SSD1306;
                             }
                             break;
                         case '6':
-                            return (Astro_DisplayOutputMode)11;
+                            return Astro_DisplayOutputMode_SSD1607;
                     }
                     break;
                 case 'T':
                     switch (displayOutModeStr.length() >= 5 ? displayOutModeStr[4] : '\000') {
                         case '3':
-                            return (Astro_DisplayOutputMode)14;
+                            return Astro_DisplayOutputMode_ST7735;
                         case '8':
-                            return (Astro_DisplayOutputMode)15;
+                            return Astro_DisplayOutputMode_ST7789;
                     }
                     break;
             }
             break;
         case 'T':
-            return (Astro_DisplayOutputMode)17;
+            return Astro_DisplayOutputMode_TFT;
         case 'U':
-            return (Astro_DisplayOutputMode)-1;
+            return Astro_DisplayOutputMode_Undefined;
     }
     return Astro_DisplayOutputMode_Undefined;
 }
@@ -1620,29 +1650,29 @@ Astro_ControlInputMode controlInputModeFromString(String controlInModeStr)
 {
     switch (controlInModeStr.length() >= 1 ? controlInModeStr[0] : '\000') {
         case 'A':
-            return (Astro_ControlInputMode)7;
+            return Astro_ControlInputMode_AnalogJoystickOk;
         case 'C':
-            return (Astro_ControlInputMode)17;
+            return Astro_ControlInputMode_Count;
         case 'D':
-            return (Astro_ControlInputMode)0;
+            return Astro_ControlInputMode_Disabled;
         case 'M':
             switch (controlInModeStr.length() >= 7 ? controlInModeStr[6] : '\000') {
                 case '2':
-                    return (Astro_ControlInputMode)8;
+                    return Astro_ControlInputMode_Matrix2x2UpDownButtonsOkL;
                 case '3':
                     switch (controlInModeStr.length() >= 12 ? controlInModeStr[11] : '\000') {
-                        case '\000':
-                            return (Astro_ControlInputMode)9;
                         case 'L':
-                            return (Astro_ControlInputMode)10;
+                            return Astro_ControlInputMode_Matrix3x4Keyboard_OptRotEncOkLR;
+                        case '\000':
+                            return Astro_ControlInputMode_Matrix3x4Keyboard_OptRotEncOk;
                     }
                     break;
                 case '4':
                     switch (controlInModeStr.length() >= 12 ? controlInModeStr[11] : '\000') {
-                        case '\000':
-                            return (Astro_ControlInputMode)11;
                         case 'L':
-                            return (Astro_ControlInputMode)12;
+                            return Astro_ControlInputMode_Matrix4x4Keyboard_OptRotEncOkLR;
+                        case '\000':
+                            return Astro_ControlInputMode_Matrix4x4Keyboard_OptRotEncOk;
                     }
                     break;
             }
@@ -1652,17 +1682,17 @@ Astro_ControlInputMode controlInputModeFromString(String controlInModeStr)
                 case 'e':
                     switch (controlInModeStr.length() >= 3 ? controlInModeStr[2] : '\000') {
                         case 'm':
-                            return (Astro_ControlInputMode)16;
+                            return Astro_ControlInputMode_RemoteControl;
                         case 's':
-                            return (Astro_ControlInputMode)13;
+                            return Astro_ControlInputMode_ResistiveTouch;
                     }
                     break;
                 case 'o':
                     switch (controlInModeStr.length() >= 16 ? controlInModeStr[15] : '\000') {
-                        case '\000':
-                            return (Astro_ControlInputMode)1;
                         case 'L':
-                            return (Astro_ControlInputMode)2;
+                            return Astro_ControlInputMode_RotaryEncoderOkLR;
+                        case '\000':
+                            return Astro_ControlInputMode_RotaryEncoderOk;
                     }
                     break;
             }
@@ -1670,31 +1700,31 @@ Astro_ControlInputMode controlInputModeFromString(String controlInModeStr)
         case 'T':
             switch (controlInModeStr.length() >= 2 ? controlInModeStr[1] : '\000') {
                 case 'F':
-                    return (Astro_ControlInputMode)15;
+                    return Astro_ControlInputMode_TFTTouch;
                 case 'o':
-                    return (Astro_ControlInputMode)14;
+                    return Astro_ControlInputMode_TouchScreen;
             }
             break;
         case 'U':
             switch (controlInModeStr.length() >= 2 ? controlInModeStr[1] : '\000') {
                 case 'n':
-                    return (Astro_ControlInputMode)-1;
+                    return Astro_ControlInputMode_Undefined;
                 case 'p':
                     switch (controlInModeStr.length() >= 7 ? controlInModeStr[6] : '\000') {
                         case 'B':
                             switch (controlInModeStr.length() >= 16 ? controlInModeStr[15] : '\000') {
-                                case '\000':
-                                    return (Astro_ControlInputMode)3;
                                 case 'L':
-                                    return (Astro_ControlInputMode)4;
+                                    return Astro_ControlInputMode_UpDownButtonsOkLR;
+                                case '\000':
+                                    return Astro_ControlInputMode_UpDownButtonsOk;
                             }
                             break;
                         case 'E':
                             switch (controlInModeStr.length() >= 19 ? controlInModeStr[18] : '\000') {
-                                case '\000':
-                                    return (Astro_ControlInputMode)5;
                                 case 'L':
-                                    return (Astro_ControlInputMode)6;
+                                    return Astro_ControlInputMode_UpDownESP32TouchOkLR;
+                                case '\000':
+                                    return Astro_ControlInputMode_UpDownESP32TouchOk;
                             }
                             break;
                     }
@@ -1709,166 +1739,206 @@ Astro_ActuatorType actuatorTypeFromString(String actuatorTypeStr)
 {
     switch (actuatorTypeStr.length() >= 1 ? actuatorTypeStr[0] : '\000') {
         case 'C':
-            switch (actuatorTypeStr.length() >= 3 ? actuatorTypeStr[2] : '\000') {
-                case 'n':
-                    return (Astro_ActuatorType)0;
-                case 'u':
-                    return (Astro_ActuatorType)7;
-            }
-            break;
-        case 'L':
-            return (Astro_ActuatorType)1;
-        case 'P':
             switch (actuatorTypeStr.length() >= 2 ? actuatorTypeStr[1] : '\000') {
                 case 'a':
-                    switch (actuatorTypeStr.length() >= 6 ? actuatorTypeStr[5] : '\000') {
-                        case 'B':
-                            return (Astro_ActuatorType)2;
-                        case 'C':
-                            return (Astro_ActuatorType)3;
-                        case 'H':
-                            return (Astro_ActuatorType)4;
-                        case 'S':
-                            return (Astro_ActuatorType)5;
+                    return Astro_ActuatorType_CameraCooler;
+                case 'o':
+                    switch (actuatorTypeStr.length() >= 3 ? actuatorTypeStr[2] : '\000') {
+                        case 'u':
+                            return Astro_ActuatorType_Count;
+                        case 'v':
+                            return Astro_ActuatorType_Cover;
                     }
                     break;
-                case 'o':
-                    return (Astro_ActuatorType)6;
             }
             break;
+        case 'D':
+            return Astro_ActuatorType_DewHeater;
+        case 'F':
+            switch (actuatorTypeStr.length() >= 2 ? actuatorTypeStr[1] : '\000') {
+                case 'a':
+                    return Astro_ActuatorType_Fan;
+                case 'o':
+                    return Astro_ActuatorType_Focuser;
+            }
+            break;
+        case 'M':
+            return Astro_ActuatorType_MountAxis;
         case 'U':
-            return (Astro_ActuatorType)-1;
+            return Astro_ActuatorType_Undefined;
     }
     return Astro_ActuatorType_Undefined;
 }
 
 Astro_SensorType sensorTypeFromString(String sensorTypeStr)
 {
-        switch (sensorTypeStr.length() >= 1 ? sensorTypeStr[0] : '\000') {
+    switch (sensorTypeStr.length() >= 1 ? sensorTypeStr[0] : '\000') {
         case 'C':
-            return (Astro_SensorType)8;
-        case 'I':
-            return (Astro_SensorType)0;
-        case 'L':
-            return (Astro_SensorType)1;
-        case 'P':
-            switch (sensorTypeStr.length() >= 6 ? sensorTypeStr[5] : '\000') {
-                case 'P':
-                    return (Astro_SensorType)2;
-                case 'U':
-                    return (Astro_SensorType)3;
+            switch (sensorTypeStr.length() >= 2 ? sensorTypeStr[1] : '\000') {
+                case 'a':
+                    return Astro_SensorType_CameraTemperature;
+                case 'o':
+                    return Astro_SensorType_Count;
+                case 'u':
+                    return Astro_SensorType_Current;
             }
             break;
+        case 'H':
+            return Astro_SensorType_Humidity;
+        case 'L':
+            switch (sensorTypeStr.length() >= 3 ? sensorTypeStr[2] : '\000') {
+                case 'g':
+                    return Astro_SensorType_Light;
+                case 'm':
+                    return Astro_SensorType_LimitSwitch;
+            }
+            break;
+        case 'P':
+            return Astro_SensorType_Position;
+        case 'R':
+            return Astro_SensorType_Rain;
         case 'T':
-            switch (sensorTypeStr.length() >= 2 ? sensorTypeStr[1] : '\000') {
-                case 'e':
-                    return (Astro_SensorType)4;
-                case 'i':
-                    return (Astro_SensorType)5;
-                case 'r':
-                    return (Astro_SensorType)6;
+            return Astro_SensorType_Temperature;
+        case 'U':
+            return Astro_SensorType_Undefined;
+        case 'V':
+            return Astro_SensorType_Voltage;
+        case 'W':
+            return Astro_SensorType_WindSpeed;
+    }
+    return Astro_SensorType_Undefined;
+}
+
+Astro_TargetClass targetClassFromString(String targetClassStr)
+{
+    switch (targetClassStr.length() >= 1 ? targetClassStr[0] : '\000') {
+        case 'C':
+            return Astro_TargetClass_Count;
+        case 'G':
+            switch (targetClassStr.length() >= 2 ? targetClassStr[1] : '\000') {
+                case 'a':
+                    return Astro_TargetClass_Galaxy;
+                case 'l':
+                    return Astro_TargetClass_GlobularCluster;
+            }
+            break;
+        case 'N':
+            return Astro_TargetClass_Nebula;
+        case 'O':
+            switch (targetClassStr.length() >= 2 ? targetClassStr[1] : '\000') {
+                case 'p':
+                    return Astro_TargetClass_OpenCluster;
+                case 't':
+                    return Astro_TargetClass_Other;
+            }
+            break;
+        case 'P':
+            return Astro_TargetClass_PlanetaryNebula;
+        case 'S':
+            switch (targetClassStr.length() >= 2 ? targetClassStr[1] : '\000') {
+                case 'o':
+                    return Astro_TargetClass_SolarSystem;
+                case 't':
+                    return Astro_TargetClass_Star;
             }
             break;
         case 'U':
-            return (Astro_SensorType)-1;
-        case 'W':
-            return (Astro_SensorType)7;
+            return Astro_TargetClass_Unknown;
     }
-    return Astro_SensorType_Undefined;
+    return Astro_TargetClass_Unknown;
 }
 
 Astro_MountType mountTypeFromString(String mountTypeStr)
 {
     switch (mountTypeStr.length() >= 1 ? mountTypeStr[0] : '\000') {
+        case 'A':
+            return Astro_MountType_AltAzimuth;
         case 'C':
-            return (Astro_MountType)4;
+            return Astro_MountType_Count;
         case 'E':
-            return (Astro_MountType)3;
-        case 'G':
-            return (Astro_MountType)2;
-        case 'H':
-            return (Astro_MountType)0;
+            return Astro_MountType_Equatorial;
+        case 'S':
+            return Astro_MountType_SingleAxis;
         case 'U':
-            return (Astro_MountType)-1;
-        case 'V':
-            return (Astro_MountType)1;
+            return Astro_MountType_Unknown;
     }
-    return Astro_MountType_Undefined;
+    return Astro_MountType_Unknown;
 }
 
-Astro_RailType railTypeFromString(String railTypeStr) {
-        switch (railTypeStr.length() >= 1 ? railTypeStr[0] : '\000') {
+Astro_RailType railTypeFromString(String railTypeStr)
+{
+    switch (railTypeStr.length() >= 1 ? railTypeStr[0] : '\000') {
         case 'A':
             switch (railTypeStr.length() >= 3 ? railTypeStr[2] : '\000') {
                 case '1':
-                    return (Astro_RailType)0;
+                    return Astro_RailType_AC110V;
                 case '2':
-                    return (Astro_RailType)1;
+                    return Astro_RailType_AC220V;
             }
             break;
         case 'C':
-            return (Astro_RailType)7;
+            return Astro_RailType_Count;
         case 'D':
             switch (railTypeStr.length() >= 3 ? railTypeStr[2] : '\000') {
                 case '1':
-                    return (Astro_RailType)4;
+                    return Astro_RailType_DC12V;
                 case '2':
-                    return (Astro_RailType)5;
+                    return Astro_RailType_DC24V;
                 case '3':
-                    return (Astro_RailType)2;
+                    return Astro_RailType_DC3V3;
                 case '4':
-                    return (Astro_RailType)6;
+                    return Astro_RailType_DC48V;
                 case '5':
-                    return (Astro_RailType)3;
+                    return Astro_RailType_DC5V;
             }
             break;
         case 'U':
-            return (Astro_RailType)-1;
+            return Astro_RailType_Undefined;
     }
     return Astro_RailType_Undefined;
 }
 
 Astro_PinMode pinModeFromString(String pinModeStr)
 {
-        switch (pinModeStr.length() >= 1 ? pinModeStr[0] : '\000') {
+    switch (pinModeStr.length() >= 1 ? pinModeStr[0] : '\000') {
         case 'A':
             switch (pinModeStr.length() >= 7 ? pinModeStr[6] : '\000') {
                 case 'I':
-                    return (Astro_PinMode)5;
+                    return Astro_PinMode_Analog_Input;
                 case 'O':
-                    return (Astro_PinMode)6;
+                    return Astro_PinMode_Analog_Output;
             }
             break;
         case 'C':
-            return (Astro_PinMode)7;
+            return Astro_PinMode_Count;
         case 'D':
             switch (pinModeStr.length() >= 8 ? pinModeStr[7] : '\000') {
                 case 'I':
                     switch (pinModeStr.length() >= 13 ? pinModeStr[12] : '\000') {
-                        case '\000':
-                            return (Astro_PinMode)0;
                         case 'P':
                             switch (pinModeStr.length() >= 17 ? pinModeStr[16] : '\000') {
                                 case 'D':
-                                    return (Astro_PinMode)2;
+                                    return Astro_PinMode_Digital_Input_PullDown;
                                 case 'U':
-                                    return (Astro_PinMode)1;
+                                    return Astro_PinMode_Digital_Input_PullUp;
                             }
                             break;
+                        case '\000':
+                            return Astro_PinMode_Digital_Input;
                     }
                     break;
                 case 'O':
                     switch (pinModeStr.length() >= 14 ? pinModeStr[13] : '\000') {
-                        case '\000':
-                            return (Astro_PinMode)3;
                         case 'P':
-                            return (Astro_PinMode)4;
+                            return Astro_PinMode_Digital_Output_PushPull;
+                        case '\000':
+                            return Astro_PinMode_Digital_Output;
                     }
                     break;
             }
             break;
         case 'U':
-            return (Astro_PinMode)-1;
+            return Astro_PinMode_Undefined;
     }
     return Astro_PinMode_Undefined;
 }
@@ -1879,64 +1949,125 @@ Astro_EnableMode enableModeFromString(String enableModeStr)
         case 'A':
             switch (enableModeStr.length() >= 2 ? enableModeStr[1] : '\000') {
                 case 's':
-                    return (Astro_EnableMode)7;
+                    return Astro_EnableMode_AscOrder;
                 case 'v':
-                    return (Astro_EnableMode)2;
+                    return Astro_EnableMode_Average;
             }
             break;
         case 'C':
-            return (Astro_EnableMode)8;
+            return Astro_EnableMode_Count;
         case 'D':
-            return (Astro_EnableMode)6;
+            return Astro_EnableMode_DescOrder;
         case 'H':
-            return (Astro_EnableMode)0;
+            return Astro_EnableMode_Highest;
         case 'I':
-            return (Astro_EnableMode)4;
+            return Astro_EnableMode_InOrder;
         case 'L':
-            return (Astro_EnableMode)1;
+            return Astro_EnableMode_Lowest;
         case 'M':
-            return (Astro_EnableMode)3;
+            return Astro_EnableMode_Multiply;
         case 'R':
-            return (Astro_EnableMode)5;
+            return Astro_EnableMode_RevOrder;
         case 'U':
-            return (Astro_EnableMode)-1;
+            return Astro_EnableMode_Undefined;
     }
     return Astro_EnableMode_Undefined;
 }
 
 Astro_UnitsCategory unitsCategoryFromString(String unitsCategoryStr)
 {
-    if (unitsCategoryStr.equalsIgnoreCase(SFP(AStr_Raw))) { return Astro_UnitsCategory_Raw; }
-    if (unitsCategoryStr.equalsIgnoreCase(SFP(AStr_Angle))) { return Astro_UnitsCategory_Angle; }
-    if (unitsCategoryStr.equalsIgnoreCase(SFP(AStr_Distance))) { return Astro_UnitsCategory_Distance; }
-    if (unitsCategoryStr.equalsIgnoreCase(SFP(AStr_Percentile))) { return Astro_UnitsCategory_Percentile; }
-    if (unitsCategoryStr.equalsIgnoreCase(SFP(AStr_Speed))) { return Astro_UnitsCategory_Speed; }
-    if (unitsCategoryStr.equalsIgnoreCase(SFP(AStr_Temperature))) { return Astro_UnitsCategory_Temperature; }
-    if (unitsCategoryStr.equalsIgnoreCase(SFP(AStr_Humidity))) { return Astro_UnitsCategory_Humidity; }
-    if (unitsCategoryStr.equalsIgnoreCase(SFP(AStr_Power))) { return Astro_UnitsCategory_Power; }
-    if (unitsCategoryStr.equalsIgnoreCase(SFP(AStr_Voltage))) { return Astro_UnitsCategory_Voltage; }
-    if (unitsCategoryStr.equalsIgnoreCase(SFP(AStr_Current))) { return Astro_UnitsCategory_Current; }
-    if (unitsCategoryStr.equalsIgnoreCase(SFP(AStr_Enum_Count))) { return Astro_UnitsCategory_Count; }
+    switch (unitsCategoryStr.length() >= 1 ? unitsCategoryStr[0] : '\000') {
+        case 'A':
+            return Astro_UnitsCategory_Angle;
+        case 'C':
+            switch (unitsCategoryStr.length() >= 2 ? unitsCategoryStr[1] : '\000') {
+                case 'o':
+                    return Astro_UnitsCategory_Count;
+                case 'u':
+                    return Astro_UnitsCategory_Current;
+            }
+            break;
+        case 'D':
+            return Astro_UnitsCategory_Distance;
+        case 'H':
+            return Astro_UnitsCategory_Humidity;
+        case 'P':
+            switch (unitsCategoryStr.length() >= 2 ? unitsCategoryStr[1] : '\000') {
+                case 'e':
+                    return Astro_UnitsCategory_Percentile;
+                case 'o':
+                    return Astro_UnitsCategory_Power;
+            }
+            break;
+        case 'R':
+            return Astro_UnitsCategory_Raw;
+        case 'S':
+            return Astro_UnitsCategory_Speed;
+        case 'T':
+            return Astro_UnitsCategory_Temperature;
+        case 'U':
+            return Astro_UnitsCategory_Undefined;
+        case 'V':
+            return Astro_UnitsCategory_Voltage;
+    }
     return Astro_UnitsCategory_Undefined;
 }
 
 Astro_UnitsType unitsTypeFromSymbol(String unitsSymbolStr)
 {
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_N1))) { return Astro_UnitsType_Raw_1; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_deg))) { return Astro_UnitsType_Angle_Degrees_360; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_rad))) { return Astro_UnitsType_Angle_Radians_2pi; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_m))) { return Astro_UnitsType_Distance_Meters; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_ft))) { return Astro_UnitsType_Distance_Feet; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_Percent))) { return Astro_UnitsType_Percentile_100; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_mPers))) { return Astro_UnitsType_Speed_MetersPerSec; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_ftPers))) { return Astro_UnitsType_Speed_FeetPerSec; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_C))) { return Astro_UnitsType_Temperature_Celsius; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_F))) { return Astro_UnitsType_Temperature_Fahrenheit; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_K))) { return Astro_UnitsType_Temperature_Kelvin; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_PercentRH))) { return Astro_UnitsType_Humidity_RH; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_W)) || unitsSymbolStr.equalsIgnoreCase("J/s")) { return Astro_UnitsType_Power_Wattage; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_V))) { return Astro_UnitsType_Voltage_Volts; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_A))) { return Astro_UnitsType_Current_Amperage; }
-    if (unitsSymbolStr.equalsIgnoreCase(SFP(AStr_Enum_Count))) { return Astro_UnitsType_Count; }
+    switch (unitsSymbolStr.length() >= 1 ? unitsSymbolStr[0] : '\000') {
+        case '%':
+            switch (unitsSymbolStr.length() >= 2 ? unitsSymbolStr[1] : '\000') {
+                case 'R':
+                    return Astro_UnitsType_Humidity_RH;
+                case '\000':
+                    return Astro_UnitsType_Percentile_100;
+            }
+            break;
+        case '1':
+            return Astro_UnitsType_Raw_1;
+        case 'A':
+            return Astro_UnitsType_Current_Amperage;
+        case 'C':
+            switch (unitsSymbolStr.length() >= 2 ? unitsSymbolStr[1] : '\000') {
+                case 'o':
+                    return Astro_UnitsType_Count;
+                case '\000':
+                    return Astro_UnitsType_Temperature_Celsius;
+            }
+            break;
+        case 'F':
+            return Astro_UnitsType_Temperature_Fahrenheit;
+        case 'J':
+            return Astro_UnitsType_Power_Wattage;
+        case 'K':
+            return Astro_UnitsType_Temperature_Kelvin;
+        case 'U':
+            return Astro_UnitsType_Undefined;
+        case 'V':
+            return Astro_UnitsType_Voltage_Volts;
+        case 'W':
+            return Astro_UnitsType_Power_Wattage;
+        case 'd':
+            return Astro_UnitsType_Angle_Degrees_360;
+        case 'f':
+            switch (unitsSymbolStr.length() >= 3 ? unitsSymbolStr[2] : '\000') {
+                case '/':
+                    return Astro_UnitsType_Speed_FeetPerSec;
+                case '\000':
+                    return Astro_UnitsType_Distance_Feet;
+            }
+            break;
+        case 'm':
+            switch (unitsSymbolStr.length() >= 2 ? unitsSymbolStr[1] : '\000') {
+                case '/':
+                    return Astro_UnitsType_Speed_MetersPerSec;
+                case '\000':
+                    return Astro_UnitsType_Distance_Meters;
+            }
+            break;
+        case 'r':
+            return Astro_UnitsType_Angle_Radians_2pi;
+    }
     return Astro_UnitsType_Undefined;
 }
