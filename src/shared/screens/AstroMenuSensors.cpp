@@ -1,3 +1,4 @@
-/*  Astruino UI Screen: Sensors
-    // TODO: Implement Astruino sensors screen.
+/*  Astruino: Sensors menu screen scaffold.
+    Copyright (C) 2026 NachtRaveVL
 */
+#include "AstroMenuSensors.h"

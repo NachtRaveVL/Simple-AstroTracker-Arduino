@@ -1,6 +1,7 @@
-/*  Astruino UI support.
-    // TODO: Port Astruino-specific menu behavior.
+/*  Astruino: overview template scaffolding.
+    Copyright (C) 2026 NachtRaveVL
 */
-#ifndef AstroOverviews_hpp
-#define AstroOverviews_hpp
+#ifndef AstroOverviews_HPP
+#define AstroOverviews_HPP
+// UI stub: Domain-specific overview drawing is intentionally not implemented yet.
 #endif

@@ -1,3 +1,4 @@
-/*  Astruino UI Screen: Targets
-    // TODO: Implement Astruino targets screen.
+/*  Astruino: Targets menu screen scaffold.
+    Copyright (C) 2026 NachtRaveVL
 */
+#include "AstroMenuTargets.h"

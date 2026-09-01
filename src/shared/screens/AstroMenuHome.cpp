@@ -1,3 +1,4 @@
-/*  Astruino UI Screen: Home
-    // TODO: Implement Astruino home screen.
+/*  Astruino: Home menu screen scaffold.
+    Copyright (C) 2026 NachtRaveVL
 */
+#include "AstroMenuHome.h"

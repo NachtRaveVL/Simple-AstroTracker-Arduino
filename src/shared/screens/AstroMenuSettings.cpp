@@ -1,3 +1,4 @@
-/*  Astruino UI Screen: Settings
-    // TODO: Implement Astruino settings screen.
+/*  Astruino: Settings menu screen scaffold.
+    Copyright (C) 2026 NachtRaveVL
 */
+#include "AstroMenuSettings.h"

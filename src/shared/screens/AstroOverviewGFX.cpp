@@ -1,3 +1,2 @@
-/*  Astruino UI Screen: OverviewGFX
-    // TODO: Implement Astruino overviewgfx screen.
-*/
+/*  Astruino: GFX overview scaffold. */
+#include "AstroOverviewGFX.h"
