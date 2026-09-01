@@ -67,13 +67,13 @@ akey_t AstroIdentity::regenKey()
 String AstroIdentity::getDisplayString()
 {
     switch (type) {
-        case Actuator: return SFP(AStr_Actuator) + ' ' + keyString;
-        case Sensor: return SFP(AStr_Sensor) + ' ' + keyString;
-        case Target: return SFP(AStr_Target) + ' ' + keyString;
-        case Mount: return SFP(AStr_Mount) + ' ' + keyString;
-        case Rail: return SFP(AStr_Rail) + ' ' + keyString;
-        case ObservationDevice: return SFP(AStr_ObservationDeviceDisplay) + ' ' + keyString;
-        default: return SFP(AStr_Unknown) + ' ' + keyString;
+        case Actuator: return String(F("Actuator ")) + keyString;
+        case Sensor: return String(F("Sensor ")) + keyString;
+        case Target: return String(F("Target ")) + keyString;
+        case Mount: return String(F("Mount ")) + keyString;
+        case Rail: return String(F("Rail ")) + keyString;
+        case ObservationDevice: return String(F("Observation Device ")) + keyString;
+        default: return String(F("Unknown ")) + keyString;
     }
 }
 

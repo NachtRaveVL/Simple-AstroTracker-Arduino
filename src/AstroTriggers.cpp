@@ -164,7 +164,7 @@ void AstroTriggerSubData::toJSONObject(JsonObject &objectOut) const
     if (measurementRow) { objectOut[SFP(AStr_Key_MeasurementRow)] = measurementRow; }
     if (detriggerTol > DBL_EPSILON) { objectOut[SFP(AStr_Key_DetriggerTol)] = detriggerTol; }
     if (detriggerDelay) { objectOut[SFP(AStr_Key_DetriggerDelay)] = detriggerDelay; }
-    if (measurementUnits != Astro_UnitsType_Undefined) { objectOut[SFP(AStr_Key_MeasurementUnits)] = (int)measurementUnits; }
+    if (measurementUnits != Astro_UnitsType_Undefined) { objectOut[SFP(AStr_Key_MeasurementUnits)] = unitsTypeToSymbol(measurementUnits); }
     if (type == AstroTrigger::MeasureValue) {
         objectOut[SFP(AStr_Key_Tolerance)] = dataAs.measureValue.tolerance;
         objectOut[SFP(AStr_Key_TriggerBelow)] = dataAs.measureValue.triggerBelow;
@@ -182,7 +182,7 @@ void AstroTriggerSubData::fromJSONObject(JsonObjectConst &objectIn)
     measurementRow = objectIn[SFP(AStr_Key_MeasurementRow)] | measurementRow;
     detriggerTol = objectIn[SFP(AStr_Key_DetriggerTol)] | detriggerTol;
     detriggerDelay = objectIn[SFP(AStr_Key_DetriggerDelay)] | detriggerDelay;
-    measurementUnits = (Astro_UnitsType)(objectIn[SFP(AStr_Key_MeasurementUnits)] | (int)measurementUnits);
+    measurementUnits = unitsTypeFromSymbol(objectIn[SFP(AStr_Key_MeasurementUnits)]);
     if (type == AstroTrigger::MeasureValue) {
         dataAs.measureValue.tolerance = objectIn[SFP(AStr_Key_Tolerance)] | dataAs.measureValue.tolerance;
         dataAs.measureValue.triggerBelow = objectIn[SFP(AStr_Key_TriggerBelow)] | dataAs.measureValue.triggerBelow;

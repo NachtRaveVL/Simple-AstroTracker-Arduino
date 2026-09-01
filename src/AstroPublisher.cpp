@@ -134,7 +134,7 @@ bool AstroPublisher::beginPublishingToMQTTClient(MQTTClient &client)
         _mqttClient = &client;
         _mqttClient->setClockSource(&mqttNow);
         if (!_mqttClient->connected()) {
-            String unPw = SFP(AStr_public);
+            String unPw = String(F("public"));
             _mqttClient->connect(Astruino::_activeInstance->getSystemName().c_str(),
                                  unPw.c_str(), unPw.c_str());
         }

@@ -354,7 +354,7 @@ AstroMountData::AstroMountData()
 void AstroMountData::toJSONObject(JsonObject &objectOut) const
 {
     AstroObjectData::toJSONObject(objectOut);
-    objectOut[SFP(AStr_Key_TargetType)] = (int)targetType;
+    objectOut[SFP(AStr_Key_TargetType)] = targetTypeToString(targetType);
     objectOut[SFP(AStr_Key_PrimaryAxisRate)] = primaryAxisRate;
     objectOut[SFP(AStr_Key_SecondaryAxisRate)] = secondaryAxisRate;
     objectOut[SFP(AStr_Key_ParkPrimary)] = parkPrimary;
@@ -374,7 +374,8 @@ void AstroMountData::toJSONObject(JsonObject &objectOut) const
 void AstroMountData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroObjectData::fromJSONObject(objectIn);
-    targetType = (Astro_TargetType)(objectIn[SFP(AStr_Key_TargetType)] | (int)targetType);
+    JsonVariantConst targetTypeVar = objectIn[SFP(AStr_Key_TargetType)];
+    if (!targetTypeVar.isNull()) { targetType = targetTypeFromString(targetTypeVar); }
     primaryAxisRate = objectIn[SFP(AStr_Key_PrimaryAxisRate)] | primaryAxisRate;
     secondaryAxisRate = objectIn[SFP(AStr_Key_SecondaryAxisRate)] | secondaryAxisRate;
     parkPrimary = objectIn[SFP(AStr_Key_ParkPrimary)] | parkPrimary;

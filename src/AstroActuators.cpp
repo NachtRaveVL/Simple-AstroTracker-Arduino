@@ -576,7 +576,7 @@ AstroActuatorData::AstroActuatorData()
 void AstroActuatorData::toJSONObject(JsonObject &objectOut) const
 {
     AstroObjectData::toJSONObject(objectOut);
-    objectOut[SFP(AStr_Key_EnableMode)] = (int)enableMode;
+    if (enableMode != Astro_EnableMode_Undefined) { objectOut[SFP(AStr_Key_EnableMode)] = enableModeToString(enableMode); }
     if (outputPin.isSet()) { JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_OutputPin)); outputPin.toJSONObject(pinObj); }
     if (outputPin2.isSet()) { JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_OutputPin2)); outputPin2.toJSONObject(pinObj); }
     if (contPowerUsage.value > FLT_EPSILON) {
@@ -593,7 +593,8 @@ void AstroActuatorData::toJSONObject(JsonObject &objectOut) const
 void AstroActuatorData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroObjectData::fromJSONObject(objectIn);
-    enableMode = (Astro_EnableMode)(objectIn[SFP(AStr_Key_EnableMode)] | (int)enableMode);
+    JsonVariantConst enableModeVar = objectIn[SFP(AStr_Key_EnableMode)];
+    if (!enableModeVar.isNull()) { enableMode = enableModeFromString(enableModeVar); }
     JsonObjectConst pinObj = objectIn[SFP(AStr_Key_OutputPin)].as<JsonObjectConst>();
     if (!pinObj.isNull()) { outputPin.fromJSONObject(pinObj); }
     JsonObjectConst pin2Obj = objectIn[SFP(AStr_Key_OutputPin2)].as<JsonObjectConst>();

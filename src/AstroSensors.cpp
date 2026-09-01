@@ -381,7 +381,7 @@ AstroSensorData::AstroSensorData()
 void AstroSensorData::toJSONObject(JsonObject &objectOut) const
 {
     AstroObjectData::toJSONObject(objectOut);
-    objectOut[SFP(AStr_Key_MeasurementUnits)] = (int)measurementUnits;
+    if (measurementUnits != Astro_UnitsType_Undefined) { objectOut[SFP(AStr_Key_MeasurementUnits)] = unitsTypeToSymbol(measurementUnits); }
     if (inputPin.isSet()) {
         JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_InputPin));
         inputPin.toJSONObject(pinObj);
@@ -395,7 +395,7 @@ void AstroSensorData::toJSONObject(JsonObject &objectOut) const
 void AstroSensorData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroObjectData::fromJSONObject(objectIn);
-    measurementUnits = (Astro_UnitsType)(objectIn[SFP(AStr_Key_MeasurementUnits)] | (int)measurementUnits);
+    measurementUnits = unitsTypeFromSymbol(objectIn[SFP(AStr_Key_MeasurementUnits)]);
     JsonObjectConst pinObj = objectIn[SFP(AStr_Key_InputPin)].as<JsonObjectConst>();
     if (!pinObj.isNull()) { inputPin.fromJSONObject(pinObj); }
     usingISR = objectIn[SFP(AStr_Key_UsingISR)] | usingISR;
