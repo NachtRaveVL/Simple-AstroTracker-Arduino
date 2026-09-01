@@ -150,7 +150,20 @@ From Astruino.h:
 //#define ASTRO_ENABLE_DEBUG_ASSERTIONS
 ```
 
-Unlike Hydruino and Helioduino, the current `develop` version of `shared/AstruinoUI.h` does not yet expose the sibling libraries' additional UI feature-switch defines. UI-specific build flags should therefore only be documented here once they actually exist in the Astruino UI implementation.
+From shared/AstruinoUI.h:
+```Arduino
+// Uncomment or -D this define to enable usage of the XPT2046_Touchscreen library, in place of the Adafruit FT6206 library.
+//#define ASTRO_UI_ENABLE_XPT2046TS               // https://github.com/PaulStoffregen/XPT2046_Touchscreen
+
+// Uncomment or -D this define to enable usage of the StChromaArt LDTC framebuffer capable canvas in place of default U8g2Drawable canvas (STM32/mbed only, note: requires advanced setup)
+//#define ASTRO_UI_ENABLE_STCHROMA_LDTC
+
+// Uncomment or -D this define to enable usage of the StChromaArt BSP touch screen interrogator in place of the default AdaLibTouchInterrogator (STM32/mbed only, note: requires advanced setup, see tcMenu_Extra_BspUserSettings.h)
+//#define ASTRO_UI_ENABLE_BSP_TOUCH
+
+// Uncomment or -D this define to enable usage of the debug menu 
+//#define ASTRO_UI_ENABLE_DEBUG_MENU
+```
 
 #### External Libraries
 
@@ -158,23 +171,34 @@ Astruino uses the following controller-side libraries depending on the enabled h
 
 * **ArduinoJson** for JSON configuration data.
 * **ArxContainer** and **ArxSmartPtr** for container and shared-pointer support on Arduino targets.
-* **DHT sensor library**, **Adafruit Unified Sensor**, and **OneWire** for supported environmental/sensor paths.
+* **DHT sensor library** and **Adafruit Unified Sensor** for DHT environmental sensors.
 * **I2C_EEPROM** for external I2C EEPROM storage.
 * **RTClib** and **Time** for RTC and system time handling.
-* **SolarCalculator** where solar/twilight calculations are used by controller scheduling.
+* **SolarCalculator** for offline solar position, sunrise, sunset, and transit calculations.
 * **TaskManagerIO**, **IoAbstraction**, and **SimpleCollections** for multitasking and I/O support when multitasking is enabled.
 * **Adafruit GPS** when GPS support is enabled.
 * **MQTT** when MQTT publishing is enabled.
 * **SD** plus the platform SPI/Wire support for local storage and buses.
 * **WiFi101**, **WiFiNINA_Generic**, **WiFiEspAT**, or **Ethernet** when the matching optional network path is enabled.
 
-Networking is optional. An offline Astruino system does not need WiFi, Ethernet, or MQTT for tracking, scheduling, local logging, or target lookup.
+Networking is optional. An offline Astruino system does not need a WiFi, Ethernet, or MQTT library.
 
 #### External UI Libraries
 
-Astruino follows the same tcMenu-based UI architecture as the controller family, but the Astruino-specific UI layer on `develop` is still being ported toward Hydruino/Helioduino parity.
+The optional tcMenu UI layer can use the same display and input libraries across the controller family:
 
-The dependency metadata already includes the family display/input libraries, including tcMenu, Adafruit GFX display drivers, touch libraries, LiquidCrystalIO, U8g2, TFT_eSPI, and tcUnicodeHelper. Do not assume that every Hydruino/Helioduino UI path is already implemented in Astruino simply because the dependency exists.
+* **tcMenu** for the menu, remote-control, and display abstraction layer.
+* **Adafruit GFX**, **Adafruit ILI9341**, and **Adafruit ST7735 and ST7789 Library** for supported color displays.
+* **Adafruit FT6206**, **Adafruit TouchScreen**, and optional **XPT2046_Touchscreen** for touch input.
+* **LiquidCrystalIO** for character LCD displays.
+* **U8g2** for monochrome OLED and LCD displays.
+* **TFT_eSPI** for supported advanced TFT configurations.
+* **tcUnicodeHelper** for Unicode-capable tcMenu display paths.
+
+* **U8g2** custom display setups use the selected U8g2 device class and are statically linked to that display configuration.
+* **TFT_eSPI** uses its `TFT_eSPI\User_Setup.h` configuration and therefore requires a rebuild when that hardware setup changes.
+* **BSP LCD / BSP Touch** support can use the included ChromaArt/BSP adapter layer on supported STM32/mbed targets. This is an advanced hardware-specific path.
+* **ST7789 custom TFT / TFT_eSPI** setups use statically configured screen dimensions and require a rebuild when those values change.
 
 ### Initialization
 
@@ -427,7 +451,7 @@ Weather sensors can improve automated safety, but a hobby controller should not 
 
 ## Example Usage
 
-A simple setup follows the same lifecycle used by Hydruino and Helioduino:
+Below are several examples of controller usage.
 
 ```Arduino
 #include <Astruino.h>
