@@ -11,6 +11,8 @@ static void check(bool condition, const char *message)
 
 int main()
 {
+    check(getTargetsLib() == &astroTargetsLib, "targets library singleton getter");
+
     AstroTargetsLibrary library;
 
     const AstroTargetsLibData *m31a = library.checkoutTargetsData(Astro_TargetType_M31);

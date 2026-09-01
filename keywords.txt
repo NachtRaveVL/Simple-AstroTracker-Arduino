@@ -161,6 +161,7 @@ astroPrecessJ2000	KEYWORD2
 astroEquatorialToHorizontal	KEYWORD2
 astroResolveSolarSystemTarget	KEYWORD2
 astroTargetsLib	KEYWORD2
+getTargetsLib	KEYWORD2
 
 # Measurement helpers
 getMeasurementValue	KEYWORD2

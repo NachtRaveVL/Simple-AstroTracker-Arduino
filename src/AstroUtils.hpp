@@ -309,6 +309,11 @@ inline AstroPublisher *getPublisher()
     return Astruino::_activeInstance ? &Astruino::_activeInstance->publisher : nullptr;
 }
 
+inline AstroTargetsLibrary *getTargetsLib()
+{
+    return &astroTargetsLib;
+}
+
 #ifdef ASTRO_USE_GUI
 
 inline AstroUIInterface *getUI()

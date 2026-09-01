@@ -6,6 +6,7 @@
 #ifndef AstroUtils_H
 #define AstroUtils_H
 
+class AstroTargetsLibrary;
 template<typename RTCType> class AstroRTCWrapper;
 #ifdef ASTRO_USE_MULTITASKING
 template<typename ParameterType, int Slots> class SignalFireTask;
@@ -152,6 +153,8 @@ inline AstroScheduler *getScheduler();
 inline AstroLogger *getLogger();
 // Returns the active publisher instance. Not guaranteed to be non-null.
 inline AstroPublisher *getPublisher();
+// Returns the targets library singleton instance.
+inline AstroTargetsLibrary *getTargetsLib();
 #ifdef ASTRO_USE_GUI
 // Returns the active UI instance. Not guaranteed to be non-null.
 inline AstroUIInterface *getUI();
