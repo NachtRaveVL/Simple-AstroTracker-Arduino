@@ -14,8 +14,8 @@ static void testSystemData()
     data.latitude = 49.2827;
     data.longitude = -123.1207;
     data.altitude = 70.0;
-    data.scheduler.deploySunAltitudeDegrees = -12.0;
-    data.scheduler.settleSeconds = 12;
+    data.scheduler.preDuskHeatingMins = 12;
+    data.scheduler.reportInterval = 3600;
     data.logger.logLevel = Astro_LogLevel_Warnings;
 
     StaticJsonDocument<1024> doc;
@@ -29,11 +29,13 @@ static void testSystemData()
     assert(strcmp(decoded.systemName, data.systemName) == 0);
     assert(decoded.systemMode == data.systemMode);
     assert(decoded.measureMode == data.measureMode);
-    assert(isFPEqual(decoded.observer.latitudeDegrees, data.observer.latitudeDegrees));
-    assert(isFPEqual(decoded.observer.longitudeDegrees, data.observer.longitudeDegrees));
-    assert(decoded.scheduler.settleSeconds == data.scheduler.settleSeconds);
+    assert(isFPEqual(decoded.latitude, data.latitude));
+    assert(isFPEqual(decoded.longitude, data.longitude));
+    assert(isFPEqual(decoded.altitude, data.altitude));
+    assert(decoded.scheduler.preDuskHeatingMins == data.scheduler.preDuskHeatingMins);
+    assert(decoded.scheduler.reportInterval == data.scheduler.reportInterval);
     assert(decoded.logger.logLevel == data.logger.logLevel);
-    assert(decoded.publisher.pubToMQTT == data.publisher.pubToMQTT);
+    assert(decoded.publisher.pubToSDCard == data.publisher.pubToSDCard);
 
     AstroData *allocated = newDataFromJSONObject(objectConst);
     assert(allocated && allocated->isSystemData());
@@ -44,8 +46,8 @@ static void testCalibrationData()
 {
     AstroCalibrationData data(AstroIdentity(Astro_SensorType_Temperature, 1), Astro_UnitsType_Temperature_Celsius);
     data.setFromTwoPoints(0.1, -10.0, 0.9, 30.0);
-    assert(isFPEqual(data.transform(0.5), 10.0));
-    assert(isFPEqual(data.inverseTransform(10.0), 0.5));
+    assert(isFPEqual(data.transform(0.5f), 10.0f));
+    assert(isFPEqual(data.inverseTransform(10.0f), 0.5f));
 
     StaticJsonDocument<256> doc;
     JsonObject object = doc.to<JsonObject>();
@@ -55,7 +57,7 @@ static void testCalibrationData()
     AstroCalibrationData decoded;
     decoded.fromJSONObject(objectConst);
     assert(decoded.isCalibrationData());
-    assert(decoded.ownerKey == data.ownerKey);
+    assert(strcmp(decoded.ownerName, data.ownerName) == 0);
     assert(decoded.calibrationUnits == data.calibrationUnits);
     assert(isFPEqual(decoded.multiplier, data.multiplier));
     assert(isFPEqual(decoded.offset, data.offset));
@@ -87,7 +89,7 @@ static void testActuatorData()
     assert(decoded->enableMode == Astro_EnableMode_InOrder);
     assert(decoded->outputPin.pin == 8);
     assert(decoded->outputPin2.pin == 9);
-    assert(decoded->outputPin2.activeLow);
+    assert(decoded->outputPin2.dataAs.digitalPin.activeLow);
     delete allocated;
 }
 

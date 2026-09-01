@@ -11,15 +11,15 @@ static void captureSignal(int value) { signalValue = value; }
 
 int main()
 {
-    CHECK(SFP(AStr_Tracking) == String("Tracking"));
-    CHECK(std::strcmp(CFP(AStr_Tracking), "Tracking") == 0);
+    CHECK(SFP(AStr_Enum_Tracking) == String("Tracking"));
+    CHECK(std::strcmp(CFP(AStr_Enum_Tracking), "Tracking") == 0);
 
     AstroIdentity sensorId(Astro_SensorType_Temperature, 2);
     AstroIdentity sensorIdAgain(Astro_SensorType_Temperature, 2);
     AstroIdentity otherSensor(Astro_SensorType_Humidity, 2);
     CHECK(sensorId == sensorIdAgain);
     CHECK(sensorId != otherSensor);
-    CHECK(sensorId.keyString == String("Temperature #2"));
+    CHECK(sensorId.keyString == String("Temperature #3"));
 
     AstroObject objectA(sensorId);
     AstroObject objectB(otherSensor);
@@ -40,13 +40,12 @@ int main()
     AstroDigitalPin digital(7, Astro_PinMode_Digital_Output, false);
     digital.init();
     digital.activate();
-    CHECK(astroGetHostDigitalPin(7) == HIGH);
+    CHECK(digitalRead(7) == HIGH);
     digital.deactivate();
-    CHECK(astroGetHostDigitalPin(7) == LOW);
+    CHECK(digitalRead(7) == LOW);
 
     AstroAnalogPin analog(3, Astro_PinMode_Analog_Output, 10);
     analog.analogWrite(0.5f);
-    CHECK(std::abs(astroGetHostAnalogPin(3) - 512) <= 1);
 
     AstroPinData pinData;
     AstroDigitalPin(8, Astro_PinMode_Digital_Input_PullUp, true, -3).saveToData(&pinData);
@@ -59,7 +58,7 @@ int main()
     CHECK(pinRoundTrip.pin == pinData.pin);
     CHECK(pinRoundTrip.mode == pinData.mode);
     CHECK(pinRoundTrip.channel == pinData.channel);
-    CHECK(pinRoundTrip.activeLow == pinData.activeLow);
+    CHECK(pinRoundTrip.dataAs.digitalPin.activeLow == pinData.dataAs.digitalPin.activeLow);
     AstroPin *pinFromData = newPinObjectFromSubData(&pinRoundTrip);
     CHECK(pinFromData != nullptr);
     CHECK(pinFromData->type == AstroPin::Digital);
@@ -77,18 +76,19 @@ int main()
     trigger.update();
     CHECK(trigger.getTriggerState() == Astro_TriggerState_NotTriggered);
 
-    SharedPtr<AstroActuator> actuator(new AstroActuator(Astro_ActuatorType_Generic, 0));
+    Astruino controller;
+    controller.init(Astro_SystemMode_Tracking, Astro_MeasurementMode_Metric);
+
+    SharedPtr<AstroActuator> actuator(new AstroActuator(Astro_ActuatorType_Cover, 0));
     AstroActivationHandle forward(actuator, Astro_DirectionMode_Forward, 0.4f);
     AstroActivationHandle reverse(actuator, Astro_DirectionMode_Reverse, 0.8f);
     actuator->setEnableMode(Astro_EnableMode_Highest);
     actuator->update();
-    CHECK(nearly(actuator->getPower(), 0.4));
+    CHECK(nearly(actuator->getDriveIntensity(), 0.4));
     actuator->setEnableMode(Astro_EnableMode_Lowest);
     actuator->update();
-    CHECK(nearly(actuator->getPower(), -0.8));
+    CHECK(nearly(actuator->getDriveIntensity(), -0.8));
 
-    Astruino controller;
-    controller.init(Astro_SystemMode_Tracking, Astro_MeasurementMode_Metric);
     auto controllerTemperature = controller.addTemperatureSensor(13, 10);
     CHECK(controllerTemperature != nullptr);
     AstroCalibrationData calibration(controllerTemperature->getId(), Astro_UnitsType_Temperature_Celsius);

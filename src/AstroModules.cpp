@@ -5,6 +5,15 @@
 
 #include "Astruino.h"
 
+AstroCalibrations::~AstroCalibrations()
+{
+    while (_calibrationData.size()) {
+        auto iter = _calibrationData.begin();
+        if (iter->second) { delete iter->second; }
+        _calibrationData.erase(iter);
+    }
+}
+
 const AstroCalibrationData *AstroCalibrations::getUserCalibrationData(akey_t key) const
 {
     auto iter = _calibrationData.find(key);

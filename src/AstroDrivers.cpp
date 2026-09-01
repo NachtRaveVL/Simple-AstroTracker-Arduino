@@ -3,7 +3,7 @@
     Astruino Drivers
 */
 
-#include "AstroDrivers.h"
+#include "Astruino.h"
 
 AstroCallbackAxisDriver::AstroCallbackAxisDriver(TargetCallback targetCallback,
                                                  StopCallback stopCallback,
@@ -41,7 +41,7 @@ AstroServoAxisDriver::AstroServoAxisDriver(AstroAnalogPin outputPin, double minD
 
 void AstroServoAxisDriver::setTargetDegrees(double targetDegrees)
 {
-    _targetDegrees = astroConstrain(targetDegrees, _minDegrees, _maxDegrees);
+    _targetDegrees = constrain(targetDegrees, _minDegrees, _maxDegrees);
     double range = _maxDegrees - _minDegrees;
     float amount = range > 0.0 ? (float)((_targetDegrees - _minDegrees) / range) : 0.0f;
     _outputPin.analogWrite(amount);

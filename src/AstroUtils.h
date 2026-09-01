@@ -273,6 +273,8 @@ inline bool convertUnits(float *valueInOut, Astro_UnitsType *unitsInOut, Astro_U
 // Attempts to convert value from one unit to another, and if successful then assigns value, and optionally units, to output.
 // Convert param used in certain unit conversions. Returns conversion success flag.
 inline bool convertUnits(float valueIn, float *valueOut, Astro_UnitsType unitsIn, Astro_UnitsType outUnits, Astro_UnitsType *unitsOut = nullptr, float convertParam = FLT_UNDEF);
+inline bool convertUnits(double *valueInOut, Astro_UnitsType *unitsInOut, Astro_UnitsType outUnits, double convertParam = FLT_UNDEF);
+inline bool convertUnits(double valueIn, double *valueOut, Astro_UnitsType unitsIn, Astro_UnitsType outUnits, Astro_UnitsType *unitsOut = nullptr, double convertParam = FLT_UNDEF);
 // Attempts to convert measurement in-place from one unit to another, and if successful then assigns value and units back overtop of itself.
 // Convert param used in certain unit conversions. Returns conversion success flag.
 inline bool convertUnits(AstroSingleMeasurement *measureInOut, Astro_UnitsType outUnits, float convertParam = FLT_UNDEF);

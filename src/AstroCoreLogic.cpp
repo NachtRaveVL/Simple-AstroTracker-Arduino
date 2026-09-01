@@ -34,22 +34,23 @@ AstroEquatorialCoordinates astroPrecessJ2000(const AstroEquatorialCoordinates &c
     double zeta = (2306.2181 * t + 0.30188 * t2 + 0.017998 * t3) / 3600.0;
     double z = (2306.2181 * t + 1.09468 * t2 + 0.018203 * t3) / 3600.0;
     double theta = (2004.3109 * t - 0.42665 * t2 - 0.041833 * t3) / 3600.0;
-    astroConvertUnits(zeta, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &zeta);
-    astroConvertUnits(z, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &z);
-    astroConvertUnits(theta, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &theta);
+    convertUnits(zeta, &zeta, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
+    convertUnits(z, &z, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
+    convertUnits(theta, &theta, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
 
     double ra = coordinates.rightAscensionHours * 15.0;
     double dec = coordinates.declinationDegrees;
-    astroConvertUnits(ra, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &ra);
-    astroConvertUnits(dec, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &dec);
+    convertUnits(ra, &ra, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
+    convertUnits(dec, &dec, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
     double a = cos(dec) * sin(ra + zeta);
     double b = cos(theta) * cos(dec) * cos(ra + zeta) - sin(theta) * sin(dec);
     double c = sin(theta) * cos(dec) * cos(ra + zeta) + cos(theta) * sin(dec);
     double outRa = atan2(a, b) + z;
     double outDec = asin(c);
 
-    astroConvertUnits(outRa, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &outRa);
-    astroConvertUnits(outDec, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &outDec);
+    convertUnits(outRa, &outRa, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360);
+    convertUnits(outDec, &outDec, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360);
+    outDec = wrapBy180Neg180<double>(outDec);
     return AstroEquatorialCoordinates(wrapBy360<double>(outRa) / 15.0, outDec);
 }
 
@@ -59,15 +60,16 @@ AstroHorizontalCoordinates astroEquatorialToHorizontal(const AstroEquatorialCoor
     double hourAngle = wrapBy180Neg180<double>(localSidereal - coordinates.rightAscensionHours * 15.0);
     double declination = coordinates.declinationDegrees;
     double latitude = observer.latitudeDegrees;
-    astroConvertUnits(hourAngle, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &hourAngle);
-    astroConvertUnits(declination, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &declination);
-    astroConvertUnits(latitude, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &latitude);
+    convertUnits(hourAngle, &hourAngle, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
+    convertUnits(declination, &declination, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
+    convertUnits(latitude, &latitude, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
 
     double altitude = asin(sin(declination) * sin(latitude) + cos(declination) * cos(latitude) * cos(hourAngle));
     double azimuth = atan2(-sin(hourAngle), tan(declination) * cos(latitude) - sin(latitude) * cos(hourAngle));
 
-    astroConvertUnits(altitude, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &altitude);
-    astroConvertUnits(azimuth, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &azimuth);
+    convertUnits(altitude, &altitude, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360);
+    altitude = wrapBy180Neg180<double>(altitude);
+    convertUnits(azimuth, &azimuth, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360);
     return AstroHorizontalCoordinates(altitude, wrapBy360<double>(azimuth));
 }
 
@@ -88,7 +90,7 @@ static double daysFromJ2000(int64_t unixTime)
 static double solveEccentricAnomaly(double meanAnomalyDegrees, double eccentricity)
 {
     double m = wrapBy360<double>(meanAnomalyDegrees);
-    astroConvertUnits(m, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &m);
+    convertUnits(m, &m, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
     double e = m + eccentricity * sin(m) * (1.0 + eccentricity * cos(m));
     for (int i = 0; i < 6; ++i) {
         e -= (e - eccentricity * sin(e) - m) / (1.0 - eccentricity * cos(e));
@@ -107,9 +109,9 @@ static void orbitalXYZ(const AstroOrbitalElements &elements, double *xOut, doubl
     double n = elements.node;
     double i = elements.inclination;
     double perihelion = elements.perihelion;
-    astroConvertUnits(n, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &n);
-    astroConvertUnits(i, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &i);
-    astroConvertUnits(perihelion, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &perihelion);
+    convertUnits(n, &n, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
+    convertUnits(i, &i, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
+    convertUnits(perihelion, &perihelion, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
     double wv = v + perihelion;
     double x = r * (cos(n) * cos(wv) - sin(n) * sin(wv) * cos(i));
     double y = r * (sin(n) * cos(wv) + cos(n) * sin(wv) * cos(i));
@@ -144,14 +146,15 @@ static AstroOrbitalElements planetElements(Astro_TargetType targetType, double d
 static AstroEquatorialCoordinates eclipticToEquatorial(double x, double y, double z, double d)
 {
     double obliquity = 23.4393 - 3.563e-7 * d;
-    astroConvertUnits(obliquity, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &obliquity);
+    convertUnits(obliquity, &obliquity, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
     double xe = x;
     double ye = y * cos(obliquity) - z * sin(obliquity);
     double ze = y * sin(obliquity) + z * cos(obliquity);
     double ra = atan2(ye, xe);
     double dec = atan2(ze, sqrt(xe * xe + ye * ye));
-    astroConvertUnits(ra, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &ra);
-    astroConvertUnits(dec, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &dec);
+    convertUnits(ra, &ra, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360);
+    convertUnits(dec, &dec, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360);
+    dec = wrapBy180Neg180<double>(dec);
     return AstroEquatorialCoordinates(wrapBy360<double>(ra) / 15.0, dec);
 }
 
@@ -164,7 +167,7 @@ static AstroEquatorialCoordinates resolveSun(double d)
     double v = atan2(yv, xv);
     double r = sqrt(xv*xv + yv*yv);
     double perihelion = sun.perihelion;
-    astroConvertUnits(perihelion, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &perihelion);
+    convertUnits(perihelion, &perihelion, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
     double lon = v + perihelion;
     return eclipticToEquatorial(r * cos(lon), r * sin(lon), 0.0, d);
 }
@@ -183,13 +186,13 @@ static AstroEquatorialCoordinates resolveMoon(double d)
     double ms = wrapBy360<double>(sun.anomaly);
     double dd = wrapBy360<double>(lMoon - lSun);
     double ff = wrapBy360<double>(lMoon - moon.node);
-    astroConvertUnits(mm, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &mm);
-    astroConvertUnits(ms, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &ms);
-    astroConvertUnits(dd, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &dd);
-    astroConvertUnits(ff, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &ff);
+    convertUnits(mm, &mm, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
+    convertUnits(ms, &ms, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
+    convertUnits(dd, &dd, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
+    convertUnits(ff, &ff, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
 
     double lonDeg = lon;
-    astroConvertUnits(lonDeg, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &lonDeg);
+    convertUnits(lonDeg, &lonDeg, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360);
     lonDeg += -1.274 * sin(mm - 2.0*dd) + 0.658 * sin(2.0*dd) - 0.186 * sin(ms)
               -0.059 * sin(2.0*mm - 2.0*dd) - 0.057 * sin(mm - 2.0*dd + ms)
               +0.053 * sin(mm + 2.0*dd) + 0.046 * sin(2.0*dd - ms)
@@ -197,7 +200,8 @@ static AstroEquatorialCoordinates resolveMoon(double d)
               -0.015 * sin(2.0*ff - 2.0*dd) + 0.011 * sin(mm - 4.0*dd);
 
     double latDeg = atan2(z, sqrt(x*x + y*y));
-    astroConvertUnits(latDeg, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360, &latDeg);
+    convertUnits(latDeg, &latDeg, Astro_UnitsType_Angle_Radians_2pi, Astro_UnitsType_Angle_Degrees_360);
+    latDeg = wrapBy180Neg180<double>(latDeg);
     latDeg += -0.173 * sin(ff - 2.0*dd) - 0.055 * sin(mm - ff - 2.0*dd)
               -0.046 * sin(mm + ff - 2.0*dd) + 0.033 * sin(ff + 2.0*dd)
               +0.017 * sin(2.0*mm + ff);
@@ -205,8 +209,8 @@ static AstroEquatorialCoordinates resolveMoon(double d)
 
     double lonRad = lonDeg;
     double latRad = latDeg;
-    astroConvertUnits(lonRad, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &lonRad);
-    astroConvertUnits(latRad, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &latRad);
+    convertUnits(lonRad, &lonRad, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
+    convertUnits(latRad, &latRad, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
     double xy = r * cos(latRad);
     return eclipticToEquatorial(xy*cos(lonRad), xy*sin(lonRad), r*sin(latRad), d);
 }
@@ -232,7 +236,7 @@ bool astroResolveSolarSystemTarget(Astro_TargetType targetType, int64_t unixTime
     double v = atan2(yv, xv);
     double r = sqrt(xv*xv + yv*yv);
     double perihelion = sun.perihelion;
-    astroConvertUnits(perihelion, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi, &perihelion);
+    convertUnits(perihelion, &perihelion, Astro_UnitsType_Angle_Degrees_360, Astro_UnitsType_Angle_Radians_2pi);
     double lon = v + perihelion;
     double xs = r * cos(lon);
     double ys = r * sin(lon);

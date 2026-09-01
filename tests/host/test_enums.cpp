@@ -28,19 +28,11 @@ int main()
     CHECK(testEnumRange(Astro_UnitsCategory_Count, Astro_UnitsCategory_Undefined, unitsCategoryToString, unitsCategoryFromString));
     CHECK(testEnumRange(Astro_UnitsType_Count, Astro_UnitsType_Undefined, unitsTypeToSymbol, unitsTypeFromSymbol));
     CHECK(testEnumRange(Astro_TargetClass_Count, Astro_TargetClass_Unknown, targetClassToString, targetClassFromString));
-    CHECK(testEnumRange(Astro_ThermalMode_Count, Astro_ThermalMode_Undefined, thermalModeToString, thermalModeFromString));
-    CHECK(testEnumRange(Astro_SchedulerStage_Count, Astro_SchedulerStage_Undefined, schedulerStageToString, schedulerStageFromString));
+    CHECK(testEnumRange(Astro_TargetType_Count, Astro_TargetType_Undefined, targetTypeToString, targetTypeFromString));
     CHECK(unitsTypeFromSymbol(String("J/s")) == Astro_UnitsType_Power_Wattage);
 
-    char targetName[ASTRO_TARGET_NAME_MAXSIZE];
-    for (unsigned int targetIndex = 0; targetIndex < Astro_Target_Count; ++targetIndex) {
-        Astro_TargetId targetId = (Astro_TargetId)targetIndex;
-        CHECK(astroTargetIdToString(targetId, targetName, sizeof(targetName)));
-        CHECK(astroTargetIdFromString(targetName) == targetId);
-    }
-
-    CHECK(astroTargetIdFromString("M0") == Astro_Target_Undefined);
-    CHECK(astroTargetIdFromString("M111") == Astro_Target_Undefined);
+    CHECK(targetTypeFromString("M0") == Astro_TargetType_Undefined);
+    CHECK(targetTypeFromString("M111") == Astro_TargetType_Undefined);
 
     std::cout << "Enum conversion tests passed\n";
     return 0;

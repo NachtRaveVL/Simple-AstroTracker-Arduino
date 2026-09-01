@@ -3,15 +3,14 @@
     Astruino Sensor Measurements
 */
 
-#include "AstroMeasurements.h"
-#include "AstroUtils.h"
+#include "Astruino.h"
 #include <math.h>
 #include <stdio.h>
 
 AstroMeasurement *newMeasurementObjectFromSubData(const AstroMeasurementData *dataIn)
 {
     if (!dataIn || !isValidType(dataIn->type)) return nullptr;
-    Astro_SOFT_ASSERT(dataIn && isValidType(dataIn->type), SFP(AStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(dataIn && isValidType(dataIn->type), SFP(AStr_Err_InvalidParameter));
 
     if (dataIn) {
         switch (dataIn->type) {
@@ -278,6 +277,6 @@ void AstroMeasurementData::fromJSONVariant(JsonVariantConst &variantIn)
     } else if (variantIn.is<float>() || variantIn.is<int>()) {
         value = variantIn.as<float>();
     } else {
-        Astro_SOFT_ASSERT(false, SFP(AStr_Err_UnsupportedOperation));
+        ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_UnsupportedOperation));
     }
 }

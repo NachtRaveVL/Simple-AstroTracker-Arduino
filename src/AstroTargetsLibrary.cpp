@@ -36,7 +36,7 @@ AstroTargetsLibraryBook::AstroTargetsLibraryBook(const AstroTargetsLibData &data
 { ; }
 
 
-AstroTargetsLibrary hydroTargetsLib;
+AstroTargetsLibrary AstroTargetsLib;
 
 void AstroTargetsLibrary::beginTargetsLibraryFromSDCard(String dataFilePrefix, bool jsonFormat)
 {
@@ -130,6 +130,7 @@ bool AstroTargetsLibrary::dropUserTargetData(const AstroTargetsLibData *targetDa
     auto iter = _targetsData.find(targetData->targetType);
 
     if (iter != _targetsData.end()) {
+        if (iter->second->count > 1) { return false; }
         delete iter->second;
         _targetsData.erase(iter);
 
@@ -165,7 +166,6 @@ void AstroTargetsLibrary::updateTargetsOfType(Astro_TargetType targetType)
                     }
 
                     target->returnTargetsLibData(); // forces new data checkout
-                    target->recalcGrowthParams();
 
                     if (incCount) {
                         _targetsData[targetType]->count--;
@@ -178,12 +178,14 @@ void AstroTargetsLibrary::updateTargetsOfType(Astro_TargetType targetType)
 
 inline String getTargetFilename(const String &libSDTargetPrefix, Astro_TargetType targetType)
 {
-    String filename; filename.reserve(libSDTargetPrefix.length() + 4 + 1);
+    String filename; filename.reserve(libSDTargetPrefix.length() + 6 + 1);
     filename.concat(libSDTargetPrefix);
-    filename.concat('c');
+    filename.concat('t');
+    filename.concat('a');
     filename.concat('r');
-    filename.concat('o');
-    filename.concat('p');
+    filename.concat('g');
+    filename.concat('e');
+    filename.concat('t');
     return getNNFilename(filename, (unsigned int)targetType, SFP(AStr_dat));
 }
 

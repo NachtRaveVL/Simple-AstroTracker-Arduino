@@ -53,6 +53,7 @@ struct AstroPin {
     AstroPin();
     AstroPin(int classType, pintype_t pinNumber = apin_none, Astro_PinMode pinMode = Astro_PinMode_Undefined, int8_t pinChannel = apinchnl_none);
     AstroPin(const AstroPinData *dataIn);
+    virtual ~AstroPin() { ; }
 
     explicit operator AstroDigitalPin() const;
     explicit operator AstroAnalogPin() const;

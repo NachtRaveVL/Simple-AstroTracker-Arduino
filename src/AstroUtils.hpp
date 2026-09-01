@@ -185,6 +185,28 @@ inline bool convertUnits(float valueIn, float *valueOut, Astro_UnitsType unitsIn
     return false;
 }
 
+inline bool convertUnits(double *valueInOut, Astro_UnitsType *unitsInOut, Astro_UnitsType outUnits, double convertParam)
+{
+    float valueOut;
+    if (tryConvertUnits((float)*valueInOut, *unitsInOut, &valueOut, outUnits, (float)convertParam)) {
+        *valueInOut = valueOut;
+        *unitsInOut = outUnits;
+        return true;
+    }
+    return false;
+}
+
+inline bool convertUnits(double valueIn, double *valueOut, Astro_UnitsType unitsIn, Astro_UnitsType outUnits, Astro_UnitsType *unitsOut, double convertParam)
+{
+    float converted;
+    if (tryConvertUnits((float)valueIn, unitsIn, &converted, outUnits, (float)convertParam)) {
+        *valueOut = converted;
+        if (unitsOut) { *unitsOut = outUnits; }
+        return true;
+    }
+    return false;
+}
+
 inline bool convertUnits(AstroSingleMeasurement *measureInOut, Astro_UnitsType outUnits, float convertParam)
 {
     return convertUnits(&measureInOut->value, &measureInOut->units, outUnits, convertParam);
@@ -208,7 +230,7 @@ template<> inline double wrapBy(double value, double range)
 }
 
 
-template<size_t N = ASTRO_DEFAULT_MAXSIZE>
+template<size_t N>
 Vector<AstroObject *, N> linksFilterActuators(Pair<uint8_t, Pair<AstroObject *, int8_t> *> links)
 {
     Vector<AstroObject *, N> retVal;
@@ -222,7 +244,7 @@ Vector<AstroObject *, N> linksFilterActuators(Pair<uint8_t, Pair<AstroObject *, 
     return retVal;
 }
 
-template<size_t N = ASTRO_DEFAULT_MAXSIZE>
+template<size_t N>
 Vector<AstroObject *, N> linksFilterActuatorsByMountAndType(Pair<uint8_t, Pair<AstroObject *, int8_t> *> links, AstroMount *mount, Astro_ActuatorType actuatorType)
 {
     Vector<AstroObject *, N> retVal;
@@ -240,7 +262,7 @@ Vector<AstroObject *, N> linksFilterActuatorsByMountAndType(Pair<uint8_t, Pair<A
     return retVal;
 }
 
-template<size_t N = ASTRO_DEFAULT_MAXSIZE>
+template<size_t N>
 void linksResolveActuatorsByType(Vector<AstroObject *, N> &actuatorsIn, Vector<AstroActuatorAttachment, N> &activationsOut, Astro_ActuatorType actuatorType)
 {
     for (auto actIter = actuatorsIn.begin(); actIter != actuatorsIn.end(); ++actIter) {
@@ -253,7 +275,7 @@ void linksResolveActuatorsByType(Vector<AstroObject *, N> &actuatorsIn, Vector<A
     }
 }
 
-template<size_t N = ASTRO_DEFAULT_MAXSIZE>
+template<size_t N>
 void linksResolveActuatorsToAttachments(Vector<AstroObject *, N> &actuatorsIn, AstroObjInterface *parent, aposi_t subIndex, Vector<AstroActuatorAttachment, N> &activationsOut)
 {
     for (auto actIter = actuatorsIn.begin(); actIter != actuatorsIn.end(); ++actIter) {

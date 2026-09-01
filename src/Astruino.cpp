@@ -18,7 +18,7 @@ void handleInterrupt(pintype_t pin)
             if (iter->second->isSensorType()) {
                 auto sensor = static_pointer_cast<AstroSensor>(iter->second);
                 if (sensor->isBinaryClass()) {
-                    auto binarySensor = static_pointer_cast<AstroBinarySensor>(sensor);
+                    auto binarySensor = static_pointer_cast<AstroDigitalSensor>(sensor);
                     if (binarySensor && binarySensor->getInputPin().pin == pin) { binarySensor->notifyISRTriggered(); }
                 }
             }
@@ -407,10 +407,13 @@ bool Astruino::initFromJSONStream(Stream *streamIn)
                 if (data && data->isStandardData()) {
                     if (data->isCalibrationData()) {
                         setUserCalibrationData((AstroCalibrationData *)data);
-                    } else if (data->isUIData()) {
-                        if (_uiData) { delete _uiData; }
-                        _uiData = (AstroUIData *)data; data = nullptr;
                     }
+                    #ifdef ASTRO_USE_GUI
+                        else if (data->isUIData()) {
+                            if (_uiData) { delete _uiData; }
+                            _uiData = (AstroUIData *)data; data = nullptr;
+                        }
+                    #endif
                     if (data) { delete data; data = nullptr; }
                 } else if (data && data->isObjectData()) {
                     AstroObject *obj = newObjectFromData(data);
@@ -471,17 +474,19 @@ bool Astruino::saveToJSONStream(Stream *streamOut, bool compact)
             }
         }
 
-        if (_uiData) {
-            StaticJsonDocument<ASTRO_JSON_DOC_DEFSIZE> doc;
+        #ifdef ASTRO_USE_GUI
+            if (_uiData) {
+                StaticJsonDocument<ASTRO_JSON_DOC_DEFSIZE> doc;
 
-            JsonObject uiDataObj = doc.to<JsonObject>();
-            _uiData->toJSONObject(uiDataObj);
+                JsonObject uiDataObj = doc.to<JsonObject>();
+                _uiData->toJSONObject(uiDataObj);
 
-            if (!(compact ? serializeJson(doc, *streamOut) : serializeJsonPretty(doc, *streamOut))) {
-                ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_ExportFailure));
-                return false;
+                if (!(compact ? serializeJson(doc, *streamOut) : serializeJsonPretty(doc, *streamOut))) {
+                    ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_ExportFailure));
+                    return false;
+                }
             }
-        }
+        #endif
 
         if (_objects.size()) {
             for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
@@ -539,10 +544,13 @@ bool Astruino::initFromBinaryStream(Stream *streamIn)
                 if (data && data->isStandardData()) {
                     if (data->isCalibrationData()) {
                         setUserCalibrationData((AstroCalibrationData *)data);
-                    } else if (data->isUIData()) {
-                        if (_uiData) { delete _uiData; }
-                        _uiData = (AstroUIData *)data; data = nullptr;
                     }
+                    #ifdef ASTRO_USE_GUI
+                        else if (data->isUIData()) {
+                            if (_uiData) { delete _uiData; }
+                            _uiData = (AstroUIData *)data; data = nullptr;
+                        }
+                    #endif
                     if (data) { delete data; data = nullptr; }
                 } else if (data && data->isObjectData()) {
                     AstroObject *obj = newObjectFromData(data);
@@ -595,12 +603,14 @@ bool Astruino::saveToBinaryStream(Stream *streamOut)
             if (!bytesWritten) { return false; }
         }
 
-        if (_uiData) {
-            size_t bytesWritten = serializeDataToBinaryStream(_uiData, streamOut);
+        #ifdef ASTRO_USE_GUI
+            if (_uiData) {
+                size_t bytesWritten = serializeDataToBinaryStream(_uiData, streamOut);
 
-            ASTRO_SOFT_ASSERT(bytesWritten, SFP(AStr_Err_ExportFailure));
-            if (!bytesWritten) { return false; }
-        }
+                ASTRO_SOFT_ASSERT(bytesWritten, SFP(AStr_Err_ExportFailure));
+                if (!bytesWritten) { return false; }
+            }
+        #endif
 
         if (_objects.size()) {
             for (auto iter = _objects.begin(); iter != _objects.end(); ++iter) {
@@ -678,9 +688,9 @@ void Astruino::commonPreInit()
         }
     #endif
     if (_sdSetup.cfgType == DeviceSetup::SPISetup && isValidPin(_sdSetup.cfgAs.spi.cs)) {
-        if (began.find((uintptr_t)_rtcSetup.cfgAs.spi.spi) == began.end()) {
+        if (began.find((uintptr_t)_sdSetup.cfgAs.spi.spi) == began.end()) {
             _sdSetup.cfgAs.spi.spi->begin();
-            began[(uintptr_t)_rtcSetup.cfgAs.spi.spi] = 0;
+            began[(uintptr_t)_sdSetup.cfgAs.spi.spi] = 0;
         }
         pinMode(_sdSetup.cfgAs.spi.cs, OUTPUT);
         digitalWrite(_sdSetup.cfgAs.spi.cs, HIGH);

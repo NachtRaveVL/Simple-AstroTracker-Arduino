@@ -18,6 +18,8 @@ class AstroPinHandlers;
 // an usable input value.
 class AstroCalibrations {
 public:
+    ~AstroCalibrations();
+
     // Adds/updates user calibration data to storage, returning success flag
     bool setUserCalibrationData(const AstroCalibrationData *calibrationData);
 

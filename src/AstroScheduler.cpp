@@ -442,6 +442,8 @@ void AstroTracking::update()
         if (logStage) {
             if (stageWas != stage) {
                 switch (stageWas) {
+                    case Init: break;
+
                     case Warm: {
                         getLogger()->logProcess(mount.get(), SFP(AStr_Log_PreDuskWarmup), SFP(AStr_Log_HasEnded));
                         getLogger()->logMessage(SFP(AStr_Log_Field_Time_Measured), timeSpanToString(TimeSpan(time - stageStart)));

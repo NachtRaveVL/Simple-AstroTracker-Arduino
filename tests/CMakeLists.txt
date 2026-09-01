@@ -44,6 +44,14 @@ set(ASTRUINO_SRC
 add_library(astruino_host STATIC ${ASTRUINO_SRC})
 target_include_directories(astruino_host PUBLIC ../src)
 
+add_library(astruino_host_debug STATIC ${ASTRUINO_SRC})
+target_include_directories(astruino_host_debug PUBLIC ../src)
+target_compile_definitions(astruino_host_debug PRIVATE
+    ASTRO_ENABLE_DEBUG_OUTPUT
+    ASTRO_ENABLE_VERBOSE_DEBUG
+    ASTRO_ENABLE_DEBUG_ASSERTIONS
+)
+
 add_executable(test_astronomy host/test_astronomy.cpp)
 target_link_libraries(test_astronomy PRIVATE astruino_host)
 
@@ -68,6 +76,14 @@ target_link_libraries(test_hardening PRIVATE astruino_host)
 add_executable(test_hardware host/test_hardware.cpp)
 target_link_libraries(test_hardware PRIVATE astruino_host)
 
+add_executable(test_debug host/test_debug.cpp)
+target_link_libraries(test_debug PRIVATE astruino_host_debug)
+target_compile_definitions(test_debug PRIVATE
+    ASTRO_ENABLE_DEBUG_OUTPUT
+    ASTRO_ENABLE_VERBOSE_DEBUG
+    ASTRO_ENABLE_DEBUG_ASSERTIONS
+)
+
 enable_testing()
 add_test(NAME astronomy COMMAND test_astronomy)
 add_test(NAME catalog COMMAND test_catalog)
@@ -77,3 +93,4 @@ add_test(NAME infrastructure COMMAND test_infrastructure)
 add_test(NAME serialization COMMAND test_serialization)
 add_test(NAME hardening COMMAND test_hardening)
 add_test(NAME hardware COMMAND test_hardware)
+add_test(NAME debug COMMAND test_debug)

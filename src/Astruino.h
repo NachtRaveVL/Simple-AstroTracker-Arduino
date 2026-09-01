@@ -555,6 +555,7 @@ protected:
 #ifdef ASTRO_USE_GUI
     friend AstroUIInterface *::getUI();
 #endif
+    friend class AstroTargetsLibrary;
     friend class AstroScheduler;
     friend class AstroLogger;
     friend class AstroPublisher;

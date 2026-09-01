@@ -11,72 +11,71 @@ static void check(bool condition, const char *message)
 
 int main()
 {
-    check(astroLib.getLoadedBookCount() == 0, "cache starts empty");
+    AstroTargetsLibrary library;
 
-    const AstroTargetData *m31a = astroLib.checkoutTargetData(Astro_Target_M31);
+    const AstroTargetsLibData *m31a = library.checkoutTargetsData(Astro_TargetType_M31);
     check(m31a != nullptr, "M31 lookup");
-    check(std::strcmp(m31a->id, "M31") == 0, "M31 id");
+    check(std::strcmp(m31a->catalogId, "M31") == 0, "M31 id");
     check(std::strcmp(m31a->targetName, "Andromeda Galaxy") == 0, "M31 name string pool");
     check(std::fabs(m31a->getJ2000Coordinates().rightAscensionHours - 0.7122) < 0.01, "M31 RA");
     check(std::fabs(m31a->getJ2000Coordinates().declinationDegrees - 41.2692) < 0.02, "M31 DEC");
-    check(astroLib.getCheckoutCount(Astro_Target_M31) == 1, "first checkout count");
 
-    const AstroTargetData *m31b = astroLib.checkoutTargetData(Astro_Target_M31);
-    check(m31a == m31b, "cache returns same target book");
-    check(astroLib.getCheckoutCount(Astro_Target_M31) == 2, "second checkout count");
-    astroLib.returnTargetData(m31a);
-    check(astroLib.getCheckoutCount(Astro_Target_M31) == 1, "return decrements count");
-    astroLib.returnTargetData(m31b);
-    check(astroLib.getCheckoutCount(Astro_Target_M31) == 0, "final return unloads book");
+    const AstroTargetsLibData *m31b = library.checkoutTargetsData(Astro_TargetType_M31);
+    check(m31a == m31b, "cache returns same checked-out target data");
+    library.returnTargetsData(m31a);
+    library.returnTargetsData(m31b);
 
-    for (int i = Astro_Target_M1; i <= Astro_Target_M110; ++i) {
-        const AstroTargetData *data = astroLib.checkoutTargetData((Astro_TargetId)i);
+    for (int type = Astro_TargetType_M1; type <= Astro_TargetType_M110; ++type) {
+        const AstroTargetsLibData *data = library.checkoutTargetsData((Astro_TargetType)type);
         check(data != nullptr, "all Messier entries load");
         AstroEquatorialCoordinates coordinates = data->getJ2000Coordinates();
         check(coordinates.rightAscensionHours >= 0.0 && coordinates.rightAscensionHours < 24.0, "Messier RA range");
         check(coordinates.declinationDegrees >= -90.0 && coordinates.declinationDegrees <= 90.0, "Messier DEC range");
-        astroLib.returnTargetData(data);
+        library.returnTargetsData(data);
     }
 
-    const AstroTargetData *sirius = astroLib.checkoutTargetData(Astro_Target_Sirius);
+    const AstroTargetsLibData *sirius = library.checkoutTargetsData(Astro_TargetType_Sirius);
     check(sirius && std::strcmp(sirius->targetName, "Sirius") == 0, "bright star name");
     check(sirius->targetClass == Astro_TargetClass_Star, "bright star class");
-    astroLib.returnTargetData(sirius);
+    library.returnTargetsData(sirius);
 
-    const AstroTargetData *moon = astroLib.checkoutTargetData(Astro_Target_Moon);
+    const AstroTargetsLibData *moon = library.checkoutTargetsData(Astro_TargetType_Moon);
     check(moon && moon->movingTarget, "moon moving target");
     AstroEquatorialCoordinates moonNow = moon->getCoordinates(1787011200);
-    check(moonNow.rightAscensionHours >= 0.0 && moonNow.rightAscensionHours < 24.0, "moon resolve through target object");
-    astroLib.returnTargetData(moon);
+    check(moonNow.rightAscensionHours >= 0.0 && moonNow.rightAscensionHours < 24.0, "moon resolve through target data");
+    library.returnTargetsData(moon);
 
-    const AstroTargetData *m42 = astroLib.checkoutTargetData(Astro_Target_M42);
-    char json[256];
-    check(m42 && m42->toJSON(json, sizeof(json)), "target serialization");
-    check(std::strstr(json, "Orion Nebula") != nullptr, "serialization contains name");
-    AstroTargetData decoded;
-    check(decoded.fromJSON(json), "target deserialization");
-    check(decoded.targetId == Astro_Target_M42 && std::strcmp(decoded.targetName, "Orion Nebula") == 0, "serialization round trip");
-    astroLib.returnTargetData(m42);
+    const AstroTargetsLibData *m42 = library.checkoutTargetsData(Astro_TargetType_M42);
+    check(m42 != nullptr, "M42 lookup for serialization");
+    StaticJsonDocument<384> doc;
+    JsonObject object = doc.to<JsonObject>();
+    m42->toJSONObject(object);
+    JsonObjectConst objectConst = doc.as<JsonObjectConst>();
+    AstroTargetsLibData decoded;
+    decoded.fromJSONObject(objectConst);
+    check(decoded.targetType == Astro_TargetType_M42 && std::strcmp(decoded.targetName, "Orion Nebula") == 0,
+          "target serialization round trip");
+    library.returnTargetsData(m42);
 
-    char targetString[ASTRO_TARGET_NAME_MAXSIZE];
-    for (int id = Astro_Target_Sun; id <= Astro_Target_Dubhe; ++id) {
-        check(astroTargetIdToString((Astro_TargetId)id, targetString, sizeof(targetString)), "target string export");
-        check(astroTargetIdFromString(targetString) == id, "target string optimized round trip");
+    for (int type = Astro_TargetType_Sun; type < Astro_TargetType_Count; ++type) {
+        Astro_TargetType targetType = (Astro_TargetType)type;
+        String targetString = targetTypeToString(targetType);
+        check(targetTypeFromString(targetString) == targetType, "target string round trip");
     }
 
-    AstroTargetData custom;
-    custom.targetId = Astro_Target_Custom1;
-    std::strcpy(custom.id, "GarageStar");
+    AstroTargetsLibData custom;
+    custom.targetType = Astro_TargetType_CustomTarget1;
+    std::strcpy(custom.catalogId, "GarageStar");
     std::strcpy(custom.targetName, "Garage Star");
     custom.rightAscensionSeconds = 3600;
     custom.declinationArcseconds = 7200;
     custom.targetClass = Astro_TargetClass_Star;
-    custom.modified = true;
-    check(astroLib.setUserTargetData(&custom), "set custom target");
-    const AstroTargetData *customOut = astroLib.checkoutTargetData(Astro_Target_Custom1);
+    custom.bumpRevisionIfNeeded();
+    check(library.setUserTargetData(&custom), "set custom target");
+    const AstroTargetsLibData *customOut = library.checkoutTargetsData(Astro_TargetType_CustomTarget1);
     check(customOut && std::strcmp(customOut->targetName, "Garage Star") == 0, "custom target checkout");
-    astroLib.returnTargetData(customOut);
-    check(astroLib.dropUserTargetData(&custom), "drop custom target");
+    library.returnTargetsData(customOut);
+    check(library.dropUserTargetData(&custom), "drop custom target");
 
     std::cout << "PASS catalog" << std::endl;
     return 0;

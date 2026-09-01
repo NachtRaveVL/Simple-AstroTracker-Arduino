@@ -54,37 +54,46 @@ int main()
     check(trigger.getTriggerState() == Astro_TriggerState_NotTriggered,
           "value trigger exits after hysteresis threshold");
 
-    SharedPtr<AstroActuator> actuator(new AstroActuator(Astro_ActuatorType_Generic, 0));
+    Astruino controller;
+    controller.init();
+
+    SharedPtr<AstroActuator> actuator(new AstroActuator(Astro_ActuatorType_Cover, 0));
     AstroActivationHandle forward(actuator, Astro_DirectionMode_Forward, 0.4f);
     AstroActivationHandle reverse(actuator, Astro_DirectionMode_Reverse, 0.8f);
     actuator->setEnableMode(Astro_EnableMode_Highest);
     actuator->update();
-    check(isFPEqual(actuator->getPower(), 0.4f), "highest mode uses signed highest request");
+    check(isFPEqual(actuator->getDriveIntensity(), 0.4f), "highest mode uses signed highest request");
     actuator->setEnableMode(Astro_EnableMode_Lowest);
     actuator->update();
-    check(isFPEqual(actuator->getPower(), -0.8f), "lowest mode uses signed lowest request");
+    check(isFPEqual(actuator->getDriveIntensity(), -0.8f), "lowest mode uses signed lowest request");
 
-    AstroLogger logger;
     LogState logState;
     MethodSlot<LogState, const AstroLogEvent> logSlot(&logState, &LogState::handle);
-    logger.getLogSignal().attach(logSlot);
-    logger.setLogLevel(Astro_LogLevel_Errors);
-    logger.logMessage(1, "hidden");
-    logger.logWarning(2, "hidden");
-    logger.logError(3, "shown");
+    controller.logger.getLogSignal().attach(logSlot);
+    controller.logger.setLogLevel(Astro_LogLevel_Errors);
+    controller.logger.logMessage("hidden");
+    controller.logger.logWarning("hidden");
+    controller.logger.logError("shown");
     check(logState.count == 1 && logState.lastLevel == Astro_LogLevel_Errors,
           "logger signal respects configured filtering");
 
-    AstroPublisher publisher;
+    auto sensor1 = controller.addTemperatureSensor(13, 10);
+    auto sensor2 = controller.addTemperatureSensor(14, 10);
+    check(sensor1 && sensor2, "factory creates publisher sensors");
+    controller.publisher.update();
+    aposi_t column1 = controller.publisher.getColumnIndexStart(sensor1->getKey());
+    aposi_t column2 = controller.publisher.getColumnIndexStart(sensor2->getKey());
+    check(isValidIndex(column1) && isValidIndex(column2) && column1 != column2,
+          "publisher tabulates registered sensors");
+
     PublishState publishState;
     MethodSlot<PublishState, Pair<uint8_t, const AstroDataColumn *> > publishSlot(&publishState, &PublishState::handle);
-    publisher.getPublishSignal().attach(publishSlot);
-    check(publisher.addColumn(1) && publisher.addColumn(2), "publisher accepts unique columns");
-    check(publisher.publishData(1, 10.0, Astro_UnitsType_Temperature_Celsius, 5, 100),
-          "publisher accepts first frame value");
+    controller.publisher.getPublishSignal().attach(publishSlot);
+    controller.launch();
+    aframe_t frame = controller.getPollingFrame();
+    controller.publisher.publishData(column1, AstroSingleMeasurement(10.0f, Astro_UnitsType_Temperature_Celsius, unixNow(), frame));
     check(publishState.count == 0, "publisher waits for complete frame");
-    check(publisher.publishData(2, 20.0, Astro_UnitsType_Temperature_Celsius, 5, 100),
-          "publisher accepts second frame value");
+    controller.publisher.publishData(column2, AstroSingleMeasurement(20.0f, Astro_UnitsType_Temperature_Celsius, unixNow(), frame));
     check(publishState.count == 1 && publishState.columns == 2,
           "publisher emits complete polling frame");
 

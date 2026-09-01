@@ -171,7 +171,7 @@ void AstroActuatorAttachment::applySetup()
 
         if (resolve() && (get()->classType == AstroActuator::Digital || get()->classType == AstroActuator::RelayMotor)) {
             _actHandle.activation.intensity = _actSetup.intensity;
-            if (!_actHandle.isUntimed()) {
+            if (!_actSetup.isUntimed()) {
                 _actHandle.activation.duration = _actSetup.duration * _rateMultiplier;
             } else {
                 _actHandle.activation.duration = _actSetup.duration;
