@@ -76,7 +76,7 @@ struct AstroTargetsLibraryBook {
     inline Astro_TargetType getKey() const { return data.targetType; }
 };
     
-extern AstroTargetsLibrary AstroTargetsLib;
+extern AstroTargetsLibrary astroTargetsLib;
 
 #endif // /ifndef AstroTargetsLibrary_H
 

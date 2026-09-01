@@ -9,10 +9,14 @@
 class AstroSensor;
 class AstroValueSensor;
 class AstroCallbackSensor;
-class AstroDigitalSensor;
+class AstroBinarySensor;
 class AstroAnalogSensor;
+class AstroDigitalSensor;
 
 struct AstroSensorData;
+struct AstroBinarySensorData;
+struct AstroAnalogSensorData;
+struct AstroDigitalSensorData;
 
 #include "Astruino.h"
 #include "AstroDatas.h"
@@ -31,12 +35,12 @@ extern Astro_UnitsCategory defaultCategoryForSensor(Astro_SensorType sensorType,
 class AstroSensor : public AstroObject, public AstroSensorObjectInterface,
                     public AstroMeasurementUnitsInterfaceStorageSingle {
 public:
-    const enum : signed char { Value, Callback, Digital, Analog, Unknown = -1 } classType;
+    const enum : signed char { Value, Callback, Binary, Analog, Digital, Unknown = -1 } classType;
     inline bool isValueClass() const { return classType == Value; }
     inline bool isCallbackClass() const { return classType == Callback; }
-    inline bool isDigitalClass() const { return classType == Digital; }
-    inline bool isBinaryClass() const { return isDigitalClass(); }
+    inline bool isBinaryClass() const { return classType == Binary; }
     inline bool isAnalogClass() const { return classType == Analog; }
+    inline bool isDigitalClass() const { return classType == Digital; }
     inline bool isUnknownClass() const { return classType <= Unknown; }
 
     AstroSensor(Astro_SensorType sensorType = Astro_SensorType_Undefined,
@@ -127,16 +131,16 @@ protected:
     void *_context;                                        // Callback user context
 };
 
-// Digital Sensor
-// Reads a binary measurement from a digital input pin. Digital inputs support the same
+// Simple Binary Sensor
+// Reads a binary measurement from a digital input pin. Binary inputs support the same
 // interrupt-driven notification path and minimum-stable-time filtering as sibling libraries.
-class AstroDigitalSensor : public AstroSensor {
+class AstroBinarySensor : public AstroSensor {
 public:
-    AstroDigitalSensor(AstroDigitalPin inputPin = AstroDigitalPin(),
-                       Astro_SensorType sensorType = Astro_SensorType_Undefined,
-                       aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);
-    AstroDigitalSensor(const AstroSensorData *dataIn);
-    virtual ~AstroDigitalSensor();
+    AstroBinarySensor(AstroDigitalPin inputPin = AstroDigitalPin(),
+                      Astro_SensorType sensorType = Astro_SensorType_Undefined,
+                      aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG);
+    AstroBinarySensor(const AstroBinarySensorData *dataIn);
+    virtual ~AstroBinarySensor();
 
     virtual bool readValue(double *valueOut) override;
     virtual bool takeMeasurement(bool force = false) override;
@@ -175,7 +179,7 @@ public:
                       Astro_UnitsType units = Astro_UnitsType_Raw_1,
                       aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG); // Position index
 
-    AstroAnalogSensor(const AstroSensorData *dataIn);
+    AstroAnalogSensor(const AstroAnalogSensorData *dataIn);
     virtual bool readValue(double *valueOut) override;
     inline const AstroAnalogPin &getInputPin() const { return _inputPin; }
 protected:
@@ -183,16 +187,63 @@ protected:
     virtual void saveToData(AstroData *dataOut) override;
 };
 
+// Digital Sensor
+// Intermediate class for digital protocol sensors. Binary switch-style inputs use AstroBinarySensor.
+class AstroDigitalSensor : public AstroSensor {
+public:
+    AstroDigitalSensor(AstroDigitalPin inputPin = AstroDigitalPin(),
+                       Astro_SensorType sensorType = Astro_SensorType_Undefined,
+                       Astro_UnitsType units = Astro_UnitsType_Undefined,
+                       aposi_t positionIndex = ASTRO_POS_SEARCH_FROMBEG,
+                       int classTypeIn = Digital);
+    AstroDigitalSensor(const AstroDigitalSensorData *dataIn);
+
+    inline const AstroDigitalPin &getInputPin() const { return _inputPin; }
+
+protected:
+    AstroDigitalPin _inputPin;                              // Digital input pin
+
+    virtual void saveToData(AstroData *dataOut) override;
+};
 
 // Sensor Serialization Data
 struct AstroSensorData : public AstroObjectData
 {
     Astro_UnitsType measurementUnits;                       // Measurement units
-    AstroPinData inputPin;                                  // Input pin
-    bool usingISR;                                          // Using ISR flag (digital sensors)
-    uint16_t stateStableTimeMs;                             // Minimum stable time before state change is accepted
 
     AstroSensorData();
+    virtual void toJSONObject(JsonObject &objectOut) const override;
+    virtual void fromJSONObject(JsonObjectConst &objectIn) override;
+};
+
+// Binary Sensor Serialization Data
+struct AstroBinarySensorData : public AstroSensorData
+{
+    AstroPinData inputPin;                                  // Input pin
+    bool usingISR;                                          // Using ISR flag
+    uint16_t stateStableTimeMs;                             // Minimum stable time before state change is accepted
+
+    AstroBinarySensorData();
+    virtual void toJSONObject(JsonObject &objectOut) const override;
+    virtual void fromJSONObject(JsonObjectConst &objectIn) override;
+};
+
+// Analog Sensor Serialization Data
+struct AstroAnalogSensorData : public AstroSensorData
+{
+    AstroPinData inputPin;                                  // Input pin
+
+    AstroAnalogSensorData();
+    virtual void toJSONObject(JsonObject &objectOut) const override;
+    virtual void fromJSONObject(JsonObjectConst &objectIn) override;
+};
+
+// Digital Sensor Serialization Data
+struct AstroDigitalSensorData : public AstroSensorData
+{
+    AstroPinData inputPin;                                  // Input pin
+
+    AstroDigitalSensorData();
     virtual void toJSONObject(JsonObject &objectOut) const override;
     virtual void fromJSONObject(JsonObjectConst &objectIn) override;
 };

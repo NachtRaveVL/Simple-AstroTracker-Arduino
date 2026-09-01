@@ -36,7 +36,7 @@ AstroTargetsLibraryBook::AstroTargetsLibraryBook(const AstroTargetsLibData &data
 { ; }
 
 
-AstroTargetsLibrary AstroTargetsLib;
+AstroTargetsLibrary astroTargetsLib;
 
 void AstroTargetsLibrary::beginTargetsLibraryFromSDCard(String dataFilePrefix, bool jsonFormat)
 {

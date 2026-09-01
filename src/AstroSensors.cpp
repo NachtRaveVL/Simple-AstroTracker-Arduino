@@ -17,10 +17,11 @@ AstroSensor *newSensorObjectFromData(const AstroSensorData *dataIn)
                 return new AstroValueSensor(dataIn);
             case (aid_t)AstroSensor::Callback:
                 return new AstroCallbackSensor(dataIn);
-            case (aid_t)AstroSensor::Digital:
-                return new AstroDigitalSensor(dataIn);
+            case (aid_t)AstroSensor::Binary:
+                return new AstroBinarySensor((const AstroBinarySensorData *)dataIn);
             case (aid_t)AstroSensor::Analog:
-                return new AstroAnalogSensor(dataIn);
+                return new AstroAnalogSensor((const AstroAnalogSensorData *)dataIn);
+            //case (aid_t)AstroSensor::Digital: // Digital (not instance-able)
             default: break;
         }
     }
@@ -216,16 +217,16 @@ void AstroSensor::saveToData(AstroData *dataOut)
     sensorData->measurementUnits = getMeasurementUnits();
 }
 
-AstroDigitalSensor::AstroDigitalSensor(AstroDigitalPin inputPin, Astro_SensorType sensorType,
-                                       aposi_t positionIndex)
-    : AstroSensor(sensorType, Astro_UnitsType_Raw_1, positionIndex, Digital), _inputPin(inputPin),
+AstroBinarySensor::AstroBinarySensor(AstroDigitalPin inputPin, Astro_SensorType sensorType,
+                                     aposi_t positionIndex)
+    : AstroSensor(sensorType, Astro_UnitsType_Raw_1, positionIndex, Binary), _inputPin(inputPin),
       _usingISR(false), _pendingState(false), _hasPendingState(false),
       _pendingStateStart(millis_none), _stateStableTimeMs(ASTRO_SENSOR_BINARY_STABLE_MILLIS), _stateSignal()
 {
     _inputPin.init();
 }
 
-AstroDigitalSensor::AstroDigitalSensor(const AstroSensorData *dataIn)
+AstroBinarySensor::AstroBinarySensor(const AstroBinarySensorData *dataIn)
     : AstroSensor(dataIn), _inputPin(dataIn ? &dataIn->inputPin : nullptr),
       _usingISR(false), _pendingState(false), _hasPendingState(false),
       _pendingStateStart(millis_none),
@@ -235,21 +236,21 @@ AstroDigitalSensor::AstroDigitalSensor(const AstroSensorData *dataIn)
     if (dataIn && dataIn->usingISR) { tryRegisterISR(); }
 }
 
-AstroDigitalSensor::~AstroDigitalSensor()
+AstroBinarySensor::~AstroBinarySensor()
 {
     if (_usingISR) {
         // TODO: detach ISR from taskManager (not currently possible, maybe in future?)
     }
 }
 
-bool AstroDigitalSensor::readValue(double *valueOut)
+bool AstroBinarySensor::readValue(double *valueOut)
 {
     if (!valueOut || !_inputPin.isValid()) { return false; }
     *valueOut = _inputPin.isActive() ? 1.0 : 0.0;
     return true;
 }
 
-bool AstroDigitalSensor::takeMeasurement(bool force)
+bool AstroBinarySensor::takeMeasurement(bool force)
 {
     if (!_inputPin.isValid() || _isTakingMeasure || (!force && !needsPolling())) { return false; }
 
@@ -275,7 +276,7 @@ bool AstroDigitalSensor::takeMeasurement(bool force)
     return true;
 }
 
-void AstroDigitalSensor::setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t)
+void AstroBinarySensor::setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t)
 {
     if (measurementUnits != Astro_UnitsType_Raw_1) {
         ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_UnsupportedOperation));
@@ -286,12 +287,12 @@ void AstroDigitalSensor::setMeasurementUnits(Astro_UnitsType measurementUnits, u
     }
 }
 
-Astro_UnitsType AstroDigitalSensor::getMeasurementUnits(uint8_t) const
+Astro_UnitsType AstroBinarySensor::getMeasurementUnits(uint8_t) const
 {
     return _calibrationData ? _calibrationData->calibrationUnits : Astro_UnitsType_Raw_1;
 }
 
-bool AstroDigitalSensor::tryRegisterISR(bool anyChange)
+bool AstroBinarySensor::tryRegisterISR(bool anyChange)
 {
 #ifdef ASTRO_USE_MULTITASKING
     if (!_usingISR && _inputPin.isValid() && checkPinCanInterrupt(_inputPin.pin)) {
@@ -305,7 +306,7 @@ bool AstroDigitalSensor::tryRegisterISR(bool anyChange)
     return _usingISR;
 }
 
-void AstroDigitalSensor::setStateStableTime(uint16_t stableTimeMs)
+void AstroBinarySensor::setStateStableTime(uint16_t stableTimeMs)
 {
     if (_stateStableTimeMs != stableTimeMs) {
         _stateStableTimeMs = stableTimeMs;
@@ -314,16 +315,16 @@ void AstroDigitalSensor::setStateStableTime(uint16_t stableTimeMs)
     }
 }
 
-Signal<bool, ASTRO_SENSOR_SIGNAL_SLOTS> &AstroDigitalSensor::getStateSignal()
+Signal<bool, ASTRO_SENSOR_SIGNAL_SLOTS> &AstroBinarySensor::getStateSignal()
 {
     return _stateSignal;
 }
 
-void AstroDigitalSensor::saveToData(AstroData *dataOut)
+void AstroBinarySensor::saveToData(AstroData *dataOut)
 {
     AstroSensor::saveToData(dataOut);
     if (dataOut) {
-        AstroSensorData *sensorData = static_cast<AstroSensorData *>(dataOut);
+        AstroBinarySensorData *sensorData = static_cast<AstroBinarySensorData *>(dataOut);
         _inputPin.saveToData(&sensorData->inputPin);
         sensorData->usingISR = _usingISR;
         sensorData->stateStableTimeMs = _stateStableTimeMs;
@@ -337,7 +338,7 @@ AstroAnalogSensor::AstroAnalogSensor(AstroAnalogPin inputPin, Astro_SensorType s
     _inputPin.init();
 }
 
-AstroAnalogSensor::AstroAnalogSensor(const AstroSensorData *dataIn)
+AstroAnalogSensor::AstroAnalogSensor(const AstroAnalogSensorData *dataIn)
     : AstroSensor(dataIn), _inputPin(dataIn ? &dataIn->inputPin : nullptr)
 {
     _inputPin.init();
@@ -366,13 +367,28 @@ bool AstroAnalogSensor::readValue(double *valueOut)
 void AstroAnalogSensor::saveToData(AstroData *dataOut)
 {
     AstroSensor::saveToData(dataOut);
-    if (dataOut) { _inputPin.saveToData(&static_cast<AstroSensorData *>(dataOut)->inputPin); }
+    if (dataOut) { _inputPin.saveToData(&static_cast<AstroAnalogSensorData *>(dataOut)->inputPin); }
+}
+
+
+AstroDigitalSensor::AstroDigitalSensor(AstroDigitalPin inputPin, Astro_SensorType sensorType,
+                                       Astro_UnitsType units, aposi_t positionIndex, int classTypeIn)
+    : AstroSensor(sensorType, units, positionIndex, classTypeIn), _inputPin(inputPin)
+{ ; }
+
+AstroDigitalSensor::AstroDigitalSensor(const AstroDigitalSensorData *dataIn)
+    : AstroSensor(dataIn), _inputPin(dataIn ? &dataIn->inputPin : nullptr)
+{ ; }
+
+void AstroDigitalSensor::saveToData(AstroData *dataOut)
+{
+    AstroSensor::saveToData(dataOut);
+    if (dataOut) { _inputPin.saveToData(&static_cast<AstroDigitalSensorData *>(dataOut)->inputPin); }
 }
 
 
 AstroSensorData::AstroSensorData()
-    : AstroObjectData(), measurementUnits(Astro_UnitsType_Undefined), inputPin(),
-      usingISR(false), stateStableTimeMs(ASTRO_SENSOR_BINARY_STABLE_MILLIS)
+    : AstroObjectData(), measurementUnits(Astro_UnitsType_Undefined)
 {
     _size = sizeof(*this);
     _version = 2;
@@ -382,22 +398,80 @@ void AstroSensorData::toJSONObject(JsonObject &objectOut) const
 {
     AstroObjectData::toJSONObject(objectOut);
     if (measurementUnits != Astro_UnitsType_Undefined) { objectOut[SFP(AStr_Key_MeasurementUnits)] = unitsTypeToSymbol(measurementUnits); }
-    if (inputPin.isSet()) {
-        JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_InputPin));
-        inputPin.toJSONObject(pinObj);
-    }
-    if (id.object.classType == (aid_t)AstroSensor::Digital) {
-        if (usingISR != false) { objectOut[SFP(AStr_Key_UsingISR)] = usingISR; }
-        if (stateStableTimeMs != ASTRO_SENSOR_BINARY_STABLE_MILLIS) { objectOut[SFP(AStr_Key_StateStableTimeMs)] = stateStableTimeMs; }
-    }
 }
 
 void AstroSensorData::fromJSONObject(JsonObjectConst &objectIn)
 {
     AstroObjectData::fromJSONObject(objectIn);
     measurementUnits = unitsTypeFromSymbol(objectIn[SFP(AStr_Key_MeasurementUnits)]);
+}
+
+AstroBinarySensorData::AstroBinarySensorData()
+    : AstroSensorData(), inputPin(), usingISR(false), stateStableTimeMs(ASTRO_SENSOR_BINARY_STABLE_MILLIS)
+{
+    _size = sizeof(*this);
+}
+
+void AstroBinarySensorData::toJSONObject(JsonObject &objectOut) const
+{
+    AstroSensorData::toJSONObject(objectOut);
+    if (inputPin.isSet()) {
+        JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_InputPin));
+        inputPin.toJSONObject(pinObj);
+    }
+    if (usingISR != false) { objectOut[SFP(AStr_Key_UsingISR)] = usingISR; }
+    if (stateStableTimeMs != ASTRO_SENSOR_BINARY_STABLE_MILLIS) { objectOut[SFP(AStr_Key_StateStableTimeMs)] = stateStableTimeMs; }
+}
+
+void AstroBinarySensorData::fromJSONObject(JsonObjectConst &objectIn)
+{
+    AstroSensorData::fromJSONObject(objectIn);
     JsonObjectConst pinObj = objectIn[SFP(AStr_Key_InputPin)].as<JsonObjectConst>();
     if (!pinObj.isNull()) { inputPin.fromJSONObject(pinObj); }
     usingISR = objectIn[SFP(AStr_Key_UsingISR)] | usingISR;
     stateStableTimeMs = objectIn[SFP(AStr_Key_StateStableTimeMs)] | stateStableTimeMs;
+}
+
+AstroAnalogSensorData::AstroAnalogSensorData()
+    : AstroSensorData(), inputPin()
+{
+    _size = sizeof(*this);
+}
+
+void AstroAnalogSensorData::toJSONObject(JsonObject &objectOut) const
+{
+    AstroSensorData::toJSONObject(objectOut);
+    if (inputPin.isSet()) {
+        JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_InputPin));
+        inputPin.toJSONObject(pinObj);
+    }
+}
+
+void AstroAnalogSensorData::fromJSONObject(JsonObjectConst &objectIn)
+{
+    AstroSensorData::fromJSONObject(objectIn);
+    JsonObjectConst pinObj = objectIn[SFP(AStr_Key_InputPin)].as<JsonObjectConst>();
+    if (!pinObj.isNull()) { inputPin.fromJSONObject(pinObj); }
+}
+
+AstroDigitalSensorData::AstroDigitalSensorData()
+    : AstroSensorData(), inputPin()
+{
+    _size = sizeof(*this);
+}
+
+void AstroDigitalSensorData::toJSONObject(JsonObject &objectOut) const
+{
+    AstroSensorData::toJSONObject(objectOut);
+    if (inputPin.isSet()) {
+        JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_InputPin));
+        inputPin.toJSONObject(pinObj);
+    }
+}
+
+void AstroDigitalSensorData::fromJSONObject(JsonObjectConst &objectIn)
+{
+    AstroSensorData::fromJSONObject(objectIn);
+    JsonObjectConst pinObj = objectIn[SFP(AStr_Key_InputPin)].as<JsonObjectConst>();
+    if (!pinObj.isNull()) { inputPin.fromJSONObject(pinObj); }
 }

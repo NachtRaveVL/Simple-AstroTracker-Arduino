@@ -93,6 +93,36 @@ static void testActuatorData()
     delete allocated;
 }
 
+
+static void testBinarySensorData()
+{
+    AstroBinarySensorData data;
+    data.id.object.idType = AstroIdentity::Sensor;
+    data.id.object.objType = Astro_SensorType_LimitSwitch;
+    data.id.object.posIndex = 1;
+    data.id.object.classType = AstroSensor::Binary;
+    AstroDigitalPin(14, Astro_PinMode_Digital_Input_PullUp, true).saveToData(&data.inputPin);
+    data.stateStableTimeMs = 75;
+
+    StaticJsonDocument<384> doc;
+    JsonObject object = doc.to<JsonObject>();
+    data.toJSONObject(object);
+    JsonObjectConst objectConst = doc.as<JsonObjectConst>();
+
+    AstroData *allocated = newDataFromJSONObject(objectConst);
+    assert(allocated && allocated->isObjectData());
+    AstroBinarySensorData *decoded = static_cast<AstroBinarySensorData *>(allocated);
+    assert(decoded->id.object.classType == AstroSensor::Binary);
+    assert(decoded->inputPin.pin == 14);
+    assert(decoded->inputPin.dataAs.digitalPin.activeLow);
+    assert(decoded->stateStableTimeMs == 75);
+
+    AstroSensor *sensor = newSensorObjectFromData(decoded);
+    assert(sensor && sensor->isBinaryClass() && !sensor->isDigitalClass());
+    delete sensor;
+    delete allocated;
+}
+
 static void testTriggerSubData()
 {
     AstroTriggerSubData data;
@@ -126,6 +156,7 @@ int main()
     testSystemData();
     testCalibrationData();
     testActuatorData();
+    testBinarySensorData();
     testTriggerSubData();
     puts("PASS serialization");
     return 0;

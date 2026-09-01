@@ -42,11 +42,11 @@ public:
 
     // Convenience builders for common sensors (shared, nullptr return -> failure).
 
-    // Creates a digital mount/cover endstop or home switch input.
-    SharedPtr<AstroDigitalSensor> addLimitSwitch(pintype_t inputPin,
+    // Creates a binary mount/cover endstop or home switch input.
+    SharedPtr<AstroBinarySensor> addLimitSwitch(pintype_t inputPin,
                                                  bool activeLow = true);
-    // Creates a digital rain/wet indicator input for safe-stow logic.
-    SharedPtr<AstroDigitalSensor> addRainIndicator(pintype_t inputPin,
+    // Creates a binary rain/wet indicator input for safe-stow logic.
+    SharedPtr<AstroBinarySensor> addRainIndicator(pintype_t inputPin,
                                                    bool activeLow = true);
     // Creates a normalized analog light sensor useful for twilight or balancing experiments.
     SharedPtr<AstroAnalogSensor> addLightSensor(pintype_t inputPin,

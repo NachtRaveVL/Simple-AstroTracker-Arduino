@@ -18,7 +18,7 @@ void handleInterrupt(pintype_t pin)
             if (iter->second->isSensorType()) {
                 auto sensor = static_pointer_cast<AstroSensor>(iter->second);
                 if (sensor->isBinaryClass()) {
-                    auto binarySensor = static_pointer_cast<AstroDigitalSensor>(sensor);
+                    auto binarySensor = static_pointer_cast<AstroBinarySensor>(sensor);
                     if (binarySensor && binarySensor->getInputPin().pin == pin) { binarySensor->notifyISRTriggered(); }
                 }
             }

@@ -71,6 +71,7 @@ AstroActuatorData	KEYWORD1
 AstroSensor	KEYWORD1
 AstroValueSensor	KEYWORD1
 AstroCallbackSensor	KEYWORD1
+AstroBinarySensor	KEYWORD1
 AstroDigitalSensor	KEYWORD1
 AstroAnalogSensor	KEYWORD1
 AstroSensorData	KEYWORD1
@@ -159,7 +160,7 @@ astroLocalSiderealDegrees	KEYWORD2
 astroPrecessJ2000	KEYWORD2
 astroEquatorialToHorizontal	KEYWORD2
 astroResolveSolarSystemTarget	KEYWORD2
-AstroTargetsLib	KEYWORD2
+astroTargetsLib	KEYWORD2
 
 # Measurement helpers
 getMeasurementValue	KEYWORD2

@@ -116,14 +116,14 @@ SharedPtr<AstroFocuser> AstroFactory::addFocuser(int32_t maximumPosition)
     return nullptr;
 }
 
-SharedPtr<AstroDigitalSensor> AstroFactory::addLimitSwitch(pintype_t inputPin, bool activeLow)
+SharedPtr<AstroBinarySensor> AstroFactory::addLimitSwitch(pintype_t inputPin, bool activeLow)
 {
     if (!getController()) { return nullptr; }
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_SensorType_LimitSwitch));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
     if (isValidIndex(positionIndex)) {
-        auto sensor = SharedPtr<AstroDigitalSensor>(new AstroDigitalSensor(
+        auto sensor = SharedPtr<AstroBinarySensor>(new AstroBinarySensor(
             AstroDigitalPin(inputPin, Astro_PinMode_Digital_Input_PullUp, activeLow),
             Astro_SensorType_LimitSwitch, positionIndex));
         if (getController()->registerObject(sensor)) { return sensor; }
@@ -132,14 +132,14 @@ SharedPtr<AstroDigitalSensor> AstroFactory::addLimitSwitch(pintype_t inputPin, b
     return nullptr;
 }
 
-SharedPtr<AstroDigitalSensor> AstroFactory::addRainIndicator(pintype_t inputPin, bool activeLow)
+SharedPtr<AstroBinarySensor> AstroFactory::addRainIndicator(pintype_t inputPin, bool activeLow)
 {
     if (!getController()) { return nullptr; }
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_SensorType_Rain));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
     if (isValidIndex(positionIndex)) {
-        auto sensor = SharedPtr<AstroDigitalSensor>(new AstroDigitalSensor(
+        auto sensor = SharedPtr<AstroBinarySensor>(new AstroBinarySensor(
             AstroDigitalPin(inputPin, Astro_PinMode_Digital_Input_PullUp, activeLow),
             Astro_SensorType_Rain, positionIndex));
         if (getController()->registerObject(sensor)) { return sensor; }

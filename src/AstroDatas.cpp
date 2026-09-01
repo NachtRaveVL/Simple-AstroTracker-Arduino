@@ -58,10 +58,12 @@ AstroData *_allocateDataForObjType(int8_t idType, int8_t classType)
                     return new AstroSensorData();
                 case (aid_t)AstroSensor::Callback:
                     return new AstroSensorData();
-                case (aid_t)AstroSensor::Digital:
-                    return new AstroSensorData();
+                case (aid_t)AstroSensor::Binary:
+                    return new AstroBinarySensorData();
                 case (aid_t)AstroSensor::Analog:
-                    return new AstroSensorData();
+                    return new AstroAnalogSensorData();
+                case (aid_t)AstroSensor::Digital:
+                    return new AstroDigitalSensorData();
                 default: break;
             }
             break;

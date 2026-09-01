@@ -89,14 +89,14 @@ void AstroTarget::saveToData(AstroData *dataOut)
 void AstroTarget::checkoutTargetsLibData()
 {
     if (!_targetsData) {
-        _targetsData = AstroTargetsLib.checkoutTargetsData(getTargetType());
+        _targetsData = astroTargetsLib.checkoutTargetsData(getTargetType());
     }
 }
 
 void AstroTarget::returnTargetsLibData()
 {
     if (_targetsData) {
-        AstroTargetsLib.returnTargetsData(_targetsData); _targetsData = nullptr;
+        astroTargetsLib.returnTargetsData(_targetsData); _targetsData = nullptr;
     }
 }
 

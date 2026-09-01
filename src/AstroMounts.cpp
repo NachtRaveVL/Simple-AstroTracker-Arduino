@@ -180,10 +180,10 @@ void AstroMount::updateTarget(int64_t unixTime, double elapsedSeconds)
     Location location = getController()->getSystemLocation();
     if (!location.hasPosition()) { return; }
 
-    const AstroTargetsLibData *target = AstroTargetsLib.checkoutTargetsData(_targetType);
+    const AstroTargetsLibData *target = astroTargetsLib.checkoutTargetsData(_targetType);
     if (!target) { return; }
     AstroEquatorialCoordinates equatorial = target->getCoordinates(unixTime);
-    AstroTargetsLib.returnTargetsData(target);
+    astroTargetsLib.returnTargetsData(target);
 
     if (_mountType == Astro_MountType_AltAzimuth) {
         AstroObserver observer(location.latitude, location.longitude, location.hasAltitude() ? location.altitude : 0.0);

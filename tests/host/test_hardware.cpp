@@ -32,6 +32,11 @@ int main()
     Astruino controller;
     controller.init();
 
+    auto limitSwitch = controller.addLimitSwitch(14, true);
+    check(limitSwitch != nullptr, "factory creates binary limit switch");
+    check(limitSwitch->isBinaryClass() && !limitSwitch->isDigitalClass(),
+          "limit switch uses binary sensor class instead of digital protocol class");
+
     auto motor = SharedPtr<AstroRelayMotorActuator>(new AstroRelayMotorActuator(
         AstroDigitalPin(2, Astro_PinMode_Digital_Output, false),
         AstroDigitalPin(3, Astro_PinMode_Digital_Output, false),
