@@ -74,7 +74,7 @@ As a practical starting point:
 Minimum planning target: 256-512kB Flash, 16-24kB SRAM, 16MHz+  
 Recommended: 512kB-1MB+ Flash, 24-32kB+ SRAM, 32-48MHz+
 
-Modern 32-bit boards such as ESP32, RP2040/RP2350, Teensy 3.5+, STM32, GIGA, and Portenta-class devices are the natural starting point when tracking, logging, UI, and networking are expected to run together.
+Modern 32-bit boards such as Pico RP2040/RP2350, ESP32, Teensy 3.5+, STM32, GIGA, and Portenta-class devices are the natural starting point when tracking, logging, UI, and networking are expected to run together.
 
 Astronomy calculations use floating-point math regularly. Motor timing, encoder feedback, display load, and communication traffic can matter more than Flash size alone when selecting the MCU.
 
@@ -92,25 +92,50 @@ The repository currently includes these example groups:
 
 The public API is still moving on the `develop` branch. When working from `develop`, use the headers as the authoritative API reference if an older example sketch has not yet been updated to the current factory/registration model.
 
-### Header Defines
+#### Header Defines
 
-The main `Astruino.h` header exposes optional build controls. Supplying them as build flags is generally preferable to editing the installed library header.
+There are several defines inside of the controller's main `Astruino.h` header file that allow for more fine-tuned control of the controller. You may edit and uncomment these lines directly, or supply them via custom build flags. While editing the main header file isn't ideal, it is often easiest. Note that editing the controller's main header file directly will affect all projects compiled on your system using those modified controller files.
+
+Alternatively, you may also refer to https://forum.arduino.cc/index.php?topic=602603.0 on how to define custom build flags manually via modifying the `platform[.local].txt` file, or with the Arduino CLI (preferred way going forward).
+
+For the older `platform.local.txt` file override approach, create `platform.local.txt` alongside `platform.txt` located in `%applocaldata%\Arduino15\packages\{platform}\hardware\{arch}\{version}\` (replacing `%applocaldata%\Arduino15` with `~/Library/Arduino15` for macOS, and `~/.arduino15` for Linux), with the contents: `compiler.cpp.extra_flags=-Dname` (replacing `name` with the full name of the define below). Note that it will affect all builds for that platform until again changed or removed. Some build systems may require directly editing `platform.txt` and adding onto the end of its CPP build recipe, e.g. Teensy and `recipe.cpp.o.pattern=<bunch-of-stuff> -Dname`.
+
+From `Astruino.h`:
 
 ```Arduino
-//#define ASTRO_DISABLE_MULTITASKING
-//#define ASTRO_DISABLE_GUI
-//#define ASTRO_ENABLE_WIFI
-//#define ASTRO_ENABLE_AT_WIFI
-//#define ASTRO_ENABLE_ETHERNET
-//#define ASTRO_ENABLE_MQTT
-//#define ASTRO_ENABLE_GPS
-//#define ASTRO_DISABLE_BUILTIN_DATA
+// Uncomment or -D this define to completely disable usage of any multitasking commands and libraries. Not recommended.
+//#define ASTRO_DISABLE_MULTITASKING              // https://github.com/davetcc/TaskManagerIO
+
+// Uncomment or -D this define to disable usage of tcMenu library, which will disable all GUI control. Not recommended.
+//#define ASTRO_DISABLE_GUI                       // https://github.com/davetcc/tcMenu
+
+// Uncomment or -D this define to enable usage of the platform WiFi library, which enables networking capabilities.
+//#define ASTRO_ENABLE_WIFI                       // https://reference.arduino.cc/reference/en/libraries/wifi/
+
+// Uncomment or -D this define to enable usage of the external serial AT WiFi library, which enables networking capabilities.
+//#define ASTRO_ENABLE_AT_WIFI                    // https://github.com/jandrassy/WiFiEspAT
+
+// Uncomment or -D this define to enable usage of the platform Ethernet library, which enables networking capabilities.
+//#define ASTRO_ENABLE_ETHERNET                   // https://reference.arduino.cc/reference/en/libraries/ethernet/
+
+// Uncomment or -D this define to enable usage of the Arduino MQTT library, which enables IoT data publishing capabilities.
+//#define ASTRO_ENABLE_MQTT                       // https://github.com/256dpi/arduino-mqtt
+
+// Uncomment or -D this define to enable usage of the Adafruit GPS library, which enables GPS capabilities.
+//#define ASTRO_ENABLE_GPS                        // https://github.com/adafruit/Adafruit_GPS
+
+// Uncomment or -D this define to enable external data storage (SD card or EEPROM) to save on sketch size. Required for constrained devices.
+//#define ASTRO_DISABLE_BUILTIN_DATA              // Disables library data existing in Flash, see DataWriter example for exporting details
+
+// Uncomment or -D this define to enable debug output (treats Serial output as attached to serial monitor, waiting on start for connection).
 //#define ASTRO_ENABLE_DEBUG_OUTPUT
+
+// Uncomment or -D this define to enable verbose debug output (note: adds considerable size to compiled sketch).
 //#define ASTRO_ENABLE_VERBOSE_DEBUG
+
+// Uncomment or -D this define to enable debug assertions (note: adds significant size to compiled sketch).
 //#define ASTRO_ENABLE_DEBUG_ASSERTIONS
 ```
-
-Networking is opt-in. A normal offline tracker does not need any network define enabled.
 
 ### Main Dependencies
 
