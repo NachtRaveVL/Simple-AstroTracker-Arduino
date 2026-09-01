@@ -98,7 +98,7 @@ public:
     // Returns the object's identity, hashed key, and human-readable key string.
     virtual AstroIdentity getId() const = 0;
     virtual akey_t getKey() const = 0;
-    virtual AstroString getKeyString() const = 0;
+    virtual String getKeyString() const = 0;
     virtual SharedPtr<AstroObjInterface> getSharedPtr() const = 0;
     virtual SharedPtr<AstroObjInterface> getSharedPtrFor(const AstroObjInterface *object) const = 0;
 

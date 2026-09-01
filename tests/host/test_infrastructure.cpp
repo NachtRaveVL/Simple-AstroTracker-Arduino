@@ -11,7 +11,7 @@ static void captureSignal(int value) { signalValue = value; }
 
 int main()
 {
-    CHECK(SFP(AStr_Tracking) == AstroString("Tracking"));
+    CHECK(SFP(AStr_Tracking) == String("Tracking"));
     CHECK(std::strcmp(CFP(AStr_Tracking), "Tracking") == 0);
 
     AstroIdentity sensorId(Astro_SensorType_Temperature, 2);
@@ -19,7 +19,7 @@ int main()
     AstroIdentity otherSensor(Astro_SensorType_Humidity, 2);
     CHECK(sensorId == sensorIdAgain);
     CHECK(sensorId != otherSensor);
-    CHECK(sensorId.keyString == AstroString("Temperature #2"));
+    CHECK(sensorId.keyString == String("Temperature #2"));
 
     AstroObject objectA(sensorId);
     AstroObject objectB(otherSensor);

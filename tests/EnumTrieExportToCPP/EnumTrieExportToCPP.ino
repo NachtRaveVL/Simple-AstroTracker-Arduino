@@ -3,7 +3,7 @@
 #include <Astruino.h>
 
 struct EnumValue {
-    AstroString text;
+    String text;
     int typeIndex;
 };
 
@@ -12,7 +12,7 @@ static void printSpacer(int level)
     for (int index = 0; index < (level << 2); ++index) { Serial.print(' '); }
 }
 
-static char charAt(const AstroString &text, int index)
+static char charAt(const String &text, int index)
 {
     return index >= 0 && index < (int)text.length() ? text[index] : '\0';
 }
@@ -73,7 +73,7 @@ static int selectPosition(EnumValue *values, int valueCount, bool *usedPositions
 }
 
 static void printTree(EnumValue *values, int valueCount, bool *usedPositions, int maxLength,
-                      int level, const AstroString &varName, const AstroString &typeCast)
+                      int level, const String &varName, const String &typeCast)
 {
     if (valueCount <= 0) { return; }
     if (valueCount == 1) {
@@ -138,7 +138,7 @@ static void printTree(EnumValue *values, int valueCount, bool *usedPositions, in
 }
 
 template<class T>
-static void buildEnumTree(int countValue, T undefinedValue, AstroString (*toStringFn)(T, bool),
+static void buildEnumTree(int countValue, T undefinedValue, String (*toStringFn)(T, bool),
                           const char *varName, const char *typeCast,
                           const char *alias = nullptr, int aliasValue = -1)
 {
@@ -149,18 +149,18 @@ static void buildEnumTree(int countValue, T undefinedValue, AstroString (*toStri
 
     values[valueIndex++] = {toStringFn(undefinedValue, false), -1};
     for (int typeIndex = 0; typeIndex <= countValue; ++typeIndex) {
-        AstroString text = toStringFn((T)typeIndex, false);
+        String text = toStringFn((T)typeIndex, false);
         values[valueIndex++] = {text, typeIndex};
         maxLength = max(maxLength, (int)text.length());
     }
     if (alias) {
-        values[valueIndex++] = {AstroString(alias), aliasValue};
+        values[valueIndex++] = {String(alias), aliasValue};
         maxLength = max(maxLength, (int)strlen(alias));
     }
 
     bool *usedPositions = new bool[maxLength + 1];
     memset(usedPositions, 0, sizeof(bool) * (maxLength + 1));
-    printTree(values, valueCount, usedPositions, maxLength, 1, AstroString(varName), AstroString(typeCast));
+    printTree(values, valueCount, usedPositions, maxLength, 1, String(varName), String(typeCast));
 
     delete [] usedPositions;
     delete [] values;

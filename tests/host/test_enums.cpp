@@ -9,7 +9,7 @@ static bool testEnumRange(int count, T undefinedValue, ToString toString, FromSt
 {
     for (int typeIndex = -1; typeIndex <= count; ++typeIndex) {
         T value = typeIndex < 0 ? undefinedValue : (T)typeIndex;
-        AstroString stringValue = toString(value, false);
+        String stringValue = toString(value, false);
         if (fromString(stringValue) != value) { return false; }
     }
     return true;
@@ -30,7 +30,7 @@ int main()
     CHECK(testEnumRange(Astro_TargetClass_Count, Astro_TargetClass_Unknown, targetClassToString, targetClassFromString));
     CHECK(testEnumRange(Astro_ThermalMode_Count, Astro_ThermalMode_Undefined, thermalModeToString, thermalModeFromString));
     CHECK(testEnumRange(Astro_SchedulerStage_Count, Astro_SchedulerStage_Undefined, schedulerStageToString, schedulerStageFromString));
-    CHECK(unitsTypeFromSymbol(AstroString("J/s")) == Astro_UnitsType_Power_Wattage);
+    CHECK(unitsTypeFromSymbol(String("J/s")) == Astro_UnitsType_Power_Wattage);
 
     char targetName[ASTRO_TARGET_NAME_MAXSIZE];
     for (unsigned int targetIndex = 0; targetIndex < Astro_Target_Count; ++targetIndex) {

@@ -1256,6 +1256,323 @@ String sensorTypeToString(Astro_SensorType sensorType, bool excludeSpecial)
     return !excludeSpecial ? SFP(AStr_Undefined) : String();
 }
 
+String targetTypeToString(Astro_TargetType targetType, bool excludeSpecial)
+{
+    switch (targetType) {
+        case Astro_TargetType_Sun:
+            return SFP(AStr_Enum_Sun);
+        case Astro_TargetType_Moon:
+            return SFP(AStr_Enum_Moon);
+        case Astro_TargetType_Mercury:
+            return SFP(AStr_Enum_Mercury);
+        case Astro_TargetType_Venus:
+            return SFP(AStr_Enum_Venus);
+        case Astro_TargetType_Mars:
+            return SFP(AStr_Enum_Mars);
+        case Astro_TargetType_Jupiter:
+            return SFP(AStr_Enum_Jupiter);
+        case Astro_TargetType_Saturn:
+            return SFP(AStr_Enum_Saturn);
+        case Astro_TargetType_Uranus:
+            return SFP(AStr_Enum_Uranus);
+        case Astro_TargetType_Neptune:
+            return SFP(AStr_Enum_Neptune);
+        case Astro_TargetType_Sirius:
+            return SFP(AStr_Enum_Sirius);
+        case Astro_TargetType_Canopus:
+            return SFP(AStr_Enum_Canopus);
+        case Astro_TargetType_Arcturus:
+            return SFP(AStr_Enum_Arcturus);
+        case Astro_TargetType_Vega:
+            return SFP(AStr_Enum_Vega);
+        case Astro_TargetType_Capella:
+            return SFP(AStr_Enum_Capella);
+        case Astro_TargetType_RigelKentaurus:
+            return SFP(AStr_Enum_RigelKentaurus);
+        case Astro_TargetType_Procyon:
+            return SFP(AStr_Enum_Procyon);
+        case Astro_TargetType_Betelgeuse:
+            return SFP(AStr_Enum_Betelgeuse);
+        case Astro_TargetType_Achernar:
+            return SFP(AStr_Enum_Achernar);
+        case Astro_TargetType_Hadar:
+            return SFP(AStr_Enum_Hadar);
+        case Astro_TargetType_Altair:
+            return SFP(AStr_Enum_Altair);
+        case Astro_TargetType_Acrux:
+            return SFP(AStr_Enum_Acrux);
+        case Astro_TargetType_Aldebaran:
+            return SFP(AStr_Enum_Aldebaran);
+        case Astro_TargetType_Spica:
+            return SFP(AStr_Enum_Spica);
+        case Astro_TargetType_Antares:
+            return SFP(AStr_Enum_Antares);
+        case Astro_TargetType_Pollux:
+            return SFP(AStr_Enum_Pollux);
+        case Astro_TargetType_Fomalhaut:
+            return SFP(AStr_Enum_Fomalhaut);
+        case Astro_TargetType_Deneb:
+            return SFP(AStr_Enum_Deneb);
+        case Astro_TargetType_Regulus:
+            return SFP(AStr_Enum_Regulus);
+        case Astro_TargetType_Polaris:
+            return SFP(AStr_Enum_Polaris);
+        case Astro_TargetType_Castor:
+            return SFP(AStr_Enum_Castor);
+        case Astro_TargetType_Bellatrix:
+            return SFP(AStr_Enum_Bellatrix);
+        case Astro_TargetType_Alnilam:
+            return SFP(AStr_Enum_Alnilam);
+        case Astro_TargetType_Alnitak:
+            return SFP(AStr_Enum_Alnitak);
+        case Astro_TargetType_Mizar:
+            return SFP(AStr_Enum_Mizar);
+        case Astro_TargetType_Dubhe:
+            return SFP(AStr_Enum_Dubhe);
+        case Astro_TargetType_M1:
+            return SFP(AStr_Enum_M1);
+        case Astro_TargetType_M2:
+            return SFP(AStr_Enum_M2);
+        case Astro_TargetType_M3:
+            return SFP(AStr_Enum_M3);
+        case Astro_TargetType_M4:
+            return SFP(AStr_Enum_M4);
+        case Astro_TargetType_M5:
+            return SFP(AStr_Enum_M5);
+        case Astro_TargetType_M6:
+            return SFP(AStr_Enum_M6);
+        case Astro_TargetType_M7:
+            return SFP(AStr_Enum_M7);
+        case Astro_TargetType_M8:
+            return SFP(AStr_Enum_M8);
+        case Astro_TargetType_M9:
+            return SFP(AStr_Enum_M9);
+        case Astro_TargetType_M10:
+            return SFP(AStr_Enum_M10);
+        case Astro_TargetType_M11:
+            return SFP(AStr_Enum_M11);
+        case Astro_TargetType_M12:
+            return SFP(AStr_Enum_M12);
+        case Astro_TargetType_M13:
+            return SFP(AStr_Enum_M13);
+        case Astro_TargetType_M14:
+            return SFP(AStr_Enum_M14);
+        case Astro_TargetType_M15:
+            return SFP(AStr_Enum_M15);
+        case Astro_TargetType_M16:
+            return SFP(AStr_Enum_M16);
+        case Astro_TargetType_M17:
+            return SFP(AStr_Enum_M17);
+        case Astro_TargetType_M18:
+            return SFP(AStr_Enum_M18);
+        case Astro_TargetType_M19:
+            return SFP(AStr_Enum_M19);
+        case Astro_TargetType_M20:
+            return SFP(AStr_Enum_M20);
+        case Astro_TargetType_M21:
+            return SFP(AStr_Enum_M21);
+        case Astro_TargetType_M22:
+            return SFP(AStr_Enum_M22);
+        case Astro_TargetType_M23:
+            return SFP(AStr_Enum_M23);
+        case Astro_TargetType_M24:
+            return SFP(AStr_Enum_M24);
+        case Astro_TargetType_M25:
+            return SFP(AStr_Enum_M25);
+        case Astro_TargetType_M26:
+            return SFP(AStr_Enum_M26);
+        case Astro_TargetType_M27:
+            return SFP(AStr_Enum_M27);
+        case Astro_TargetType_M28:
+            return SFP(AStr_Enum_M28);
+        case Astro_TargetType_M29:
+            return SFP(AStr_Enum_M29);
+        case Astro_TargetType_M30:
+            return SFP(AStr_Enum_M30);
+        case Astro_TargetType_M31:
+            return SFP(AStr_Enum_M31);
+        case Astro_TargetType_M32:
+            return SFP(AStr_Enum_M32);
+        case Astro_TargetType_M33:
+            return SFP(AStr_Enum_M33);
+        case Astro_TargetType_M34:
+            return SFP(AStr_Enum_M34);
+        case Astro_TargetType_M35:
+            return SFP(AStr_Enum_M35);
+        case Astro_TargetType_M36:
+            return SFP(AStr_Enum_M36);
+        case Astro_TargetType_M37:
+            return SFP(AStr_Enum_M37);
+        case Astro_TargetType_M38:
+            return SFP(AStr_Enum_M38);
+        case Astro_TargetType_M39:
+            return SFP(AStr_Enum_M39);
+        case Astro_TargetType_M40:
+            return SFP(AStr_Enum_M40);
+        case Astro_TargetType_M41:
+            return SFP(AStr_Enum_M41);
+        case Astro_TargetType_M42:
+            return SFP(AStr_Enum_M42);
+        case Astro_TargetType_M43:
+            return SFP(AStr_Enum_M43);
+        case Astro_TargetType_M44:
+            return SFP(AStr_Enum_M44);
+        case Astro_TargetType_M45:
+            return SFP(AStr_Enum_M45);
+        case Astro_TargetType_M46:
+            return SFP(AStr_Enum_M46);
+        case Astro_TargetType_M47:
+            return SFP(AStr_Enum_M47);
+        case Astro_TargetType_M48:
+            return SFP(AStr_Enum_M48);
+        case Astro_TargetType_M49:
+            return SFP(AStr_Enum_M49);
+        case Astro_TargetType_M50:
+            return SFP(AStr_Enum_M50);
+        case Astro_TargetType_M51:
+            return SFP(AStr_Enum_M51);
+        case Astro_TargetType_M52:
+            return SFP(AStr_Enum_M52);
+        case Astro_TargetType_M53:
+            return SFP(AStr_Enum_M53);
+        case Astro_TargetType_M54:
+            return SFP(AStr_Enum_M54);
+        case Astro_TargetType_M55:
+            return SFP(AStr_Enum_M55);
+        case Astro_TargetType_M56:
+            return SFP(AStr_Enum_M56);
+        case Astro_TargetType_M57:
+            return SFP(AStr_Enum_M57);
+        case Astro_TargetType_M58:
+            return SFP(AStr_Enum_M58);
+        case Astro_TargetType_M59:
+            return SFP(AStr_Enum_M59);
+        case Astro_TargetType_M60:
+            return SFP(AStr_Enum_M60);
+        case Astro_TargetType_M61:
+            return SFP(AStr_Enum_M61);
+        case Astro_TargetType_M62:
+            return SFP(AStr_Enum_M62);
+        case Astro_TargetType_M63:
+            return SFP(AStr_Enum_M63);
+        case Astro_TargetType_M64:
+            return SFP(AStr_Enum_M64);
+        case Astro_TargetType_M65:
+            return SFP(AStr_Enum_M65);
+        case Astro_TargetType_M66:
+            return SFP(AStr_Enum_M66);
+        case Astro_TargetType_M67:
+            return SFP(AStr_Enum_M67);
+        case Astro_TargetType_M68:
+            return SFP(AStr_Enum_M68);
+        case Astro_TargetType_M69:
+            return SFP(AStr_Enum_M69);
+        case Astro_TargetType_M70:
+            return SFP(AStr_Enum_M70);
+        case Astro_TargetType_M71:
+            return SFP(AStr_Enum_M71);
+        case Astro_TargetType_M72:
+            return SFP(AStr_Enum_M72);
+        case Astro_TargetType_M73:
+            return SFP(AStr_Enum_M73);
+        case Astro_TargetType_M74:
+            return SFP(AStr_Enum_M74);
+        case Astro_TargetType_M75:
+            return SFP(AStr_Enum_M75);
+        case Astro_TargetType_M76:
+            return SFP(AStr_Enum_M76);
+        case Astro_TargetType_M77:
+            return SFP(AStr_Enum_M77);
+        case Astro_TargetType_M78:
+            return SFP(AStr_Enum_M78);
+        case Astro_TargetType_M79:
+            return SFP(AStr_Enum_M79);
+        case Astro_TargetType_M80:
+            return SFP(AStr_Enum_M80);
+        case Astro_TargetType_M81:
+            return SFP(AStr_Enum_M81);
+        case Astro_TargetType_M82:
+            return SFP(AStr_Enum_M82);
+        case Astro_TargetType_M83:
+            return SFP(AStr_Enum_M83);
+        case Astro_TargetType_M84:
+            return SFP(AStr_Enum_M84);
+        case Astro_TargetType_M85:
+            return SFP(AStr_Enum_M85);
+        case Astro_TargetType_M86:
+            return SFP(AStr_Enum_M86);
+        case Astro_TargetType_M87:
+            return SFP(AStr_Enum_M87);
+        case Astro_TargetType_M88:
+            return SFP(AStr_Enum_M88);
+        case Astro_TargetType_M89:
+            return SFP(AStr_Enum_M89);
+        case Astro_TargetType_M90:
+            return SFP(AStr_Enum_M90);
+        case Astro_TargetType_M91:
+            return SFP(AStr_Enum_M91);
+        case Astro_TargetType_M92:
+            return SFP(AStr_Enum_M92);
+        case Astro_TargetType_M93:
+            return SFP(AStr_Enum_M93);
+        case Astro_TargetType_M94:
+            return SFP(AStr_Enum_M94);
+        case Astro_TargetType_M95:
+            return SFP(AStr_Enum_M95);
+        case Astro_TargetType_M96:
+            return SFP(AStr_Enum_M96);
+        case Astro_TargetType_M97:
+            return SFP(AStr_Enum_M97);
+        case Astro_TargetType_M98:
+            return SFP(AStr_Enum_M98);
+        case Astro_TargetType_M99:
+            return SFP(AStr_Enum_M99);
+        case Astro_TargetType_M100:
+            return SFP(AStr_Enum_M100);
+        case Astro_TargetType_M101:
+            return SFP(AStr_Enum_M101);
+        case Astro_TargetType_M102:
+            return SFP(AStr_Enum_M102);
+        case Astro_TargetType_M103:
+            return SFP(AStr_Enum_M103);
+        case Astro_TargetType_M104:
+            return SFP(AStr_Enum_M104);
+        case Astro_TargetType_M105:
+            return SFP(AStr_Enum_M105);
+        case Astro_TargetType_M106:
+            return SFP(AStr_Enum_M106);
+        case Astro_TargetType_M107:
+            return SFP(AStr_Enum_M107);
+        case Astro_TargetType_M108:
+            return SFP(AStr_Enum_M108);
+        case Astro_TargetType_M109:
+            return SFP(AStr_Enum_M109);
+        case Astro_TargetType_M110:
+            return SFP(AStr_Enum_M110);
+        case Astro_TargetType_CustomTarget1:
+            return SFP(AStr_Enum_CustomTarget1);
+        case Astro_TargetType_CustomTarget2:
+            return SFP(AStr_Enum_CustomTarget2);
+        case Astro_TargetType_CustomTarget3:
+            return SFP(AStr_Enum_CustomTarget3);
+        case Astro_TargetType_CustomTarget4:
+            return SFP(AStr_Enum_CustomTarget4);
+        case Astro_TargetType_CustomTarget5:
+            return SFP(AStr_Enum_CustomTarget5);
+        case Astro_TargetType_CustomTarget6:
+            return SFP(AStr_Enum_CustomTarget6);
+        case Astro_TargetType_CustomTarget7:
+            return SFP(AStr_Enum_CustomTarget7);
+        case Astro_TargetType_CustomTarget8:
+            return SFP(AStr_Enum_CustomTarget8);
+        case Astro_TargetType_Count:
+            return !excludeSpecial ? SFP(AStr_Enum_Count) : String();
+        case Astro_TargetType_Undefined:
+            break;
+    }
+    return !excludeSpecial ? SFP(AStr_Undefined) : String();
+}
+
 String targetClassToString(Astro_TargetClass targetClass, bool excludeSpecial)
 {
     switch (targetClass) {
@@ -1807,6 +2124,431 @@ Astro_SensorType sensorTypeFromString(String sensorTypeStr)
             return Astro_SensorType_WindSpeed;
     }
     return Astro_SensorType_Undefined;
+}
+
+Astro_TargetType targetTypeFromString(String targetTypeStr)
+{
+    switch (targetTypeStr.length() >= 1 ? targetTypeStr[0] : '\000') {
+        case 'A':
+            switch (targetTypeStr.length() >= 2 ? targetTypeStr[1] : '\000') {
+                case 'c':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case 'h':
+                            return Astro_TargetType_Achernar;
+                        case 'r':
+                            return Astro_TargetType_Acrux;
+                    }
+                    break;
+                case 'l':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case 'd':
+                            return Astro_TargetType_Aldebaran;
+                        case 'n':
+                            switch (targetTypeStr.length() >= 5 ? targetTypeStr[4] : '\000') {
+                                case 'l':
+                                    return Astro_TargetType_Alnilam;
+                                case 't':
+                                    return Astro_TargetType_Alnitak;
+                            }
+                            break;
+                        case 't':
+                            return Astro_TargetType_Altair;
+                    }
+                    break;
+                case 'n':
+                    return Astro_TargetType_Antares;
+                case 'r':
+                    return Astro_TargetType_Arcturus;
+            }
+            break;
+        case 'B':
+            switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                case 'l':
+                    return Astro_TargetType_Bellatrix;
+                case 't':
+                    return Astro_TargetType_Betelgeuse;
+            }
+            break;
+        case 'C':
+            switch (targetTypeStr.length() >= 2 ? targetTypeStr[1] : '\000') {
+                case 'a':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case 'n':
+                            return Astro_TargetType_Canopus;
+                        case 'p':
+                            return Astro_TargetType_Capella;
+                        case 's':
+                            return Astro_TargetType_Castor;
+                    }
+                    break;
+                case 'o':
+                    return Astro_TargetType_Count;
+                case 'u':
+                    switch (targetTypeStr.length() >= 13 ? targetTypeStr[12] : '\000') {
+                        case '1':
+                            return Astro_TargetType_CustomTarget1;
+                        case '2':
+                            return Astro_TargetType_CustomTarget2;
+                        case '3':
+                            return Astro_TargetType_CustomTarget3;
+                        case '4':
+                            return Astro_TargetType_CustomTarget4;
+                        case '5':
+                            return Astro_TargetType_CustomTarget5;
+                        case '6':
+                            return Astro_TargetType_CustomTarget6;
+                        case '7':
+                            return Astro_TargetType_CustomTarget7;
+                        case '8':
+                            return Astro_TargetType_CustomTarget8;
+                    }
+                    break;
+            }
+            break;
+        case 'D':
+            switch (targetTypeStr.length() >= 2 ? targetTypeStr[1] : '\000') {
+                case 'e':
+                    return Astro_TargetType_Deneb;
+                case 'u':
+                    return Astro_TargetType_Dubhe;
+            }
+            break;
+        case 'F':
+            return Astro_TargetType_Fomalhaut;
+        case 'H':
+            return Astro_TargetType_Hadar;
+        case 'J':
+            return Astro_TargetType_Jupiter;
+        case 'M':
+            switch (targetTypeStr.length() >= 2 ? targetTypeStr[1] : '\000') {
+                case '1':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case '0':
+                            switch (targetTypeStr.length() >= 4 ? targetTypeStr[3] : '\000') {
+                                case '0':
+                                    return Astro_TargetType_M100;
+                                case '1':
+                                    return Astro_TargetType_M101;
+                                case '2':
+                                    return Astro_TargetType_M102;
+                                case '3':
+                                    return Astro_TargetType_M103;
+                                case '4':
+                                    return Astro_TargetType_M104;
+                                case '5':
+                                    return Astro_TargetType_M105;
+                                case '6':
+                                    return Astro_TargetType_M106;
+                                case '7':
+                                    return Astro_TargetType_M107;
+                                case '8':
+                                    return Astro_TargetType_M108;
+                                case '9':
+                                    return Astro_TargetType_M109;
+                                case '\000':
+                                    return Astro_TargetType_M10;
+                            }
+                            break;
+                        case '1':
+                            switch (targetTypeStr.length() >= 4 ? targetTypeStr[3] : '\000') {
+                                case '0':
+                                    return Astro_TargetType_M110;
+                                case '\000':
+                                    return Astro_TargetType_M11;
+                            }
+                            break;
+                        case '2':
+                            return Astro_TargetType_M12;
+                        case '3':
+                            return Astro_TargetType_M13;
+                        case '4':
+                            return Astro_TargetType_M14;
+                        case '5':
+                            return Astro_TargetType_M15;
+                        case '6':
+                            return Astro_TargetType_M16;
+                        case '7':
+                            return Astro_TargetType_M17;
+                        case '8':
+                            return Astro_TargetType_M18;
+                        case '9':
+                            return Astro_TargetType_M19;
+                        case '\000':
+                            return Astro_TargetType_M1;
+                    }
+                    break;
+                case '2':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case '0':
+                            return Astro_TargetType_M20;
+                        case '1':
+                            return Astro_TargetType_M21;
+                        case '2':
+                            return Astro_TargetType_M22;
+                        case '3':
+                            return Astro_TargetType_M23;
+                        case '4':
+                            return Astro_TargetType_M24;
+                        case '5':
+                            return Astro_TargetType_M25;
+                        case '6':
+                            return Astro_TargetType_M26;
+                        case '7':
+                            return Astro_TargetType_M27;
+                        case '8':
+                            return Astro_TargetType_M28;
+                        case '9':
+                            return Astro_TargetType_M29;
+                        case '\000':
+                            return Astro_TargetType_M2;
+                    }
+                    break;
+                case '3':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case '0':
+                            return Astro_TargetType_M30;
+                        case '1':
+                            return Astro_TargetType_M31;
+                        case '2':
+                            return Astro_TargetType_M32;
+                        case '3':
+                            return Astro_TargetType_M33;
+                        case '4':
+                            return Astro_TargetType_M34;
+                        case '5':
+                            return Astro_TargetType_M35;
+                        case '6':
+                            return Astro_TargetType_M36;
+                        case '7':
+                            return Astro_TargetType_M37;
+                        case '8':
+                            return Astro_TargetType_M38;
+                        case '9':
+                            return Astro_TargetType_M39;
+                        case '\000':
+                            return Astro_TargetType_M3;
+                    }
+                    break;
+                case '4':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case '0':
+                            return Astro_TargetType_M40;
+                        case '1':
+                            return Astro_TargetType_M41;
+                        case '2':
+                            return Astro_TargetType_M42;
+                        case '3':
+                            return Astro_TargetType_M43;
+                        case '4':
+                            return Astro_TargetType_M44;
+                        case '5':
+                            return Astro_TargetType_M45;
+                        case '6':
+                            return Astro_TargetType_M46;
+                        case '7':
+                            return Astro_TargetType_M47;
+                        case '8':
+                            return Astro_TargetType_M48;
+                        case '9':
+                            return Astro_TargetType_M49;
+                        case '\000':
+                            return Astro_TargetType_M4;
+                    }
+                    break;
+                case '5':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case '0':
+                            return Astro_TargetType_M50;
+                        case '1':
+                            return Astro_TargetType_M51;
+                        case '2':
+                            return Astro_TargetType_M52;
+                        case '3':
+                            return Astro_TargetType_M53;
+                        case '4':
+                            return Astro_TargetType_M54;
+                        case '5':
+                            return Astro_TargetType_M55;
+                        case '6':
+                            return Astro_TargetType_M56;
+                        case '7':
+                            return Astro_TargetType_M57;
+                        case '8':
+                            return Astro_TargetType_M58;
+                        case '9':
+                            return Astro_TargetType_M59;
+                        case '\000':
+                            return Astro_TargetType_M5;
+                    }
+                    break;
+                case '6':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case '0':
+                            return Astro_TargetType_M60;
+                        case '1':
+                            return Astro_TargetType_M61;
+                        case '2':
+                            return Astro_TargetType_M62;
+                        case '3':
+                            return Astro_TargetType_M63;
+                        case '4':
+                            return Astro_TargetType_M64;
+                        case '5':
+                            return Astro_TargetType_M65;
+                        case '6':
+                            return Astro_TargetType_M66;
+                        case '7':
+                            return Astro_TargetType_M67;
+                        case '8':
+                            return Astro_TargetType_M68;
+                        case '9':
+                            return Astro_TargetType_M69;
+                        case '\000':
+                            return Astro_TargetType_M6;
+                    }
+                    break;
+                case '7':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case '0':
+                            return Astro_TargetType_M70;
+                        case '1':
+                            return Astro_TargetType_M71;
+                        case '2':
+                            return Astro_TargetType_M72;
+                        case '3':
+                            return Astro_TargetType_M73;
+                        case '4':
+                            return Astro_TargetType_M74;
+                        case '5':
+                            return Astro_TargetType_M75;
+                        case '6':
+                            return Astro_TargetType_M76;
+                        case '7':
+                            return Astro_TargetType_M77;
+                        case '8':
+                            return Astro_TargetType_M78;
+                        case '9':
+                            return Astro_TargetType_M79;
+                        case '\000':
+                            return Astro_TargetType_M7;
+                    }
+                    break;
+                case '8':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case '0':
+                            return Astro_TargetType_M80;
+                        case '1':
+                            return Astro_TargetType_M81;
+                        case '2':
+                            return Astro_TargetType_M82;
+                        case '3':
+                            return Astro_TargetType_M83;
+                        case '4':
+                            return Astro_TargetType_M84;
+                        case '5':
+                            return Astro_TargetType_M85;
+                        case '6':
+                            return Astro_TargetType_M86;
+                        case '7':
+                            return Astro_TargetType_M87;
+                        case '8':
+                            return Astro_TargetType_M88;
+                        case '9':
+                            return Astro_TargetType_M89;
+                        case '\000':
+                            return Astro_TargetType_M8;
+                    }
+                    break;
+                case '9':
+                    switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                        case '0':
+                            return Astro_TargetType_M90;
+                        case '1':
+                            return Astro_TargetType_M91;
+                        case '2':
+                            return Astro_TargetType_M92;
+                        case '3':
+                            return Astro_TargetType_M93;
+                        case '4':
+                            return Astro_TargetType_M94;
+                        case '5':
+                            return Astro_TargetType_M95;
+                        case '6':
+                            return Astro_TargetType_M96;
+                        case '7':
+                            return Astro_TargetType_M97;
+                        case '8':
+                            return Astro_TargetType_M98;
+                        case '9':
+                            return Astro_TargetType_M99;
+                        case '\000':
+                            return Astro_TargetType_M9;
+                    }
+                    break;
+                case 'a':
+                    return Astro_TargetType_Mars;
+                case 'e':
+                    return Astro_TargetType_Mercury;
+                case 'i':
+                    return Astro_TargetType_Mizar;
+                case 'o':
+                    return Astro_TargetType_Moon;
+            }
+            break;
+        case 'N':
+            return Astro_TargetType_Neptune;
+        case 'P':
+            switch (targetTypeStr.length() >= 2 ? targetTypeStr[1] : '\000') {
+                case 'o':
+                    switch (targetTypeStr.length() >= 4 ? targetTypeStr[3] : '\000') {
+                        case 'a':
+                            return Astro_TargetType_Polaris;
+                        case 'l':
+                            return Astro_TargetType_Pollux;
+                    }
+                    break;
+                case 'r':
+                    return Astro_TargetType_Procyon;
+            }
+            break;
+        case 'R':
+            switch (targetTypeStr.length() >= 2 ? targetTypeStr[1] : '\000') {
+                case 'e':
+                    return Astro_TargetType_Regulus;
+                case 'i':
+                    return Astro_TargetType_RigelKentaurus;
+            }
+            break;
+        case 'S':
+            switch (targetTypeStr.length() >= 2 ? targetTypeStr[1] : '\000') {
+                case 'a':
+                    return Astro_TargetType_Saturn;
+                case 'i':
+                    return Astro_TargetType_Sirius;
+                case 'p':
+                    return Astro_TargetType_Spica;
+                case 'u':
+                    return Astro_TargetType_Sun;
+            }
+            break;
+        case 'U':
+            switch (targetTypeStr.length() >= 2 ? targetTypeStr[1] : '\000') {
+                case 'n':
+                    return Astro_TargetType_Undefined;
+                case 'r':
+                    return Astro_TargetType_Uranus;
+            }
+            break;
+        case 'V':
+            switch (targetTypeStr.length() >= 3 ? targetTypeStr[2] : '\000') {
+                case 'g':
+                    return Astro_TargetType_Vega;
+                case 'n':
+                    return Astro_TargetType_Venus;
+            }
+            break;
+    }
+    return Astro_TargetType_Undefined;
 }
 
 Astro_TargetClass targetClassFromString(String targetClassStr)

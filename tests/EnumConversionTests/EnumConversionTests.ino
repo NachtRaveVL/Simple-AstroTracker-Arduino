@@ -8,7 +8,7 @@ static int failures = 0;
     do { \
         for (int typeIndex = -1; typeIndex <= (int)(countValue); ++typeIndex) { \
             prefix value = typeIndex < 0 ? undefinedValue : (prefix)typeIndex; \
-            AstroString typeString = toStringFn(value); \
+            String typeString = toStringFn(value); \
             prefix retValue = fromStringFn(typeString); \
             if (value != retValue) { \
                 Serial.print(F("Conversion failure: ")); \
@@ -41,7 +41,7 @@ void setup()
     TEST_ENUM_RANGE(Astro_ThermalMode, Astro_ThermalMode_Count, Astro_ThermalMode_Undefined, thermalModeToString, thermalModeFromString);
     TEST_ENUM_RANGE(Astro_SchedulerStage, Astro_SchedulerStage_Count, Astro_SchedulerStage_Undefined, schedulerStageToString, schedulerStageFromString);
 
-    if (unitsTypeFromSymbol(AstroString("J/s")) != Astro_UnitsType_Power_Wattage) { ++failures; }
+    if (unitsTypeFromSymbol(String("J/s")) != Astro_UnitsType_Power_Wattage) { ++failures; }
 
     float converted = 0.0f;
     if (!tryConvertUnits(32.0f, Astro_UnitsType_Temperature_Fahrenheit, &converted, Astro_UnitsType_Temperature_Celsius) ||

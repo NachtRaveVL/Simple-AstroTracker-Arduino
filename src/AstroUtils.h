@@ -414,6 +414,11 @@ extern String sensorTypeToString(Astro_SensorType sensorType, bool excludeSpecia
 // Converts back to sensor type enum from string.
 extern Astro_SensorType sensorTypeFromString(String sensorTypeStr);
 
+// Converts from target type enum to string, with optional exclude for special types (instead returning "").
+extern String targetTypeToString(Astro_TargetType targetType, bool excludeSpecial = false);
+// Converts back to target type enum from string.
+extern Astro_TargetType targetTypeFromString(String targetTypeStr);
+
 // Converts from target class enum to string, with optional exclude for special types (instead returning "").
 extern String targetClassToString(Astro_TargetClass targetClass, bool excludeSpecial = false);
 // Converts back to target class enum from string.
