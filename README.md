@@ -3,46 +3,50 @@ Astruino: Simple Astro Tracker Automation Controller.
 
 **Simple-AstroTracker-Arduino v0.7.2.0**
 
-Simple automation controller for DIY astronomical tracking systems.  
+Simple automation controller for DIY astronomical tracking systems.
 Licensed under the non-restrictive MIT license.
 
 Created by NachtRaveVL, 2026.
 
-This controller manages mounts, axis drivers, covers, cameras, focusers, environmental sensors, thermal control, targets, scheduling, logging, publishing, and persistent configuration for home-built astronomical tracking systems. The actual mechanical and electrical implementation remains open to the builder, while Astruino provides the common controller, object, attachment, scheduling, and persistence layers.
+This controller manages mounts, axis drivers, covers, cameras, focusers, environmental sensors, thermal control, targets, scheduling, logging, publishing, and persistent configuration for home-built astronomical tracking systems. The actual mechanical and electrical implementation remains open to the builder.
 
 Our Keep-It-Simple controller system:
 
-* Can be used entirely offline with an RTC module and optional GPS module (or known static location) for accurate time keeping and astronomical positioning, or used online through enabled on-board WiFi/Ethernet or an external ESP-AT WiFi module.
-  * Astronomical tracking uses the system UTC time and location to resolve sidereal time, target position, and mount geometry without requiring a network connection.
+* Can be used entirely offline with RTC module and optional GPS module (or known static location) for accurate time keeping, or used online through enabled on-board WiFi/Ethernet or external ESP-AT WiFi module.
+  * Uses offline astronomical calculations for target positioning and [SolarCalculator](https://github.com/jpb10/SolarCalculator) for sunrise, sunset, & transit calculations used by system scheduling.
 * Exportable system configuration to EEPROM, SD card, or WiFiStorage external storage device.
   * Saved in pretty-print JSON for human-readability & easy text editing, or in raw binary for compactness & speed.
-  * Auto-save and fallback save modes are available through the controller data model.
-* Supports interval-based sensor data publishing and system event logging to an MQTT IoT broker or to external storage in .csv/.txt format (/w date in filename, segmented daily).
-  * Network publishing is optional; local scheduling, tracking, logging, and target lookup do not require an internet connection.
-* Uses registered system objects plus lightweight attachments and mount-owned subobjects.
-  * Registered object families include actuators, sensors, targets, mounts, and power rails.
-  * Covers, cameras, thermal balancing, triggers, and axis drivers remain attached or mount-owned helpers instead of parallel top-level object families.
-* Supports equatorial, Alt/Az, and single-axis mount geometries.
-  * Mount geometry remains separate from motor hardware so STEP/DIR, servo, callback, or other compatible driver implementations can be used.
-* Includes a compact astronomical target library.
-  * Built-in data includes all 110 Messier objects, useful bright-star targets, and major solar-system targets.
-  * Fixed targets use stored J2000 coordinates while moving solar-system targets are resolved for the requested UTC time.
-* Supports common small-observatory equipment.
-  * Covers, camera shutters, focusers, dew/optics heating, camera cooling, and ventilation can participate in the same scheduler and safety sequencing.
-* Actuator & Sensor pins can be multiplexed or expanded along with control input pins through supported I/O abstraction hardware where appropriate.
-* Library/target data can remain built into onboard Flash or be exported onto external storage to save compiled sketch size.
+  * Auto-save, backup auto-save (for auto-recovery), and low external storage space cleanup (TODO) functionality.
+  * Import string decode functions are pre-optimized with minimum spanning trie for ultra-fast text parsing & reduced loading times.
+* Supports interval-based sensor data publishing and system event logging to MQTT IoT broker (for further IoT-integrated processing) or to external storage in .csv/.txt format (/w date in filename, segmented daily).
+  * Can be extended to work with other JSON-based Web APIs or Client-like derivatives (for DB storage or server-endpoint support).
+  * Can add a piezo buzzer for audible system warning/failure alerting (TODO), or a LCD/OLED/TFT display for current readings & recent logging messages (TODO).
+* Enabled GUI works with a large variety of common Arduino-compatible LCD/OLED/TFT displays, touchscreens, matrix keypads, analog joysticks, rotary encoders, and momentary buttons (support by [tcMenu](https://github.com/davetcc/tcMenuLib)).
+  * Contains at-a-glance system overview screen and interactive menu system for system configuration, sensor calibration, and more (TODO).
+  * Critical system config menus can be pin-coded to prevent setup tampering.
+  * Includes remote GUI menu access through enabled WiFi, Ethernet, Bluetooth, Serial, and/or Simhub connection via tcMenu's excellent [embedCONTROL](https://github.com/davetcc/tcMenu/releases) desktop application, available for Linux/OSX/Windows.
+  * GUI I/O pins can be setup as fully interrupt driven (5-25ms latency), partially interrupt driven (only keys & buttons polled), or polling based (75-100ms+ latency), and can be automatically selected depending on pins used.
+  * System examples can be compiled in:
+    * Disabled UI mode, which removes all GUI code entirely, freeing a large amount of Flash size for constrained (<=256kB Flash) devices.
+    * Minimal UI mode, which saves on compiled sketch size through optimized code stripping at the cost of having to modify/re-upload a new sketch to change most system settings (or to change system object structure).
+    * Full UI mode, which uses large amounts of Flash space available on modern MCUs to provide everything all at once, with only major system (or static linked component) changes requiring a sketch modify/re-upload.
+* Supports equatorial, Alt/Az, and single-axis mount geometries with separate mount geometry and axis-driver hardware.
+* Includes built-in astronomical target data for the Messier catalog, useful bright stars, and major solar-system targets.
+* Supports covers, camera shutters, focusers, dew/optics heating, camera cooling, ventilation, and shared power rails.
+* Actuator & Sensor pins can be multiplexed or expanded along with any control input pins through 8/16-bit i2c expanders for pin-limited controllers.
+* Library data can be built into onboard Flash or exported onto external storage to additionally save on compiled sketch size.
 
-Made primarily for Arduino microcontrollers / build environments, but intended to fit PlatformIO, Espressif, Teensy, STM32, Pico/RP2040/RP2350, GIGA, Portenta, and similar MCU platforms. Smaller boards may require GUI, networking, debug output, or built-in data to be trimmed.
+Made primarily for Arduino microcontrollers / build environments, but should work with PlatformIO, Espressif, Teensy, STM32, Pico, and others - although one might experience turbulence until the bug reports get ironed out.
 
 *If you value the work that we do, our small team always appreciates a subscription to our [Patreon](www.patreon.com/nachtrave).*
 
 ## About
 
-We want to make astronomical tracking and small observatory automation more accessible to DIY'ers by utilizing the widely-available low-cost IoT and IoT-like microcontrollers (MCUs) of today.
+We want to make astronomical trackers more accessible to DIY'ers by utilizing the widely-available low-cost IoT and IoT-like microcontrollers (MCUs) of today.
 
-With modern MCUs providing useful timers, floating-point performance, storage, communications, and large numbers of I/O pins at low cost, it becomes practical to build capable telescope and observatory controllers without committing to one fixed mechanical design or expensive proprietary controller. Astruino is intended for garage-built trackers, converted manual mounts, 3D-printed mechanisms, small backyard telescopes, roll-off roofs, dome shutters, and similar DIY astronomy projects.
+With the advances in miniaturization technology bringing us even more compact MCUs at even lower costs, it becomes a lot more possible to use one of these small devices to continuously resolve target positions, move telescope axes, coordinate attached equipment, and monitor environmental conditions. Astronomical tracking is a strong application for these devices, especially as a data logger, process monitor, and observatory controller. Professional controller systems can cost hundreds to even thousands of dollars, but DIY systems can wind up being a fraction of that cost.
 
-Astruino is a MCU-based solution primarily written for Arduino and Arduino-like MCU devices. The controller owns shared system services while mounts and other equipment are created through the same object/factory model used by the sibling controller libraries. Mount geometry, target calculations, attached equipment, scheduler behavior, and physical motor hardware remain separated so the same controller design can be reused across very different builds.
+Astruino is a MCU-based solution primarily written for Arduino and Arduino-like MCU devices. It allows one to combine hobbyist stepper/servo hardware, telescope mounts, cameras, focusers, environmental sensors, heaters, relays, and other widely available low-cost hardware into a functional DIY astronomical tracking system. Be it a converted manual mount, 3D printed tracker, backyard telescope, roll-off roof, or dome shutter, Astruino leaves the physical implementation open to the builder while providing the common automation and tracking layer.
 
 ## Controller Setup
 
@@ -58,43 +62,25 @@ Recommended: 512kB–1MB+ Flash, 24–32kB+ SRAM, 32–48MHz+
 
 Modern 32-bit boards such as Pico RP2040/RP2350, ESP32, Teensy 3.5+, STM32, GIGA, and Portenta-class devices are the natural starting point when tracking, logging, UI, and networking are expected to run together.
 
-Astronomy calculations use floating-point math regularly. Motor timing, encoder feedback, display load, scheduler activity, and communication traffic can matter more than Flash size alone when selecting the MCU.
+Astronomy calculations use floating-point math regularly. Motor timing, encoder feedback, display load, and communication traffic can matter more than Flash size alone when selecting the MCU.
 
 ### Installation
 
-The easiest way to install this controller is to utilize the Arduino IDE library manager when available, or through a package manager such as PlatformIO. Otherwise, simply download this controller and extract its files into a `Simple-AstroTracker-Arduino` folder in your Arduino custom libraries folder, typically found in your `[My ]Documents\Arduino\libraries` folder (Windows), or `~/Documents/Arduino/libraries/` folder (Linux/OSX).
+The easiest way to install this controller is to utilize the Arduino IDE library manager, or through a package manager such as PlatformIO. Otherwise, simply download this controller and extract its files into a `Simple-AstroTracker-Arduino` folder in your Arduino custom libraries folder, typically found in your `[My ]Documents\Arduino\libraries` folder (Windows), or `~/Documents/Arduino/libraries/` folder (Linux/OSX).
 
-From there, make a local copy of one of the supplied example sketches based on the kind of system setup you want to use. If you are unsure of which, start with the Simple Equatorial Example because it demonstrates the normal controller lifecycle and mount/axis-driver relationship with the least surrounding equipment.
+From there, you can make a local copy of one of the example sketches based on the kind of system setup you want to use. If you are unsure of which, we recommend the Simple Equatorial Example, as it is the smallest complete tracker example and provides a straightforward starting point for mount and axis-driver setup.
 
-The current example set includes:
-
-* **SimpleEquatorial** - Basic equatorial mount and axis-driver setup.
-* **AstroLibLookup** - Astronomical target-library lookup and coordinate resolution.
-* **NightSession** - Scheduler-driven observing session behavior.
-* **ThermalCamera** - Camera and thermal-control integration.
-* **DataWriter** - External library/target-data export workflows.
-
-Storage constrained MCUs (< 512kB Flash, particularly <= 256kB) may need further setup file/max-size tweaking and possibly external storage hardware such as EEPROM or SD card. Modern MCUs with more Flash and SRAM are strongly preferred when tracking, GUI, logging, networking, and several equipment objects are expected to operate together.
+Storage constrained MCUs (< 512kB Flash, particularly <= 256kB) may need further setup file/max-sizes tweaking, and possibly external storage hardware (such as EEPROM or SD Card - see the Data Writer example for more details). Modern MCUs with lots of Flash storage can instead use the larger tracking, scheduling, camera, thermal, and UI features together.
 
 ### Target Data and Tracking
 
-Astruino keeps target selection separate from mount geometry and physical motor control.
+Astruino includes built-in astronomical target data for all 110 Messier objects, useful bright-star targets, and the Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, and Neptune.
 
-Fixed catalog targets are stored using J2000 coordinates and are resolved for the requested UTC time. Moving solar-system targets are calculated for the requested time instead of being treated as fixed catalog positions. A mount can select a target through `setTarget(Astro_TargetType)` and performs the necessary target-data checkout internally during tracking.
-
-A useful mental model is:
-
-**Target + UTC Time + System Location → Mount Geometry → Axis Driver → Physical Motion**
-
-and, alongside it:
-
-**Sensors → Measurements → Triggers / Thermal Logic → Actuators**
-
-The scheduler coordinates those pieces across the observing night.
+Fixed targets use stored J2000 coordinates and are resolved for the requested UTC time. Moving solar-system targets are time-dependent. Mount geometry and physical motor control remain separate so the same target can be tracked through equatorial, Alt/Az, or single-axis configurations using the appropriate axis drivers.
 
 ### Host Tests
 
-Core logic can be run without telescope hardware connected:
+Core logic and source-data checks can be run without an Arduino connected:
 
 ```sh
 cmake -S tests -B build-host
@@ -102,17 +88,15 @@ cmake --build build-host
 ctest --test-dir build-host --output-on-failure
 ```
 
-Host tests are useful for astronomy math, object behavior, scheduling, serialization, measurements, and regression coverage. They cannot validate motor polarity, real gear ratios, backlash, mechanical limits, cover travel, wiring, or weather behavior.
-
 ### Setup
 
 #### Header Defines
 
-There are several defines inside of the controller's main `Astruino.h` header file that allow for more fine-tuned control of the controller. You may edit and uncomment these lines directly, or supply them via custom build flags. While editing the main header file isn't ideal, it is often easiest. Note that editing the controller's main header file directly will affect all projects compiled on your system using those modified controller files.
+There are several defines inside of the controller's main `Astruino[UI].h` header file that allow for more fine-tuned control of the controller. You may edit and uncomment these lines directly, or supply them via custom build flags. While editing the main header file isn't ideal, it is often easiest. Note that editing the controller's main header file directly will affect all projects compiled on your system using those modified controller files.
 
-Alternatively, you may also refer to <https://forum.arduino.cc/index.php?topic=602603.0> on how to define custom build flags manually via modifying the `platform[.local].txt` file, or with the Arduino CLI (preferred way going forward).
+Alternatively, you may also refer to <https://forum.arduino.cc/index.php?topic=602603.0> on how to define custom build flags manually via modifying the platform[.local].txt file, or with the Arduino CLI (preferred way going forward).
 
-For the older `platform.local.txt` file override approach, create `platform.local.txt` alongside `platform.txt` located in `%applocaldata%\Arduino15\packages\{platform}\hardware\{arch}\{version}\` (replacing `%applocaldata%\Arduino15` with `~/Library/Arduino15` for OSX, and `~/.arduino15` for Linux), with the contents: `compiler.cpp.extra_flags=-Dname` (replacing `name` with full name of below define). Note that it will affect all builds for that platform until again changed/removed. Some build systems may require directly editing `platform.txt` and adding onto the end of its CPP build recipe, e.g. Teensy & `recipe.cpp.o.pattern=<bunch-of-stuff> -Dname`.
+For the older platform.local.txt file override approach, create platform.local.txt alongside platform.txt located in %applocaldata%\Arduino15\packages\{platform}\hardware\{arch}\{version}\ (replacing %applocaldata%\Arduino15 with ~/Library/Arduino15 for OSX, and ~/.arduino15 for Linux), with the contents: `compiler.cpp.extra_flags=-Dname` (replacing `name` with full name of below define). Note that it will affect all builds for that platform until again changed/removed. Some build systems may require directly editing platform.txt and adding onto the end of its CPP build recipe, e.g. Teensy & `recipe.cpp.o.pattern=<bunch-of-stuff> -Dname`.
 
 From Astruino.h:
 ```Arduino
@@ -161,7 +145,7 @@ From shared/AstruinoUI.h:
 // Uncomment or -D this define to enable usage of the StChromaArt BSP touch screen interrogator in place of the default AdaLibTouchInterrogator (STM32/mbed only, note: requires advanced setup, see tcMenu_Extra_BspUserSettings.h)
 //#define ASTRO_UI_ENABLE_BSP_TOUCH
 
-// Uncomment or -D this define to enable usage of the debug menu 
+// Uncomment or -D this define to enable usage of the debug menu
 //#define ASTRO_UI_ENABLE_DEBUG_MENU
 ```
 
@@ -206,7 +190,7 @@ There are several initialization mode settings exposed through this controller t
 
 #### Class Instantiation
 
-The controller's class object must first be instantiated, commonly at the top of the sketch where pin setups are defined. The constructor configures controller-level devices and interfaces, with defaults providing no optional device specified.
+The controller's class object must first be instantiated, commonly at the top of the sketch where pin setups are defined (or exposed through some other mechanism), which makes a call to the controller's class constructor. The constructor allows one to set the module's various devices and how they are connected, with defaults providing no device specified.
 
 From Astruino.h, in class Astruino:
 ```Arduino
@@ -225,71 +209,182 @@ From Astruino.h, in class Astruino:
 
 #### Controller Initialization
 
-Additionally, a call is expected to be provided to the controller class object's `init[From…](…)` method, commonly called inside of the sketch's `setup()` function. This allows one to set the controller's system mode, units of measurement, control input mode, and display output mode.
+Additionally, a call is expected to be provided to the controller class object's `init[From…](…)` method, commonly called inside of the sketch's `setup()` function. This allows one to set the controller's system type (Tracking, Balancing, or Manual), units of measurement (Metric, Imperial, or Scientific), control input mode, and display output mode. The default mode of the controller, if left unspecified, is a Tracking system set to Metric units, without any input control or output display.
 
 From Astruino.h, in class Astruino:
 ```Arduino
     // Initializes default empty system. Typically called near top of setup().
     // See individual enums for more info.
-    void init(Astro_SystemMode systemMode = Astro_SystemMode_Tracking,
-              Astro_MeasurementMode measureMode = Astro_MeasurementMode_Default,
-              Astro_DisplayOutputMode dispOutMode = Astro_DisplayOutputMode_Disabled,
-              Astro_ControlInputMode ctrlInMode = Astro_ControlInputMode_Disabled);
+    void init(Astro_SystemMode systemMode = Astro_SystemMode_Tracking,                  // What astronomy operating mode should be used
+              Astro_MeasurementMode measureMode = Astro_MeasurementMode_Default,        // What units of measurement should be used
+              Astro_DisplayOutputMode dispOutMode = Astro_DisplayOutputMode_Disabled,   // What display output mode should be used
+              Astro_ControlInputMode ctrlInMode = Astro_ControlInputMode_Disabled);     // What control input mode should be used
 
+    // Initializes system from EEPROM save, returning success flag
+    // Set system data address with setSystemEEPROMAddress
     bool initFromEEPROM(bool jsonFormat = false);
+    // Initializes system from SD card file save, returning success flag
+    // Set config file name with setSystemConfigFilename
     bool initFromSDCard(bool jsonFormat = true);
 #ifdef ASTRO_USE_WIFI_STORAGE
+    // Initializes system from a WiFiStorage file save, returning success flag
+    // Set config file name with setSystemConfigFilename
     bool initFromWiFiStorage(bool jsonFormat = true);
 #endif
+    // Initializes system from custom JSON-based stream, returning success flag
     bool initFromJSONStream(Stream *streamIn);
+    // Initializes system from custom binary stream, returning success flag
     bool initFromBinaryStream(Stream *streamIn);
 ```
 
-The controller can also be initialized from a saved configuration, such as from EEPROM or SD card, or another JSON/Binary stream. A saved configuration can be made through the matching `saveTo…(…)` methods or through configured autosave behavior.
+The controller can also be initialized from a saved configuration, such as from an EEPROM or SD card, or other JSON or Binary stream. A saved configuration of the system can be made via the controller class object's `saveTo…(…)` methods, or called automatically on timer by setting an Autosave mode/interval.
 
-A normal lifecycle is:
-
+From Astruino.h, in class Astruino:
 ```Arduino
-Astruino astroController;
-
-void setup()
-{
-    astroController.init();
-    astroController.setSystemLocation(49.2827, -123.1207, 70.0);
-
-    // Add mounts, drivers, sensors, and other equipment here.
-
-    astroController.launch();
-}
-
-void loop()
-{
-    astroController.update();
-}
+    // Saves current system setup to EEPROM save, returning success flag
+    // Set system data address with setSystemEEPROMAddress
+    bool saveToEEPROM(bool jsonFormat = false);
+    // Saves current system setup to SD card file save, returning success flag
+    // Set config file name with setSystemConfigFilename
+    bool saveToSDCard(bool jsonFormat = true);
+#ifdef ASTRO_USE_WIFI_STORAGE
+    // Saves current system setup to WiFiStorage file save, returning success flag
+    // Set config file name with setSystemConfigFilename
+    bool saveToWiFiStorage(bool jsonFormat = true);
+#endif
+    // Saves current system setup to custom JSON-based stream, returning success flag
+    bool saveToJSONStream(Stream *streamOut, bool compact = true);
+    // Saves current system setup to custom binary stream, returning success flag
+    bool saveToBinaryStream(Stream *streamOut);
 ```
 
 ### Event Logging & Data Publishing
 
-The controller can, after initialization, produce logs and sensor data that can be used by other applications. Log entries are timestamped and can track scheduler stages, mount/equipment state changes, warnings, and other controller events, while published data can be read into plotting applications or exported to a database for further processing.
+The controller can, after initialization, be set to produce logs and data files that can be further used by other applications. Log entries are timestamped and can keep track of when targets are acquired, when devices enable/disable, scheduler stage changes, etc., while data files can be read into plotting applications or exported to a database for further processing. The passed file prefix is typically the subfolder that such files should reside under and is appended with the year, month, and date (in YYMMDD format).
 
-Note: The same logging output can also be sent to the Serial device by defining `ASTRO_ENABLE_DEBUG_OUTPUT`, described above in Header Defines.
+Note: You can also get the same logging output sent to the Serial device by defining `ASTRO_ENABLE_DEBUG_OUTPUT`, described above in Header Defines.
 
-The controller exposes:
+Note: Files on FAT32-based SD cards are limited to 8 character file/folder names and a 3 character extension.
 
+From Astruino.h, in class Astruino:
 ```Arduino
-astroController.scheduler;
-astroController.logger;
-astroController.publisher;
+    // Enables system logging to the SD card. Log file names will append YYMMDD.txt to the specified prefix. Returns success flag.
+    inline bool enableSysLoggingToSDCard(String logFilePrefix);
+
+    // Enables data publishing to the SD card. Data file names will append YYMMDD.csv to the specified prefix. Returns success flag.
+    inline bool enableDataPublishingToSDCard(String dataFilePrefix);
 ```
 
-Local SD-card logging and publishing are available through:
+## Hookup Callouts
 
-```Arduino
-astroController.enableSysLoggingToSDCard("logs/as");
-astroController.enableDataPublishingToSDCard("data/as");
-```
+Many of the various electronic components and systems this controller is designed to work with may have specific setup procedures and/or wiring requirements. While advanced users may find this section a refresher at best, the below callouts are highlighted in order to help prevent device damage and ensure proper controller operation.
 
-WiFiStorage and MQTT publishing are available when the matching feature paths are enabled.
+### General
+
+* The recommended Vcc power supply and logic level is 5v, with most newer MCUs restricted to 3.3v.
+  * There are many devices that are 3.3v only and not 5v tolerant. Check your IC's datasheet for details.
+* 5v device output pins that interface with any 3.3v device input pins that are not 5v tolerant (such as a 5v AVR interfacing with a 3.3v-only [serial ESP-AT WiFi module](http://www.instructables.com/id/Cheap-Arduino-WiFi-Shield-With-ESP8266/), or a 3.3v MCU interfacing with a 5v analog sensor), will require a bi-directional logic level converter/shifter to use, especially for any high-speed digital data transfer lines.
+  * Alternatively, using a 10kΩ resistor can often times be enough to 'convert' 5v to 3.3v, but the correct way is to utilize a 1kΩ resistor and a 2kΩ resistor (or any size with a 1:2 ratio) in a [simple voltage divider circuit](https://randomnerdtutorials.com/how-to-level-shift-5v-to-3-3v/).
+
+### Serial UART
+
+Serial UART uses individual communication lines for each device, with the receive `RX` pin of one being the transmit `TX` pin of the other - thus having to "flip wires" when connecting. However, devices can always be active and never have to share their access. UART runs at low to mid kHz speeds and is useful for simple device control, albeit somewhat clumsy at times.
+
+* When wiring up modules that use Serial UART, make sure to flip `RX`/`TX` pins.
+* Always ensure that any data output pins and data input pins have compatible voltages.
+
+Serial UART Devices Supported: Bluetooth-AT modules, ESP-AT WiFi modules, NMEA-AT GPS modules
+
+### SPI Bus
+
+SPI devices can be chained together on the same shared data lines, which are typically labeled `COPI` (or `MOSI`), `CIPO` (or `MISO`), and `SCK`, often with an additional `CS` (or `SS`). Each SPI device requires its own individual cable-select `CS` wire as only one SPI device may be active at any given time - accomplished by pulling its `CS` line of that device low (aka active-low). SPI runs at MHz speeds and is useful for large data block transfers.
+
+* The `CS` pin may be connected to any digital output pin, but it's common to use the `CS` (or `SS`) pin for the first device. Additional devices are not restricted to what pin they can or should use, but given it's not a data pin not using a choice interrupt-capable pin allows those to be used for interrupt driven mechanisms.
+* Many low-cost SPI-based SD card modules on market only read SDHC sized SD cards (2GB to 32GB) formatted in FAT32 (filenames limited to 8 characters plus 3 character file extension).
+  * Some SD cards simply will not play nicely with these modules and you may have to try another SD card manufacturer. We recommend 32GB SD cards due to overall lowest cost (smaller SD cards actually becoming _more_ expensive).
+* Many various graphical displays may have an additional `DC` (or `RS`) pin, which is required to be connected to any open digital pin in addition to its `CS` pin.
+  * There is often an additional `Reset` (or `RST`) pin that needs either wired to an open digital pin for MCU control, otherwise typically will need hard-tied to a HIGH signal (such as that from `Vcc`) in order for the display to function/turn-on.
+  * There is also often an additional `LED` (or `BL`) pin that controls the backlight that can be either optionally wired to an open digital or analog pin for MCU control, otherwise can be hard-tied typically to a HIGH signal (such as that from `Vcc`) in order to stay always-on, or simply left disconnected for device default.
+* Always ensure that any data output pins and data input pins have compatible voltages.
+
+SPI Devices Supported: SD card modules, NMEA GPS modules, 128x128+ LCD/OLED/TFT graphical displays, XPT2046 touchscreens
+
+### I2C Bus
+
+I2C (aka I²C, IIC, TwoWire, TWI) devices can be chained together on the same shared data lines (no flipping of wires), which are typically labeled `SCL` and `SDA`. Only different kinds of I2C devices can be used on the same data line together using factory default settings, otherwise manual addressing must be performed. I2C runs at mid to high kHz speeds and is useful for advanced device control.
+
+* When more than one I2C device of the same kind is to be used on the same data line, each device must be set to use a different address. This is accomplished via the A0-A2 (sometimes A0-A5) pins/pads on the physical device that must be set either open or closed (typically via a de-solderable resistor, or by shorting a pin/pad). Check your specific breakout's datasheet for details.
+* Note that not all the I2C libraries used support multi-addressable I2C devices at this time (read as: may only use one). Currently, this restriction applies to: RTC devices.
+* Always ensure that any data output pins and data input pins have compatible voltages.
+
+I2C Devices Supported: DS*/PCF* RTC modules, AT24C* EEPROM modules, NMEA GPS modules, 16x2/20x4 LCD displays, 128x32/128x64 OLED displays, FT6206 touchscreens, 8/16-bit pin expanders
+
+### OneWire Bus
+
+OneWire devices can be chained together on the same shared data lines (no flipping of wires). Devices can be of the same or different types, require minimal setup (and often no soldering), and most can even operate in "parasite" power mode where they use the power from the data line (and an internal capacitor) to function (thus saving a `Vcc` line, only requiring `Data` and return `GND`). OneWire runs only in the low kb/s speeds and is useful for light-weight digital sensors.
+
+* Typically, sensors are limited to 20 devices along a maximum 100m of wire.
+* When more than one OneWire device is on the same device line, each device registers itself an enumeration index (0 - N) along with its own 64-bit unique identifier (UUID, with last byte being CRC). The device can then be referenced via this UUID by the system in the future indefinitely, or enumeration index so long as the device doesn't change its line position.
+* Always ensure that any data output pins and data input pins have compatible voltages.
+
+OneWire Devices Supported: DHT* 1W air temp/humidity sensors
+
+### Analog IO
+
+* All analog sensors will need to have the same operational voltage range as the controller supports. Many analog sensors are set to use 0v to 5v by default, but some can go -5v to +5v, some even up to 5.5v.
+  * Note: Altering default factory calibration settings may require addition tools for setting up a new calibration, such as special calibration fluids/procedures/etc. Refer to the datasheet of your device for details.
+* The `AREF` (or `IOREF`) pin, which controls the upper-bound of this range, by default if left not-connected (NC) is the same voltage as the MCU. Analog sensors must not exceed this voltage limit.
+  * 5v analog sensor output signals connecting to 3.3v MCUs that are not 5v tolerant **must** either be: [level converted](https://randomnerdtutorials.com/how-to-level-shift-5v-to-3-3v/) in order to connect, or configured to output 0v to `AREF` (or `IOREF`) in voltage calibration output range (if able to calibrate - see note above).
+  * Warning: Too high of applied voltage to any pin incapable of receiving such high a voltage risks permanent damage to that device. _Always_ ensure that the applied voltage level coming out a device is supported when going back into another. Some breakouts/IC's have 5v tolerance built-in, some do not. Refer to the datasheet of your MCU/device for details.
+  * Note: Typically a 3.3v output signal will _not_ need level converted up to 5v for a 5v digital input to operate (read as: 3.3v is plenty enough to trigger HIGH on 5v device inputs).
+* The SAM/SAMD family of MCUs (e.g. Due, Zero, MKR, Nano 33, etc.) as well as many more modern MCUs support different bit resolutions for analog/PWM pins (tied to overridable `DAC_RESOLUTION` & `ADC_RESOLUTION` defines), with some (e.g. Pico, ESP32, etc.) supporting any pin being digital or analog w/o restriction. Refer to the datasheet of your MCU for details.
+
+### Sensors
+
+* Many different kinds of hobbyist sensors label their analog output `AO` (or `Ao`) - however, always check your specific sensor's datasheet, as some may have non-standard pin designations.
+  * Again, make sure all analog sensors are calibrated to output the same 0v - `AREF` (or `IOREF`) volts in range.
+* Sensor pins used for event triggering when measurements go above/below a pre-set tolerance - many of which are deceptively labeled `DO` (or `Do`), despite having nothing to do with being `D`ata lines of any kind - can be safely ignored, as the software implementation of such mechanism is more than sufficient.
+  * Often these connections are used to drive other hardware-only based solutions that aren't a part of Astruino's use case, but can still be connected up using an `AstroDigitalSensor` that triggers upon specific conditions, possibly using an ISR-capable pin if desired.
+  * `AstroDigitalSensor` state changes use a configurable stable-time filter before a new level is accepted. The default is 100ms. Use `setStateStableTime()` to adjust it, or set the stable time to 0 to disable the filter.
+
+### STEP/DIR Motors
+
+* Confirm the driver's STEP/DIR/ENABLE logic levels and polarity.
+* Calculate `stepsPerDegree` from motor steps, microstepping, gearing, and final axis reduction.
+* Begin with a conservative maximum step rate and verify actual motion direction before enabling unattended tracking.
+* High-performance motion may be better delegated to a dedicated stepper library/controller through the callback driver.
+
+### Covers and Roofs
+
+* Use open/closed limit switches where over-travel can damage the mechanism.
+* Use independent physical interlocks when a roof or shutter could collide with the telescope.
+* Verify the park position physically before allowing automatic closure.
+
+### Weather Inputs
+
+Weather sensors can help make an automated system safer, but a hobby controller should not be the only protection for valuable equipment in severe weather. Validate sensor failure modes as well as normal readings.
+
+### Networking & Wireless
+
+* Networking of any kind is 100% optional. Base controller operation works offline using an RTC and optional GPS or known static location.
+  * WiFi or Ethernet can be enabled when remote control, MQTT, network time, or network storage is wanted.
+* Devices with built-in WiFi or Ethernet can enable such through header/build defines while other devices can utilize an external [serial ESP WiFi module](http://www.instructables.com/id/Cheap-Arduino-WiFi-Shield-With-ESP8266/) on any open Serial line.
+  * Warning: While WiFi password is encrypted into system settings data, it should not be considered secure.
+* Serial Bluetooth-AT modules can be used on any open Serial port to provide remote device control (only).
+* MQTT requires remotely accessible broker daemon in order to publish sensor data (setup separately).
+* UDP time server requires remotely accessible time & date API service in order to sync time (TODO).
+  * RTC not required / used in reserve when UDP service enabled.
+* Note: Geo-location APIs require external 3rd party monthly subscription fees, thus isn't included as a feature.
+
+## Memory Callouts
+
+* The total number of objects and different kinds of objects (mounts, targets, actuators, sensors, rails, etc.) that the controller can support at once depends on how much free Flash storage and SRAM your MCU has available.
+  * For our supported microcontroller range, on the low end we have devices with 256kB of Flash and at least 16kB of SRAM, while on the upper end we have more modern devices with 1MB+ of Flash and 32kB+ of SRAM. Devices with < 24kB of SRAM may struggle with system builds and may be limited to minimal system setups (such as no WiFi, no data publishing, no built-in library data, only minimal-to-no GUI, etc.), while other newer devices with more capacity build with everything enabled.
+* For AVR, SAM, and other build architectures that do not have C++0x11 STL (standard container library) support, there are a series of *`_MAXSIZE` defines nearer to the top of `Astro[UI]Defines.h` that can be modified to adjust how much memory space is allocated for the various static array structures the controller instead uses.
+* To save on the cost of code size for constrained devices, focus on not enabling that which you won't need, which has the benefit of being able to utilize code stripping to remove sections of code that don't get used.
+  * There are also header defines that can strip out certain libraries and functionality, such as ones that disable the GUI, multi-tasking subsystems, etc.
+* To further save on code size cost, see the Data Writer Example on how to externalize library data onto an SD Card or EEPROM.
+  * Note: Upgrading between versions or changing custom/program data may require you to re-build and re-deploy to such external device.
 
 ## Mounts and Axis Drivers
 
@@ -301,13 +396,13 @@ WiFiStorage and MQTT publishing are available when the matching feature paths ar
 
 Each mount tracks current and target position, configured rate, optional software limits, park position, guide offsets, and optional axis-driver feedback.
 
-Mount geometry remains separate from the motor implementation. Current driver paths include:
+Mount geometry remains separate from the motor implementation. Driver paths include:
 
 * `AstroCallbackAxisDriver` for adapting an existing motor library or external controller.
 * `AstroServoAxisDriver` for normalized servo-style positioning.
 * `AstroStepDirAxisDriver` for ordinary STEP/DIR hardware advanced from the normal controller update loop.
 
-If a driver supplies position feedback through `getPositionDegrees()`, that reading updates the mount axis state. If feedback is unavailable, Astruino can maintain an internal rate-limited position estimate toward the current target.
+If a driver supplies position feedback through `getPositionDegrees()`, that reading updates the mount axis state. If feedback is unavailable, Astruino can maintain an internal rate-limited position estimate toward the target.
 
 ## Covers, Cameras, and Focusers
 
@@ -321,9 +416,9 @@ Each mount owns an `AstroCover` and `AstroCamera` sub-object.
 
 ## Sensors, Measurements, and Triggers
 
-Astruino sensor readings use the same measurement/polling-frame model as the sibling controller libraries.
+Astruino sensor readings use the controller's measurement and polling-frame model.
 
-Current sensor classes include value, callback, digital, and analog sensor paths. Digital sensors support minimum-stable-time filtering, while analog sensors can use user calibration data to convert raw input into engineering units.
+Sensor classes include value, callback, digital, and analog sensor paths. Digital sensors support minimum-stable-time filtering, while analog sensors can use user calibration data to convert raw input into engineering units.
 
 Measurement value/range triggers convert sensor readings into state with configurable de-trigger tolerance and optional de-trigger delay. The trigger reports the condition; the mount, scheduler, or application code decides what action follows.
 
@@ -331,13 +426,13 @@ Measurement value/range triggers convert sensor readings into state with configu
 
 Each mount owns an `AstroThermalBalancer`.
 
-The thermal layer can coordinate ambient temperature, humidity/dew-point information, optics heating, electronics heating, camera cooling, and fan output. This allows thermal equipment to remain part of the mount's operating state rather than becoming another unrelated scheduler or object hierarchy.
+The thermal layer can coordinate ambient temperature, humidity/dew-point information, optics heating, electronics heating, camera cooling, and fan output.
 
 ## Scheduler
 
 `AstroScheduler` automatically coordinates registered mounts across the observing night.
 
-Current internal tracking stages are:
+The tracking stages are:
 
 1. `Init`
 2. `Warm`
@@ -352,7 +447,7 @@ Software sequencing is not a replacement for hard limits, collision interlocks, 
 
 ## Targets and Catalog Data
 
-`AstroTargetsLib` is the global `AstroTargetsLibrary` instance.
+`astroTargetsLib` is the global `AstroTargetsLibrary` instance.
 
 Target records use checkout/return reference counting so the entire expanded catalog does not have to remain resident in SRAM. `AstroStaticTarget` resolves stored J2000 positions with precession, while `AstroDynamicTarget` represents time-dependent solar-system targets.
 
@@ -368,90 +463,13 @@ Power rails model shared software capacity; they are not electrical protection.
 
 Use real fuses, suitable conductors, current limiting, and properly rated power hardware regardless of the software rail model.
 
-## Persistence
-
-Astruino separates live objects from serializable data structures.
-
-System setup can be initialized or saved through:
-
-* EEPROM
-* SD card
-* WiFiStorage when available
-* JSON streams
-* Binary streams
-
-Attachments and registered-object data are persisted through the same identity/data approach used by the sibling controller libraries.
-
-## Hookup Callouts
-
-Many of the electronic components and systems this controller is designed to work with have specific setup procedures and wiring requirements. The below callouts are intended to help prevent device damage and ensure reliable controller operation.
-
-### General
-
-* Verify MCU and peripheral logic voltage before connection.
-* Do not power motors, heaters, relays, TECs, solenoids, or similar loads directly from MCU pins.
-* Use suitable motor drivers, relay/MOSFET interfaces, fusing, grounding, isolation, and power supplies.
-* Software axis limits and cover timeouts are secondary protections, not the only protections against mechanical damage.
-
-### Serial UART
-
-* When wiring modules that use Serial UART, connect device TX to controller RX and device RX to controller TX.
-* Always ensure that data output/input logic voltages are compatible.
-
-Serial UART devices can include Bluetooth-AT modules, ESP-AT WiFi modules, GPS modules, and application-specific motor/controller interfaces.
-
-### SPI Bus
-
-* Each SPI device normally requires its own `CS`/`SS` line while sharing the main data/clock lines.
-* SD-card, display, and other device requirements vary by module and MCU.
-* Always ensure that data output/input logic voltages are compatible.
-
-### I2C Bus
-
-* Devices sharing an I2C bus must use non-conflicting addresses.
-* Check pull-up voltage and total bus length/capacitance, especially in observatory installations with longer cable runs.
-* Long runs may require slower bus speeds, buffering, or differential interfaces.
-
-### OneWire Bus
-
-* OneWire sensors can share a data line when the selected device/library supports the required topology.
-* Verify pull-up voltage and cable length for the installation.
-* Keep high-current motor/heater wiring away from sensitive sensor lines where practical.
-
-### STEP/DIR Motors
-
-* Confirm the motor driver's STEP/DIR/ENABLE logic levels and polarity.
-* Calculate `stepsPerDegree` from motor steps, microstepping, gearing, and final axis reduction.
-* Begin with a conservative maximum step rate and verify actual motion direction before unattended tracking.
-* High-performance motion may be better delegated to a dedicated stepper controller through the callback driver.
-
-### Covers and Roofs
-
-* Use open/closed limit switches where over-travel can damage the mechanism.
-* Use independent physical interlocks when a roof or shutter could collide with the telescope.
-* Verify the park position physically before allowing automatic closure.
-
-### Weather Inputs
-
-Weather sensors can improve automated safety, but a hobby controller should not be the only protection for valuable equipment in severe weather. Validate sensor failure modes as well as normal readings.
-
-### Networking & Wireless
-
-* Networking is optional. Base controller operation works offline using an RTC and GPS or known static location.
-* WiFi or Ethernet can be enabled when remote control, MQTT, network storage, or other remote functionality is wanted.
-* MQTT requires an accessible broker configured separately from Astruino.
-
-## Memory Callouts
-
-* Registered object count, target-data source, GUI, networking, logging, and debug features all affect Flash/SRAM usage.
-* `ASTRO_DISABLE_BUILTIN_DATA` supports external target/library-data workflows when Flash is constrained.
-* Disabling unused GUI/network/debug functionality allows the compiler to strip code that is not needed.
-* Larger 32-bit MCUs are recommended when several equipment and communication subsystems are active together.
-* On architectures without normal STL support, the `ASTRO_*_MAXSIZE` values in the defines headers control several fixed-capacity containers and may need tuning for the intended build.
-
 ## Example Usage
 
 Below are several examples of controller usage.
+
+### Simple Equatorial Mount System Example
+
+The Simple Equatorial Example shows how a basic Astruino system can be setup using a two-axis equatorial mount and ordinary STEP/DIR axis drivers. In this sketch only that which you actually use is built into the final compiled binary, making it an ideal lean choice for a straightforward tracker.
 
 ```Arduino
 #include <Astruino.h>
@@ -491,14 +509,22 @@ void loop()
 }
 ```
 
-The supplied examples provide more focused demonstrations of catalog lookup, scheduler-driven sessions, camera/thermal integration, and data export.
+### Main System Examples
+
+The supplied examples focus on different parts of an astronomical tracking system. New users should start with the Simple Equatorial Example above, then use the other examples as focused references when adding more controller features.
+
+* **SimpleEquatorial** - Basic equatorial mount and axis-driver setup.
+* **NightSession** - Scheduler-driven observing session behavior.
+* **ThermalCamera** - Camera and thermal-control integration.
+* **AstroLibLookup** - Astronomical target-library lookup and coordinate resolution.
+* **DataWriter** - Target and string data export.
 
 ### Data Writer Example
 
-The Data Writer Example is intended for builds that need library/target data moved out of onboard Flash. It can be used to prepare supported external data for SD card or EEPROM storage without requiring the full tracker system to be running.
+The Data Writer Example can be used to offload exportable target and string data for external storage workflows and to help storage constrained MCUs compile system builds.
 
-If `ASTRO_DISABLE_BUILTIN_DATA` is used, make sure the corresponding external data has been generated and deployed before relying on target/library lookups.
+This Example doesn't run the Astruino controller in full. Instead, it exports the built-in target records as compact JSON along with the library strings used by the controller.
 
-## License
+Astruino can operate with the target data kept in Flash. External storage is optional and is mainly useful when program space matters or custom target data is desired.
 
-Astruino is released under the MIT License. See `LICENSE` for details.
+Note: Again, you can get logging output sent to the Serial device by defining `ASTRO_ENABLE_DEBUG_OUTPUT`, described above in Header Defines.
