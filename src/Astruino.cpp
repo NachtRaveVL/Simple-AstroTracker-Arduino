@@ -1182,7 +1182,7 @@ Pair<uint8_t, const pintype_t *> Astruino::getControlInputPins() const
             case Astro_ControlInputMode_Matrix2x2UpDownButtonsOkL:
             case Astro_ControlInputMode_ResistiveTouch:
                 return make_pair((uint8_t)4, (const pintype_t *)_ctrlInputPins);
-            #ifdef ASTRO_ENABLE_XPT2046TS
+            #ifdef ASTRO_UI_ENABLE_XPT2046TS
                 case Astro_ControlInputMode_TouchScreen:
             #endif
             case Astro_ControlInputMode_TFTTouch:
