@@ -1053,10 +1053,10 @@ void Astruino::setSystemName(String systemName)
     }
 }
 
-void Astruino::setTimeZoneOffset(int8_t hoursOffset)
+void Astruino::setTimeZoneOffset(float hoursOffset)
 {
     ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
-    if (_systemData && _systemData->timeZoneOffset != hoursOffset) {
+    if (_systemData && !isFPEqual(_systemData->timeZoneOffset, hoursOffset)) {
         _systemData->timeZoneOffset = hoursOffset;
 
         setNeedsRedraw();

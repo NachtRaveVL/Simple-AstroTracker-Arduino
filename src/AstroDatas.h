@@ -34,7 +34,7 @@ struct AstroSystemData : public AstroData {
     Astro_DisplayOutputMode dispOutMode;                    // System display output mode
     Astro_ControlInputMode ctrlInMode;                      // System control input mode 
     char systemName[ASTRO_NAME_MAXSIZE];                    // System name
-    int16_t timeZoneOffset;                                 // Timezone offset from UTC, in whole hours
+    float timeZoneOffset;                                   // Timezone offset from UTC, in fractional hours
     uint16_t pollingInterval;                               // Sensor polling interval, in milliseconds
     Astro_Autosave autosaveEnabled;                         // Autosave enabled
     Astro_Autosave autosaveFallback;                        // Autosave fallback
