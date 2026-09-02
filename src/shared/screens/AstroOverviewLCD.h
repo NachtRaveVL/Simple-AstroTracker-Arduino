@@ -1,11 +1,26 @@
-/*  Astruino: LCD overview scaffold.
+/*  Astruino: LCD Overview Screen.
     Copyright (C) 2026 NachtRaveVL
 */
+
+#include <Astruino.h>
+#ifdef ASTRO_USE_GUI
 #ifndef AstroOverviewLCD_H
 #define AstroOverviewLCD_H
+
+class AstroOverviewLCD;
+
+#include "../AstruinoUI.h"
+
 class AstroOverviewLCD : public AstroOverview {
 public:
-    explicit AstroOverviewLCD(AstroDisplayDriver *display, const void *clockFont = nullptr, const void *detailFont = nullptr) : AstroOverview(display) { (void)clockFont; (void)detailFont; }
-    virtual void renderOverview(bool isLandscape, Pair<uint16_t, uint16_t> screenSize) override { (void)isLandscape; (void)screenSize; _needsFullRedraw = false; }
+    AstroOverviewLCD(AstroDisplayLiquidCrystal *display);
+    virtual ~AstroOverviewLCD();
+
+    virtual void renderOverview(bool isLandscape, Pair<uint16_t, uint16_t> screenSize) override;
+
+protected:
+    LiquidCrystal &_lcd;
 };
+
+#endif // /ifndef AstroOverviewLCD_H
 #endif

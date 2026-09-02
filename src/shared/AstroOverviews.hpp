@@ -1,7 +1,10 @@
-/*  Astruino: overview template scaffolding.
+/*  Astruino: Overview Screens.
     Copyright (C) 2026 NachtRaveVL
 */
-#ifndef AstroOverviews_HPP
-#define AstroOverviews_HPP
-// UI stub: Domain-specific overview drawing is intentionally not implemented yet.
+
+#include "AstruinoUI.h"
+#ifdef ASTRO_USE_GUI
+
+#include "screens/AstroOverviewGFX.hpp"
+
 #endif

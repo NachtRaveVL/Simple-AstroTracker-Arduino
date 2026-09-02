@@ -1,4 +1,4 @@
-/*  Astruino: overview screen scaffolding.
+/*  Astruino: Overview screens.
     Copyright (C) 2026 NachtRaveVL
     Astruino Overview Screens
 */
@@ -16,13 +16,18 @@ class AstroOverviewTFT;
 
 #include "AstruinoUI.h"
 
-class AstroOverview
-{
+// Overview Screen Base
+// Overview screen class that manages the default at-a-glance system overview.
+// Meant to be able to be deleted on a moments notice to transition back into menu.
+class AstroOverview {
 public:
     inline AstroOverview(AstroDisplayDriver *display) : _display(display), _needsFullRedraw(true) { ; }
     virtual ~AstroOverview() = default;
+
     virtual void renderOverview(bool isLandscape, Pair<uint16_t, uint16_t> screenSize) = 0;
+
     inline void setNeedsFullRedraw() { _needsFullRedraw = true; }
+
 protected:
     AstroDisplayDriver *_display;
     bool _needsFullRedraw;
