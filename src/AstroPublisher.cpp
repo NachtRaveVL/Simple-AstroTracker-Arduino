@@ -94,25 +94,21 @@ bool AstroPublisher::beginPublishingToWiFiStorage(String dataFilePrefix)
     if (hasPublisherData() && !publisherData()->pubToWiFiStorage) {
         String dataFilename = getYYMMDDFilename(dataFilePrefix, SFP(AStr_csv));
         #if ASTRO_SYS_LEAVE_FILES_OPEN
-            auto &dataFile = _dataFileWS ? *_dataFileWS : *(_dataFileWS = new WiFiStorageFile(WiFiStorage.open(dataFilename.c_str())));
+            _dataFilename = dataFilename;
+            if (!_dataFileWS) { _dataFileWS = new WiFiStorageFile(WiFiStorage.open(_dataFilename.c_str())); }
         #else
             auto dataFile = WiFiStorage.open(dataFilename.c_str());
+            dataFile.close();
+            _dataFilename = dataFilename;
         #endif
 
-        if (dataFile) {
-            #if !ASTRO_SYS_LEAVE_FILES_OPEN
-                dataFile.close();
-            #endif
+        strncpy(publisherData()->dataFilePrefix, dataFilePrefix.c_str(), 16);
+        publisherData()->pubToWiFiStorage = true;
 
-            strncpy(publisherData()->dataFilePrefix, dataFilePrefix.c_str(), 16);
-            publisherData()->pubToWiFiStorage = true;
-            _dataFilename = dataFilename;
+        setNeedsTabulation();
+        Astruino::_activeInstance->_systemData->bumpRevisionIfNeeded();
 
-            setNeedsTabulation();
-            Astruino::_activeInstance->_systemData->bumpRevisionIfNeeded();
-
-            return true;
-        }
+        return true;
     }
 
     return false;
@@ -180,6 +176,7 @@ void AstroPublisher::notifyDateChanged()
 {
     if (isPublishingEnabled()) {
         _dataFilename = getYYMMDDFilename(charsToString(publisherData()->dataFilePrefix, 16), SFP(AStr_csv));
+        resetDataFile();
         cleanupOldestData();
     }
 }
@@ -279,7 +276,7 @@ void AstroPublisher::publish(time_t timestamp)
             auto dataFile = WiFiStorage.open(_dataFilename.c_str());
         #endif
 
-        if (dataFile) {
+        {
             auto dataFileStream = AstroWiFiStorageFileStream(dataFile, dataFile.size());
             dataFileStream.print(timestamp);
 
@@ -289,6 +286,7 @@ void AstroPublisher::publish(time_t timestamp)
             }
 
             dataFileStream.println();
+            dataFileStream.flush();
             #if !ASTRO_SYS_LEAVE_FILES_OPEN
                 dataFile.close();
             #endif
@@ -452,7 +450,7 @@ void AstroPublisher::resetDataFile()
             auto dataFile = WiFiStorage.open(_dataFilename.c_str());
         #endif
 
-        if (dataFile) {
+        {
             auto dataFileStream = AstroWiFiStorageFileStream(dataFile);
             AstroSensor *lastSensor = nullptr;
             uint8_t measurementRow = 0;
@@ -479,6 +477,10 @@ void AstroPublisher::resetDataFile()
             }
 
             dataFileStream.println();
+            dataFileStream.flush();
+            #if !ASTRO_SYS_LEAVE_FILES_OPEN
+                dataFile.close();
+            #endif
         }
     }
 
