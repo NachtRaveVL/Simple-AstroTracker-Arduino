@@ -307,12 +307,15 @@ bool Astruino::saveToSDCard(bool jsonFormat)
 {
     ASTRO_HARD_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
 
-    if (!_systemData) {
+    if (_systemData) {
         auto sd = getSDCard();
 
         if (sd) {
             bool retVal = false;
-            auto configFile = sd->open(_sysConfigFilename.c_str(), FILE_READ);
+            if (sd->exists(_sysConfigFilename.c_str())) {
+                sd->remove(_sysConfigFilename.c_str());
+            }
+            auto configFile = sd->open(_sysConfigFilename.c_str(), FILE_WRITE);
 
             if (configFile) {
                 retVal = jsonFormat ? saveToJSONStream(&configFile, false) : saveToBinaryStream(&configFile);
@@ -341,10 +344,14 @@ bool Astruino::initFromWiFiStorage(bool jsonFormat)
         auto configFile = WiFiStorage.open(_sysConfigFilename.c_str());
 
         if (configFile) {
-            auto configFileStream = AstroWiFiStorageFileStream(configFile);
-            return jsonFormat ? initFromJSONStream(&configFileStream) : initFromBinaryStream(&configFileStream);
+            bool retVal = false;
+            {
+                auto configFileStream = AstroWiFiStorageFileStream(configFile);
+                retVal = jsonFormat ? initFromJSONStream(&configFileStream) : initFromBinaryStream(&configFileStream);
+            }
 
             configFile.close();
+            return retVal;
         }
     }
 
@@ -362,11 +369,15 @@ bool Astruino::saveToWiFiStorage(bool jsonFormat)
         auto configFile = WiFiStorage.open(_sysConfigFilename.c_str());
 
         if (configFile) {
-            auto configFileStream = AstroWiFiStorageFileStream(configFile);
-            return jsonFormat ? saveToJSONStream(&configFileStream, false) : saveToBinaryStream(&configFileStream);
+            bool retVal = false;
+            {
+                auto configFileStream = AstroWiFiStorageFileStream(configFile);
+                retVal = jsonFormat ? saveToJSONStream(&configFileStream, false) : saveToBinaryStream(&configFileStream);
+                configFileStream.flush();
+            }
 
-            configFileStream.flush();
             configFile.close();
+            return retVal;
         }
     }
 
@@ -1097,8 +1108,8 @@ void Astruino::setWiFiConnection(String ssid, String pass)
 {
     ASTRO_SOFT_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
     if (_systemData) {
-        bool ssidChanged = ssid.equals(getWiFiSSID());
-        bool passChanged = pass.equals(getWiFiPassword());
+        bool ssidChanged = !ssid.equals(getWiFiSSID());
+        bool passChanged = !pass.equals(getWiFiPassword());
 
         if (ssidChanged || passChanged || (pass.length() && !_systemData->wifiPasswordSeed)) {
             if (ssid.length()) {
