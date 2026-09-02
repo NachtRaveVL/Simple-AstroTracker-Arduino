@@ -7,6 +7,11 @@
 
 AstroCalibrations::~AstroCalibrations()
 {
+    clearUserCalibrations();
+}
+
+void AstroCalibrations::clearUserCalibrations()
+{
     while (_calibrationData.size()) {
         auto iter = _calibrationData.begin();
         if (iter->second) { delete iter->second; }
