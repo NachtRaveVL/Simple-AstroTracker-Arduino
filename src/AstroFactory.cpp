@@ -8,10 +8,12 @@
 SharedPtr<AstroDigitalActuator> AstroFactory::addDewHeaterRelay(pintype_t outputPin, bool activeLow)
 {
     if (!getController()) { return nullptr; }
+    bool outputPinIsDigital = checkPinIsDigital(outputPin);
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_ActuatorType_DewHeater));
+    ASTRO_HARD_ASSERT(outputPinIsDigital, SFP(AStr_Err_InvalidPinOrType));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (outputPinIsDigital && isValidIndex(positionIndex)) {
         auto actuator = SharedPtr<AstroDigitalActuator>(new AstroDigitalActuator(
             AstroDigitalPin(outputPin, Astro_PinMode_Digital_Output, activeLow),
             Astro_ActuatorType_DewHeater, positionIndex));
@@ -24,10 +26,12 @@ SharedPtr<AstroDigitalActuator> AstroFactory::addDewHeaterRelay(pintype_t output
 SharedPtr<AstroAnalogActuator> AstroFactory::addDewHeaterPWM(pintype_t outputPin, uint8_t outputBitRes)
 {
     if (!getController()) { return nullptr; }
+    bool outputPinIsPWM = checkPinIsPWMOutput(outputPin);
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_ActuatorType_DewHeater));
+    ASTRO_HARD_ASSERT(outputPinIsPWM, SFP(AStr_Err_InvalidPinOrType));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (outputPinIsPWM && isValidIndex(positionIndex)) {
         auto actuator = SharedPtr<AstroAnalogActuator>(new AstroAnalogActuator(
             AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes),
             Astro_ActuatorType_DewHeater, positionIndex));
@@ -40,10 +44,13 @@ SharedPtr<AstroAnalogActuator> AstroFactory::addDewHeaterPWM(pintype_t outputPin
 SharedPtr<AstroRelayMotorActuator> AstroFactory::addCoverMotorRelay(pintype_t forwardPin, pintype_t reversePin, bool activeLow)
 {
     if (!getController()) { return nullptr; }
+    bool forwardPinIsDigital = checkPinIsDigital(forwardPin);
+    bool reversePinIsDigital = checkPinIsDigital(reversePin);
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_ActuatorType_Cover));
+    ASTRO_HARD_ASSERT(forwardPinIsDigital && reversePinIsDigital, SFP(AStr_Err_InvalidPinOrType));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (forwardPinIsDigital && reversePinIsDigital && isValidIndex(positionIndex)) {
         auto actuator = SharedPtr<AstroRelayMotorActuator>(new AstroRelayMotorActuator(
             AstroDigitalPin(forwardPin, Astro_PinMode_Digital_Output, activeLow),
             AstroDigitalPin(reversePin, Astro_PinMode_Digital_Output, activeLow),
@@ -57,10 +64,12 @@ SharedPtr<AstroRelayMotorActuator> AstroFactory::addCoverMotorRelay(pintype_t fo
 SharedPtr<AstroDigitalActuator> AstroFactory::addCameraShutterRelay(pintype_t outputPin, bool activeLow)
 {
     if (!getController()) { return nullptr; }
+    bool outputPinIsDigital = checkPinIsDigital(outputPin);
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_ActuatorType_CameraShutter));
+    ASTRO_HARD_ASSERT(outputPinIsDigital, SFP(AStr_Err_InvalidPinOrType));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (outputPinIsDigital && isValidIndex(positionIndex)) {
         auto actuator = SharedPtr<AstroDigitalActuator>(new AstroDigitalActuator(
             AstroDigitalPin(outputPin, Astro_PinMode_Digital_Output, activeLow),
             Astro_ActuatorType_CameraShutter, positionIndex));
@@ -73,10 +82,12 @@ SharedPtr<AstroDigitalActuator> AstroFactory::addCameraShutterRelay(pintype_t ou
 SharedPtr<AstroAnalogActuator> AstroFactory::addCameraCoolerPWM(pintype_t outputPin, uint8_t outputBitRes)
 {
     if (!getController()) { return nullptr; }
+    bool outputPinIsPWM = checkPinIsPWMOutput(outputPin);
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_ActuatorType_CameraCooler));
+    ASTRO_HARD_ASSERT(outputPinIsPWM, SFP(AStr_Err_InvalidPinOrType));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (outputPinIsPWM && isValidIndex(positionIndex)) {
         auto actuator = SharedPtr<AstroAnalogActuator>(new AstroAnalogActuator(
             AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes),
             Astro_ActuatorType_CameraCooler, positionIndex));
@@ -89,10 +100,12 @@ SharedPtr<AstroAnalogActuator> AstroFactory::addCameraCoolerPWM(pintype_t output
 SharedPtr<AstroAnalogActuator> AstroFactory::addFanPWM(pintype_t outputPin, uint8_t outputBitRes)
 {
     if (!getController()) { return nullptr; }
+    bool outputPinIsPWM = checkPinIsPWMOutput(outputPin);
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_ActuatorType_Fan));
+    ASTRO_HARD_ASSERT(outputPinIsPWM, SFP(AStr_Err_InvalidPinOrType));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (outputPinIsPWM && isValidIndex(positionIndex)) {
         auto actuator = SharedPtr<AstroAnalogActuator>(new AstroAnalogActuator(
             AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes),
             Astro_ActuatorType_Fan, positionIndex));
@@ -106,9 +119,10 @@ SharedPtr<AstroFocuser> AstroFactory::addFocuser(int32_t maximumPosition)
 {
     if (!getController()) { return nullptr; }
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_ActuatorType_Focuser));
+    ASTRO_SOFT_ASSERT(maximumPosition > 0, SFP(AStr_Err_InvalidParameter));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (maximumPosition > 0 && isValidIndex(positionIndex)) {
         auto focuser = SharedPtr<AstroFocuser>(new AstroFocuser(maximumPosition, positionIndex));
         if (getController()->registerObject(focuser)) { return focuser; }
     }
@@ -119,10 +133,12 @@ SharedPtr<AstroFocuser> AstroFactory::addFocuser(int32_t maximumPosition)
 SharedPtr<AstroBinarySensor> AstroFactory::addLimitSwitch(pintype_t inputPin, bool activeLow)
 {
     if (!getController()) { return nullptr; }
+    bool inputPinIsDigital = checkPinIsDigital(inputPin);
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_SensorType_LimitSwitch));
+    ASTRO_HARD_ASSERT(inputPinIsDigital, SFP(AStr_Err_InvalidPinOrType));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (inputPinIsDigital && isValidIndex(positionIndex)) {
         auto sensor = SharedPtr<AstroBinarySensor>(new AstroBinarySensor(
             AstroDigitalPin(inputPin, Astro_PinMode_Digital_Input_PullUp, activeLow),
             Astro_SensorType_LimitSwitch, positionIndex));
@@ -135,10 +151,12 @@ SharedPtr<AstroBinarySensor> AstroFactory::addLimitSwitch(pintype_t inputPin, bo
 SharedPtr<AstroBinarySensor> AstroFactory::addRainIndicator(pintype_t inputPin, bool activeLow)
 {
     if (!getController()) { return nullptr; }
+    bool inputPinIsDigital = checkPinIsDigital(inputPin);
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_SensorType_Rain));
+    ASTRO_HARD_ASSERT(inputPinIsDigital, SFP(AStr_Err_InvalidPinOrType));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (inputPinIsDigital && isValidIndex(positionIndex)) {
         auto sensor = SharedPtr<AstroBinarySensor>(new AstroBinarySensor(
             AstroDigitalPin(inputPin, Astro_PinMode_Digital_Input_PullUp, activeLow),
             Astro_SensorType_Rain, positionIndex));
@@ -151,10 +169,12 @@ SharedPtr<AstroBinarySensor> AstroFactory::addRainIndicator(pintype_t inputPin, 
 SharedPtr<AstroAnalogSensor> AstroFactory::addLightSensor(pintype_t inputPin, uint8_t inputBitRes)
 {
     if (!getController()) { return nullptr; }
+    bool inputPinIsAnalog = checkPinIsAnalogInput(inputPin);
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_SensorType_Light));
+    ASTRO_HARD_ASSERT(inputPinIsAnalog, SFP(AStr_Err_InvalidPinOrType));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (inputPinIsAnalog && isValidIndex(positionIndex)) {
         auto sensor = SharedPtr<AstroAnalogSensor>(new AstroAnalogSensor(
             AstroAnalogPin(inputPin, Astro_PinMode_Analog_Input, inputBitRes),
             Astro_SensorType_Light, Astro_UnitsType_Raw_1, positionIndex));
@@ -167,10 +187,12 @@ SharedPtr<AstroAnalogSensor> AstroFactory::addLightSensor(pintype_t inputPin, ui
 SharedPtr<AstroAnalogSensor> AstroFactory::addTemperatureSensor(pintype_t inputPin, uint8_t inputBitRes)
 {
     if (!getController()) { return nullptr; }
+    bool inputPinIsAnalog = checkPinIsAnalogInput(inputPin);
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_SensorType_Temperature));
+    ASTRO_HARD_ASSERT(inputPinIsAnalog, SFP(AStr_Err_InvalidPinOrType));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (inputPinIsAnalog && isValidIndex(positionIndex)) {
         auto sensor = SharedPtr<AstroAnalogSensor>(new AstroAnalogSensor(
             AstroAnalogPin(inputPin, Astro_PinMode_Analog_Input, inputBitRes),
             Astro_SensorType_Temperature, Astro_UnitsType_Raw_1, positionIndex));
@@ -183,10 +205,12 @@ SharedPtr<AstroAnalogSensor> AstroFactory::addTemperatureSensor(pintype_t inputP
 SharedPtr<AstroAnalogSensor> AstroFactory::addPositionSensor(pintype_t inputPin, uint8_t inputBitRes)
 {
     if (!getController()) { return nullptr; }
+    bool inputPinIsAnalog = checkPinIsAnalogInput(inputPin);
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(Astro_SensorType_Position));
+    ASTRO_HARD_ASSERT(inputPinIsAnalog, SFP(AStr_Err_InvalidPinOrType));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if (inputPinIsAnalog && isValidIndex(positionIndex)) {
         auto sensor = SharedPtr<AstroAnalogSensor>(new AstroAnalogSensor(
             AstroAnalogPin(inputPin, Astro_PinMode_Analog_Input, inputBitRes),
             Astro_SensorType_Position, Astro_UnitsType_Raw_1, positionIndex));
@@ -220,9 +244,10 @@ SharedPtr<AstroMount> AstroFactory::addMount(Astro_MountType mountType)
 {
     if (!getController()) { return nullptr; }
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(mountType));
+    ASTRO_SOFT_ASSERT((int)mountType >= 0 && mountType < Astro_MountType_Count, SFP(AStr_Err_InvalidParameter));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if ((int)mountType >= 0 && mountType < Astro_MountType_Count && isValidIndex(positionIndex)) {
         auto mount = SharedPtr<AstroMount>(new AstroMount(mountType, positionIndex));
         if (getController()->registerObject(mount)) { return mount; }
     }
@@ -234,9 +259,11 @@ SharedPtr<AstroSimpleRail> AstroFactory::addSimplePowerRail(Astro_RailType railT
 {
     if (!getController()) { return nullptr; }
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(railType));
+    ASTRO_SOFT_ASSERT((int)railType >= 0 && railType < Astro_RailType_Count, SFP(AStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(maxActiveAtOnce > 0, SFP(AStr_Err_InvalidParameter));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if ((int)railType >= 0 && railType < Astro_RailType_Count && maxActiveAtOnce > 0 && isValidIndex(positionIndex)) {
         auto rail = SharedPtr<AstroSimpleRail>(new AstroSimpleRail(railType, positionIndex, maxActiveAtOnce));
         if (getController()->registerObject(rail)) { return rail; }
     }
@@ -248,9 +275,11 @@ SharedPtr<AstroRegulatedRail> AstroFactory::addRegulatedPowerRail(Astro_RailType
 {
     if (!getController()) { return nullptr; }
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(railType));
+    ASTRO_SOFT_ASSERT((int)railType >= 0 && railType < Astro_RailType_Count, SFP(AStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(maxPower > FLT_EPSILON, SFP(AStr_Err_InvalidParameter));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if (isValidIndex(positionIndex)) {
+    if ((int)railType >= 0 && railType < Astro_RailType_Count && maxPower > FLT_EPSILON && isValidIndex(positionIndex)) {
         auto rail = SharedPtr<AstroRegulatedRail>(new AstroRegulatedRail(railType, positionIndex, maxPower));
         if (getController()->registerObject(rail)) { return rail; }
     }
@@ -267,8 +296,11 @@ SharedPtr<AstroCallbackAxisDriver> AstroFactory::addCallbackAxisDriver(AstroCall
 
 SharedPtr<AstroServoAxisDriver> AstroFactory::addMountAxisServo(pintype_t outputPin, double minDegrees, double maxDegrees, uint8_t outputBitRes)
 {
-    return SharedPtr<AstroServoAxisDriver>(new AstroServoAxisDriver(
-        AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes), minDegrees, maxDegrees));
+    bool outputPinIsPWM = checkPinIsPWMOutput(outputPin);
+    ASTRO_HARD_ASSERT(outputPinIsPWM, SFP(AStr_Err_InvalidPinOrType));
+
+    return outputPinIsPWM ? SharedPtr<AstroServoAxisDriver>(new AstroServoAxisDriver(
+        AstroAnalogPin(outputPin, Astro_PinMode_Analog_Output, outputBitRes), minDegrees, maxDegrees)) : nullptr;
 }
 
 SharedPtr<AstroStepDirAxisDriver> AstroFactory::addMountAxisStepper(pintype_t stepPin, pintype_t directionPin,
@@ -276,11 +308,16 @@ SharedPtr<AstroStepDirAxisDriver> AstroFactory::addMountAxisStepper(pintype_t st
                                                                     double maxStepsPerSecond, bool reverseDirection,
                                                                     bool enableActiveLow)
 {
-    return SharedPtr<AstroStepDirAxisDriver>(new AstroStepDirAxisDriver(
+    bool stepPinIsDigital = checkPinIsDigital(stepPin);
+    bool directionPinIsDigital = checkPinIsDigital(directionPin);
+    bool enablePinIsDigital = !isValidPin(enablePin) || checkPinIsDigital(enablePin);
+    ASTRO_HARD_ASSERT(stepPinIsDigital && directionPinIsDigital && enablePinIsDigital, SFP(AStr_Err_InvalidPinOrType));
+
+    return stepPinIsDigital && directionPinIsDigital && enablePinIsDigital ? SharedPtr<AstroStepDirAxisDriver>(new AstroStepDirAxisDriver(
         AstroDigitalPin(stepPin, Astro_PinMode_Digital_Output, false),
         AstroDigitalPin(directionPin, Astro_PinMode_Digital_Output, reverseDirection),
         AstroDigitalPin(enablePin, Astro_PinMode_Digital_Output, enableActiveLow),
-        stepsPerDegree, maxStepsPerSecond));
+        stepsPerDegree, maxStepsPerSecond)) : nullptr;
 }
 
 SharedPtr<AstroMeasurementValueTrigger> AstroFactory::addThresholdTrigger(SharedPtr<AstroSensor> sensor, double threshold,

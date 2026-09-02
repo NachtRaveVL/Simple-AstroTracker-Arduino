@@ -32,7 +32,7 @@ int main()
     Astruino controller;
     controller.init();
 
-    auto limitSwitch = controller.addLimitSwitch(14, true);
+    auto limitSwitch = controller.addLimitSwitch(4, true);
     check(limitSwitch != nullptr, "factory creates binary limit switch");
     check(limitSwitch->isBinaryClass() && !limitSwitch->isDigitalClass(),
           "limit switch uses binary sensor class instead of digital protocol class");
@@ -104,7 +104,7 @@ int main()
     check(positionDegrees > 0.0 && positionDegrees <= 1.0, "stepper advances toward target");
     check(digitalRead(6) == HIGH, "stepper forward target selects forward direction");
 
-    auto controllerTemperature = controller.addTemperatureSensor(13, 10);
+    auto controllerTemperature = controller.addTemperatureSensor(A0, 10);
     check(controllerTemperature != nullptr, "factory creates controller temperature sensor");
     AstroCalibrationData controllerCalibration(controllerTemperature->getId(), Astro_UnitsType_Temperature_Celsius);
     controllerCalibration.setFromTwoPoints(0.0, -20.0, 1.0, 80.0);

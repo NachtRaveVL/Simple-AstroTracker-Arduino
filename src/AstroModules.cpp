@@ -54,6 +54,8 @@ bool AstroCalibrations::setUserCalibrationData(const AstroCalibrationData *calib
 bool AstroCalibrations::dropUserCalibrationData(const AstroCalibrationData *calibrationData)
 {
     ASTRO_HARD_ASSERT(calibrationData, SFP(AStr_Err_InvalidParameter));
+    if (!calibrationData) { return false; }
+
     akey_t key = stringHash(calibrationData->ownerName);
     auto iter = _calibrationData.find(key);
 
@@ -70,7 +72,7 @@ bool AstroCalibrations::dropUserCalibrationData(const AstroCalibrationData *cali
 
 bool AstroObjectRegistration::registerObject(SharedPtr<AstroObject> obj)
 {
-    ASTRO_SOFT_ASSERT(obj->getId().posIndex >= 0 && obj->getId().posIndex < ASTRO_POS_MAXSIZE, SFP(AStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(obj && obj->getId().posIndex >= 0 && obj->getId().posIndex < ASTRO_POS_MAXSIZE, SFP(AStr_Err_InvalidParameter));
     if (obj && _objects.find(obj->getKey()) == _objects.end()) {
         _objects[obj->getKey()] = obj;
 
@@ -92,6 +94,9 @@ bool AstroObjectRegistration::registerObject(SharedPtr<AstroObject> obj)
 
 bool AstroObjectRegistration::unregisterObject(SharedPtr<AstroObject> obj)
 {
+    ASTRO_SOFT_ASSERT(obj, SFP(AStr_Err_InvalidParameter));
+    if (!obj) { return false; }
+
     auto iter = _objects.find(obj->getKey());
     if (iter != _objects.end()) {
         _objects.erase(iter);

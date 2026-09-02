@@ -79,6 +79,10 @@ int main()
     Astruino controller;
     controller.init(Astro_SystemMode_Tracking, Astro_MeasurementMode_Metric);
 
+    SharedPtr<AstroObject> nullObject;
+    CHECK(!controller.registerObject(nullObject));
+    CHECK(!controller.unregisterObject(nullObject));
+
     SharedPtr<AstroActuator> actuator(new AstroActuator(Astro_ActuatorType_Cover, 0));
     AstroActivationHandle forward(actuator, Astro_DirectionMode_Forward, 0.4f);
     AstroActivationHandle reverse(actuator, Astro_DirectionMode_Reverse, 0.8f);
@@ -89,7 +93,7 @@ int main()
     actuator->update();
     CHECK(nearly(actuator->getDriveIntensity(), -0.8));
 
-    auto controllerTemperature = controller.addTemperatureSensor(13, 10);
+    auto controllerTemperature = controller.addTemperatureSensor(A0, 10);
     CHECK(controllerTemperature != nullptr);
     AstroCalibrationData calibration(controllerTemperature->getId(), Astro_UnitsType_Temperature_Celsius);
     calibration.setFromTwoPoints(0.0, -20.0, 1.0, 80.0);
@@ -97,7 +101,6 @@ int main()
     CHECK(controllerTemperature->getUserCalibrationData() != nullptr);
     CHECK(controllerTemperature->getUserCalibrationData() != &calibration);
     CHECK(controller.getUserCalibrationData(controllerTemperature->getKey()) == controllerTemperature->getUserCalibrationData());
-
     std::cout << "Infrastructure tests passed\n";
     return 0;
 }
