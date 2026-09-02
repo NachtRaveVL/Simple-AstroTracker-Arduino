@@ -130,17 +130,18 @@ void AstroActuator::update()
     // Update running handles and elapse them as needed, determine forced status, and remove invalid/finished handles
     bool forced = false;
     if (_handles.size()) {
-        for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+        for (auto handleIter = _handles.begin(); handleIter != _handles.end();) {
             if (_enabled && (*handleIter)->isActive()) {
                 (*handleIter)->elapseTo(time);
             }
             if ((*handleIter)->actuator.get() != this || !(*handleIter)->isValid() || (*handleIter)->isDone()) {
                 if ((*handleIter)->actuator.get() == this) { (*handleIter)->actuator = nullptr; }
-                handleIter = _handles.erase(handleIter) - 1;
+                handleIter = _handles.erase(handleIter);
                 setNeedsUpdate();
                 continue;
             }
             forced = forced || (*handleIter)->isForced();
+            ++handleIter;
         }
     }
 
@@ -206,7 +207,8 @@ void AstroActuator::update()
             } break;
 
             case Astro_EnableMode_RevOrder: {
-                for (auto handleIter = _handles.end() - 1; handleIter != _handles.begin() - 1; --handleIter) {
+                for (auto handleIter = _handles.end(); handleIter != _handles.begin();) {
+                    --handleIter;
                     if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
                         drivingIntensity += (*handleIter)->getDriveIntensity();
                         break;
@@ -235,7 +237,8 @@ void AstroActuator::update()
             case Astro_EnableMode_RevOrder:
             case Astro_EnableMode_AscOrder: {
                 bool selected = false;
-                for (auto handleIter = _handles.end() - 1; handleIter != _handles.begin() - 1; --handleIter) {
+                for (auto handleIter = _handles.end(); handleIter != _handles.begin();) {
+                    --handleIter;
                     if (!selected && (*handleIter)->isValid() && !(*handleIter)->isDone() && isFPEqual((*handleIter)->getDriveIntensity(), drivingIntensity)) {
                         selected = true; (*handleIter)->checkTime = time;
                     } else if ((*handleIter)->checkTime != 0) {
