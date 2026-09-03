@@ -77,8 +77,8 @@ int main()
     check(logState.count == 1 && logState.lastLevel == Astro_LogLevel_Errors,
           "logger signal respects configured filtering");
 
-    auto sensor1 = controller.addTemperatureSensor(13, 10);
-    auto sensor2 = controller.addTemperatureSensor(14, 10);
+    auto sensor1 = controller.addTemperatureSensor(A0, 10);
+    auto sensor2 = controller.addTemperatureSensor(A1, 10);
     check(sensor1 && sensor2, "factory creates publisher sensors");
     controller.publisher.update();
     aposi_t column1 = controller.publisher.getColumnIndexStart(sensor1->getKey());

@@ -32,13 +32,13 @@ AstroActuator *newActuatorObjectFromData(const AstroActuatorData *dataIn)
 }
 
 AstroActuator::AstroActuator(Astro_ActuatorType actuatorType, aposi_t positionIndex, int classTypeIn)
-    : AstroObject(AstroIdentity(actuatorType, positionIndex)), classType((typeof(classType))classTypeIn),
+    : AstroObject(AstroIdentity(actuatorType, positionIndex)), classType(static_cast<decltype(Base)>(classTypeIn)),
       _enabled(false), _actuatorType(actuatorType), _enableMode(Astro_EnableMode_Highest), _power(0.0f), _needsUpdate(false),
       _contPowerUsage(), _parentRail(this), _parentMount(this)
 { ; }
 
 AstroActuator::AstroActuator(const AstroActuatorData *dataIn)
-    : AstroObject(dataIn), classType(dataIn ? (typeof(classType))dataIn->id.object.classType : Unknown),
+    : AstroObject(dataIn), classType(dataIn ? static_cast<decltype(Base)>(dataIn->id.object.classType) : Unknown),
       _enabled(false), _actuatorType(dataIn ? (Astro_ActuatorType)dataIn->id.object.objType : Astro_ActuatorType_Undefined),
       _enableMode(dataIn ? dataIn->enableMode : Astro_EnableMode_Highest), _power(0.0f), _needsUpdate(false),
       _contPowerUsage(), _parentRail(this), _parentMount(this)

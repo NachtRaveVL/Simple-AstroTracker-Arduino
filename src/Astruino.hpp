@@ -118,7 +118,7 @@ inline void Astruino::notifySignificantTime(time_t time)
     _lastAutosave = isAutosaveEnabled() ? time : 0;
 }
 
-inline void Astruino::notifySignificantLocation(Location loc)
+inline void Astruino::notifySignificantLocation(Location)
 {
     if (_systemData) { _systemData->bumpRevisionIfNeeded(); }
 }

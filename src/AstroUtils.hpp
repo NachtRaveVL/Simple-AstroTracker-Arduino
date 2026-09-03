@@ -125,7 +125,7 @@ template<typename T>
 String commaStringFromArray(const T *arrayIn, size_t length)
 {
     if (!arrayIn || !length) { return String(SFP(AStr_null)); }
-    String retVal; retVal.reserve(length << 1 + length >> 1 + 1);
+    String retVal; retVal.reserve((length << 1) + (length >> 1) + 1);
     for (size_t index = 0; index < length; ++index) {
         if (retVal.length()) { retVal.concat(','); }
         retVal += String(arrayIn[index]);
@@ -142,7 +142,7 @@ void commaStringToArray(String stringIn, T *arrayOut, size_t length)
         int nextSepPos = stringIn.indexOf(',', lastSepPos+1);
         if (nextSepPos == -1) { nextSepPos = stringIn.length(); }
         String subString = stringIn.substring(lastSepPos+1, nextSepPos);
-        if (nextSepPos < stringIn.length()) { lastSepPos = nextSepPos; }
+        if (nextSepPos < static_cast<int>(stringIn.length())) { lastSepPos = nextSepPos; }
 
         arrayOut[index] = static_cast<T>(subString.toInt());
     }

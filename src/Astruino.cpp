@@ -57,26 +57,46 @@ Astruino::Astruino(pintype_t piezoBuzzerPin,
                    DeviceSetup gpsSetup,
                    pintype_t *ctrlInputPins,
                    DeviceSetup displaySetup)
-    : _piezoBuzzerPin(piezoBuzzerPin),
-      _eepromType(eepromType), _eepromSetup(eepromSetup), _eeprom(nullptr), _eepromBegan(false),
-      _rtcType(rtcType), _rtcSetup(rtcSetup), _rtc(nullptr), _rtcBegan(false), _rtcBattFail(false),
-      _sdSetup(sdSetup), _sd(nullptr), _sdBegan(false), _sdOut(0),
+    :
+#ifdef ASTRO_USE_GUI
+      _activeUIInstance(nullptr), _uiData(nullptr),
+#endif
+      _systemData(nullptr),
+      _piezoBuzzerPin(piezoBuzzerPin),
+      _eepromType(eepromType), _eepromSetup(eepromSetup),
+      _rtcType(rtcType), _rtcSetup(rtcSetup),
+      _sdSetup(sdSetup),
 #ifdef ASTRO_USE_NET
-      _netSetup(netSetup), _netBegan(false),
+      _netSetup(netSetup),
 #endif
 #ifdef ASTRO_USE_GPS
-      _gpsSetup(gpsSetup), _gps(nullptr), _gpsBegan(false),
+      _gpsSetup(gpsSetup),
 #endif
 #ifdef ASTRO_USE_GUI
-      _activeUIInstance(nullptr), _uiData(nullptr), _ctrlInputPins(ctrlInputPins), _displaySetup(displaySetup),
+      _ctrlInputPins(ctrlInputPins), _displaySetup(displaySetup),
+#endif
+      _eeprom(nullptr), _rtc(nullptr), _sd(nullptr), _sdOut(0),
+#ifdef ASTRO_USE_GPS
+      _gps(nullptr),
+#endif
+      _eepromBegan(false), _rtcBegan(false), _rtcBattFail(false), _sdBegan(false),
+#ifdef ASTRO_USE_NET
+      _netBegan(false),
+#endif
+#ifdef ASTRO_USE_GPS
+      _gpsBegan(false),
 #endif
 #ifdef ASTRO_USE_MULTITASKING
       _controlTaskId(TASKMGR_INVALIDID), _dataTaskId(TASKMGR_INVALIDID), _miscTaskId(TASKMGR_INVALIDID),
 #endif
-      _systemData(nullptr), _suspend(true), _pollingFrame(0), _lastSpaceCheck(0), _lastAutosave(0),
-      _sysConfigFilename(SFP(AStr_Default_ConfigFilename)), _sysDataAddress(-1)
+      _suspend(true), _pollingFrame(0), _lastSpaceCheck(0), _lastAutosave(0),
+      _sysConfigFilename(SFP(AStr_Default_ConfigFilename)), _sysDataAddress((uint16_t)-1)
 {
     _activeInstance = this;
+    (void)netSetup;
+    (void)gpsSetup;
+    (void)ctrlInputPins;
+    (void)displaySetup;
 }
 
 Astruino::~Astruino()
@@ -216,6 +236,8 @@ void Astruino::init(Astro_SystemMode systemMode,
                     Astro_DisplayOutputMode dispOutMode,
                     Astro_ControlInputMode ctrlInMode)
 {
+    (void)dispOutMode;
+    (void)ctrlInMode;
     ASTRO_HARD_ASSERT(!_systemData, SFP(AStr_Err_AlreadyInitialized));
 
     if (!_systemData) {
@@ -254,7 +276,7 @@ bool Astruino::initFromEEPROM(bool jsonFormat)
     if (!_systemData) {
         commonPreInit();
 
-        if (getEEPROM() && _eepromBegan && _sysDataAddress != -1) {
+        if (getEEPROM() && _eepromBegan && _sysDataAddress != (uint16_t)-1) {
             AstroEEPROMStream eepromStream(_sysDataAddress, getEEPROMSize() - _sysDataAddress);
             return jsonFormat ? initFromJSONStream(&eepromStream) : initFromBinaryStream(&eepromStream);
         }
@@ -268,7 +290,7 @@ bool Astruino::saveToEEPROM(bool jsonFormat)
     ASTRO_HARD_ASSERT(_systemData, SFP(AStr_Err_NotYetInitialized));
 
     if (_systemData) {
-        if (getEEPROM() && _eepromBegan && _sysDataAddress != -1) {
+        if (getEEPROM() && _eepromBegan && _sysDataAddress != (uint16_t)-1) {
             AstroEEPROMStream eepromStream(_sysDataAddress, getEEPROMSize() - _sysDataAddress);
             return jsonFormat ? saveToJSONStream(&eepromStream) : saveToBinaryStream(&eepromStream);
         }
@@ -1267,6 +1289,7 @@ SDClass *Astruino::getSDCard(bool begin)
 
 void Astruino::endSDCard(SDClass *sd)
 {
+    (void)sd;
     #if defined(CORE_TEENSY)
         --_sdOut; // no delayed write on teensy's SD impl
     #else
@@ -1455,7 +1478,7 @@ Location Astruino::getSystemLocation() const
 void Astruino::checkFreeMemory()
 {
     auto memLeft = freeMemory();
-    if (memLeft != -1 && memLeft < ASTRO_SYS_FREERAM_LOWBYTES) {
+    if (memLeft != (unsigned int)-1 && memLeft < ASTRO_SYS_FREERAM_LOWBYTES) {
         broadcastLowMemory();
     }
 }
@@ -1476,7 +1499,7 @@ static uint64_t getSDCardFreeSpace()
 void Astruino::checkFreeSpace()
 {
     if ((logger.isLoggingEnabled() || publisher.isPublishingEnabled()) &&
-        (!_lastSpaceCheck || unixNow() >= _lastSpaceCheck + (ASTRO_SYS_FREESPACE_INTERVAL * SECS_PER_MIN))) {
+        (!_lastSpaceCheck || unixNow() >= _lastSpaceCheck + (time_t)(ASTRO_SYS_FREESPACE_INTERVAL * SECS_PER_MIN))) {
         if (logger.isLoggingToSDCard() || publisher.isPublishingToSDCard()) {
             uint32_t freeKB = getSDCardFreeSpace();
             while (freeKB < ASTRO_SYS_FREESPACE_LOWSPACE) {
@@ -1492,7 +1515,7 @@ void Astruino::checkFreeSpace()
 
 void Astruino::checkAutosave()
 {
-    if (isAutosaveEnabled() && unixNow() >= _lastAutosave + (_systemData->autosaveInterval * SECS_PER_MIN)) {
+    if (isAutosaveEnabled() && unixNow() >= _lastAutosave + (time_t)(_systemData->autosaveInterval * SECS_PER_MIN)) {
         performAutosave();
     }
 }

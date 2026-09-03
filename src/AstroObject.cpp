@@ -101,7 +101,7 @@ void AstroObject::allocateLinkages(size_t size)
         if (size) {
             ASTRO_HARD_ASSERT(newLinks, SFP(AStr_Err_AllocationFailure));
 
-            aposi_t linksIndex = 0;
+            size_t linksIndex = 0;
             if (_links) {
                 for (; linksIndex < _linksSize && linksIndex < size; ++linksIndex) {
                     newLinks[linksIndex] = _links[linksIndex];
@@ -236,7 +236,7 @@ void AstroObject::saveToData(AstroData *dataOut)
 
 
 void AstroSubObject::unresolveAny(AstroObject *obj)
-{ ; }
+{ (void)obj; }
 
 AstroIdentity AstroSubObject::getId() const
 {

@@ -26,14 +26,14 @@ AstroTarget *newTargetObjectFromData(const AstroTargetData *dataIn)
 
 
 AstroTarget::AstroTarget(Astro_TargetType targetType, aposi_t targetIndex, int classTypeIn)
-    : AstroObject(AstroIdentity(targetType, targetIndex)), classType((typeof(classType))classTypeIn),
+    : AstroObject(AstroIdentity(targetType, targetIndex)), classType(static_cast<decltype(Static)>(classTypeIn)),
       _targetsData(nullptr)
 {
     allocateLinkages(ASTRO_TARGETS_LINKS_BASESIZE);
 }
 
 AstroTarget::AstroTarget(const AstroTargetData *dataIn)
-    : AstroObject(dataIn), classType((typeof(classType))(dataIn->id.object.classType)),
+    : AstroObject(dataIn), classType(static_cast<decltype(Static)>(dataIn->id.object.classType)),
       _targetsData(nullptr)
 {
     allocateLinkages(ASTRO_TARGETS_LINKS_BASESIZE);

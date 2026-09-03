@@ -148,12 +148,15 @@ void AstroPROGMEMStream::flush()
 
 size_t AstroPROGMEMStream::write(const uint8_t *buffer, size_t size)
 {
+    (void)buffer;
+    (void)size;
     ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_OperationFailure));
     return 0;
 }
 
 size_t AstroPROGMEMStream::write(uint8_t data)
 {
+    (void)data;
     ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_OperationFailure));
     return 0;
 }

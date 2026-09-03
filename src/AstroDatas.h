@@ -81,7 +81,7 @@ struct AstroCalibrationData : public AstroData {
     inline void transform(float *valueInOut, Astro_UnitsType *unitsOut = nullptr) const { *valueInOut = transform(*valueInOut);
                                                                                           if (unitsOut) { *unitsOut = calibrationUnits; } }
     // Transforms measurement from raw (or initial) measurement into calibrated (or transformed) measurement.
-    inline AstroSingleMeasurement transform(AstroSingleMeasurement measurement) { return AstroSingleMeasurement(transform(measurement.value), calibrationUnits, measurement.timestamp, measurement.frame); }
+    inline AstroSingleMeasurement transform(AstroSingleMeasurement measurement) const { return AstroSingleMeasurement(transform(measurement.value), calibrationUnits, measurement.timestamp, measurement.frame); }
     // Transforms measurement in-place from raw (or initial) measurement into calibrated (or transformed) measurement.
     inline void transform(AstroSingleMeasurement *measurementInOut) const { transform(&measurementInOut->value, &measurementInOut->units); }
 
@@ -91,7 +91,7 @@ struct AstroCalibrationData : public AstroData {
     inline void inverseTransform(float *valueInOut, Astro_UnitsType *unitsOut = nullptr) const { *valueInOut = inverseTransform(*valueInOut);
                                                                                                  if (unitsOut) { *unitsOut = Astro_UnitsType_Raw_1; } }
     // Inverse transforms measurement from calibrated (or transformed) measurement back into raw (or initial) measurement.
-    inline AstroSingleMeasurement inverseTransform(AstroSingleMeasurement measurement) { return AstroSingleMeasurement(inverseTransform(measurement.value), Astro_UnitsType_Raw_1, measurement.timestamp, measurement.frame); }
+    inline AstroSingleMeasurement inverseTransform(AstroSingleMeasurement measurement) const { return AstroSingleMeasurement(inverseTransform(measurement.value), Astro_UnitsType_Raw_1, measurement.timestamp, measurement.frame); }
     // Inverse transforms measurement in-place from calibrated (or transformed) measurement back into raw (or initial) measurement.
     inline void inverseTransform(AstroSingleMeasurement *measurementInOut) const { inverseTransform(&measurementInOut->value, &measurementInOut->units); }
 

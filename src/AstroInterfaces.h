@@ -113,6 +113,7 @@ public:
 // RTC Module Interface
 class AstroRTCInterface {
 public:
+    virtual ~AstroRTCInterface() { ; }
     virtual bool begin(TwoWire *wireInstance) = 0;
     virtual void adjust(const DateTime &dt) = 0;
     virtual bool lostPower(void) = 0;

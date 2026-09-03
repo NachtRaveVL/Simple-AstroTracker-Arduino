@@ -287,6 +287,8 @@ inline bool convertUnits(const AstroSingleMeasurement *measureIn, AstroSingleMea
 
 // For wrapping of values to positive-only moduli range [0, +range), e.g. [0,360) [0,2pi) etc, used in horizontal coordinates and as default wrap mode
 template<typename T> inline T wrapBy(T value, T range) { value = value % range; return value >= 0 ? value : value + range; }
+template<> inline float wrapBy(float value, float range);
+template<> inline double wrapBy(double value, double range);
 // For wrapping of values to positive-and-negative-split moduli range [-range/2,+range/2), e.g. [-180,180) [-pi,pi] etc, used in vertical coordinates
 template<typename T> inline T wrapBySplit(T value, T range) { return wrapBy<T>(value + (range / 2), range) - (range / 2); }
 // For wrapping of degree angle values to [0,360)

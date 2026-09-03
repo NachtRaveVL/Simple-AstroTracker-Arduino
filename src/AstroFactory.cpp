@@ -224,10 +224,10 @@ SharedPtr<AstroTarget> AstroFactory::addTarget(Astro_TargetType targetType)
 {
     if (!getController()) { return nullptr; }
     aposi_t positionIndex = getController()->firstPositionOpen(AstroIdentity(targetType));
-    ASTRO_SOFT_ASSERT((int)targetType >= 0 && targetType < Astro_TargetType_Count, SFP(AStr_Err_InvalidParameter));
+    ASTRO_SOFT_ASSERT(targetType < Astro_TargetType_Count, SFP(AStr_Err_InvalidParameter));
     ASTRO_SOFT_ASSERT(isValidIndex(positionIndex), SFP(AStr_Err_NoPositionsAvailable));
 
-    if ((int)targetType >= 0 && targetType < Astro_TargetType_Count && isValidIndex(positionIndex)) {
+    if (targetType < Astro_TargetType_Count && isValidIndex(positionIndex)) {
         SharedPtr<AstroTarget> target;
         if (targetType <= Astro_TargetType_Neptune) {
             target = SharedPtr<AstroTarget>(new AstroDynamicTarget(targetType, positionIndex));

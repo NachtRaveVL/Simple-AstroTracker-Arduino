@@ -65,13 +65,13 @@ public:
     // Transformation methods that convert from normalized reading intensity/driver value to calibration units.
     inline float calibrationTransform(float value) const { return _calibrationData ? _calibrationData->transform(value) : value; }
     inline void calibrationTransform(float *valueInOut, Astro_UnitsType *unitsOut = nullptr) const { if (valueInOut && _calibrationData) { _calibrationData->transform(valueInOut, unitsOut); } }
-    inline AstroSingleMeasurement calibrationTransform(AstroSingleMeasurement measurement) { return _calibrationData ? AstroSingleMeasurement(_calibrationData->transform(measurement.value), _calibrationData->calibrationUnits, measurement.timestamp, measurement.frame) : measurement; }
+    inline AstroSingleMeasurement calibrationTransform(AstroSingleMeasurement measurement) const { return _calibrationData ? AstroSingleMeasurement(_calibrationData->transform(measurement.value), _calibrationData->calibrationUnits, measurement.timestamp, measurement.frame) : measurement; }
     inline void calibrationTransform(AstroSingleMeasurement *measurementInOut) const { if (measurementInOut && _calibrationData) { _calibrationData->transform(&measurementInOut->value, &measurementInOut->units); } }
 
     // Transformation methods that convert from calibration units to normalized reading intensity/driver value.
     inline float calibrationInvTransform(float value) const { return _calibrationData ? _calibrationData->inverseTransform(value) : value; }
     inline void calibrationInvTransform(float *valueInOut, Astro_UnitsType *unitsOut = nullptr) const { if (valueInOut && _calibrationData) { _calibrationData->inverseTransform(valueInOut, unitsOut); } }
-    inline AstroSingleMeasurement calibrationInvTransform(AstroSingleMeasurement measurement) { return _calibrationData ? AstroSingleMeasurement(_calibrationData->inverseTransform(measurement.value), Astro_UnitsType_Raw_1, measurement.timestamp, measurement.frame) : measurement; }
+    inline AstroSingleMeasurement calibrationInvTransform(AstroSingleMeasurement measurement) const { return _calibrationData ? AstroSingleMeasurement(_calibrationData->inverseTransform(measurement.value), Astro_UnitsType_Raw_1, measurement.timestamp, measurement.frame) : measurement; }
     inline void calibrationInvTransform(AstroSingleMeasurement *measurementInOut) const { if (measurementInOut && _calibrationData) { _calibrationData->inverseTransform(&measurementInOut->value, &measurementInOut->units); } }
 
     inline Astro_SensorType getSensorType() const { return _sensorType; }

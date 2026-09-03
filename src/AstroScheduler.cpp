@@ -39,7 +39,7 @@ void AstroScheduler::update()
                   _lastDay[1] == currTime.month() &&
                   _lastDay[2] == currTime.day())) {
                 // only log uptime upon actual day change and if uptime has been at least 1d
-                if (getLogger()->getSystemUptime() >= SECS_PER_DAY) {
+                if (getLogger()->getSystemUptime() >= (time_t)SECS_PER_DAY) {
                     getLogger()->logSystemUptime();
                 }
                 broadcastDateChange();
@@ -545,7 +545,7 @@ void AstroTracking::update()
 
 
 AstroSchedulerSubData::AstroSchedulerSubData()
-    : AstroSubData(0), reportInterval(8 * SECS_PER_HOUR), preDuskHeatingMins(10)
+    : AstroSubData(0), preDuskHeatingMins(10), reportInterval(8 * SECS_PER_HOUR)
 { ; }
 
 void AstroSchedulerSubData::toJSONObject(JsonObject &objectOut) const

@@ -22,6 +22,23 @@ AstroDLinkObject::AstroDLinkObject(const AstroDLinkObject &obj)
     }
 }
 
+AstroDLinkObject &AstroDLinkObject::operator=(const AstroDLinkObject &obj)
+{
+    if (this != &obj) {
+        _key = obj._key;
+        _obj = obj._obj;
+        if (_keyStr) { free((void *)_keyStr); _keyStr = nullptr; }
+        if (obj._keyStr) {
+            auto len = strnlen(obj._keyStr, ASTRO_NAME_MAXSIZE);
+            if (len) {
+                _keyStr = (const char *)malloc(len + 1);
+                strncpy((char *)_keyStr, obj._keyStr, len + 1);
+            }
+        }
+    }
+    return *this;
+}
+
 AstroDLinkObject::~AstroDLinkObject()
 {
     if (_keyStr) { free((void *)_keyStr); }
@@ -64,6 +81,23 @@ AstroAttachment::AstroAttachment(const AstroAttachment &attachment)
     initObject(attachment._obj);
 }
 
+AstroAttachment &AstroAttachment::operator=(const AstroAttachment &attachment)
+{
+    if (this != &attachment) {
+        if (isResolved() && _obj->isObject() && _parent && _parent->isObject()) {
+            _obj.get<AstroObject>()->removeLinkage((AstroObject *)_parent);
+        }
+
+        _parent = attachment._parent;
+        _obj = attachment._obj;
+        _subIndex = attachment._subIndex;
+        if (isResolved() && _obj->isObject() && _parent && _parent->isObject()) {
+            _obj.get<AstroObject>()->addLinkage((AstroObject *)_parent);
+        }
+    }
+    return *this;
+}
+
 AstroAttachment::~AstroAttachment()
 {
     if (isResolved() && _obj->isObject() && _parent && _parent->isObject()) {
@@ -88,6 +122,7 @@ void AstroAttachment::detachObject()
 
 void AstroAttachment::updateIfNeeded(bool poll)
 {
+    (void)poll;
     // intended to be overridden by derived classes, but not an error if left not implemented
 }
 
@@ -120,6 +155,20 @@ AstroActuatorAttachment::AstroActuatorAttachment(const AstroActuatorAttachment &
       _rateMultiplier(attachment._rateMultiplier), _calledLastUpdate(false)
 { ; }
 
+AstroActuatorAttachment &AstroActuatorAttachment::operator=(const AstroActuatorAttachment &attachment)
+{
+    if (this != &attachment) {
+        AstroSignalAttachment<AstroActuator *, ASTRO_ACTUATOR_SIGNAL_SLOTS>::operator=(attachment);
+        _actHandle = attachment._actHandle;
+        _actSetup = attachment._actSetup;
+        if (_updateSlot) { delete _updateSlot; _updateSlot = nullptr; }
+        _updateSlot = attachment._updateSlot ? attachment._updateSlot->clone() : nullptr;
+        _rateMultiplier = attachment._rateMultiplier;
+        _calledLastUpdate = false;
+    }
+    return *this;
+}
+
 AstroActuatorAttachment::~AstroActuatorAttachment()
 {
     if (_updateSlot) { delete _updateSlot; _updateSlot = nullptr; }
@@ -127,6 +176,7 @@ AstroActuatorAttachment::~AstroActuatorAttachment()
 
 void AstroActuatorAttachment::updateIfNeeded(bool poll)
 {
+    (void)poll;
     if (_actHandle.isValid()) {
         if (isActivated()) {
             _actHandle.elapseTo();

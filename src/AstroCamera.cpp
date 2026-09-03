@@ -167,7 +167,7 @@ AstroCamera::AstroCamera(AstroObjInterface *parent, int mode)
 { ; }
 
 AstroCamera::AstroCamera(AstroObjInterface *parent, const AstroCameraSubData *dataIn)
-    : AstroSubObject(parent), _mode(dataIn ? dataIn->type : Unknown),
+    : AstroSubObject(parent), _mode(dataIn ? dataIn->type : (int8_t)Unknown),
       _intervalMillis(dataIn ? dataIn->intervalMillis : 0), _exposureMillis(dataIn ? dataIn->exposureMillis : 0),
       _shutterPulseMillis(dataIn ? dataIn->shutterPulseMillis : 0), _observing(false), _lastCapture(0),
       _shutter(parent ? parent : this)

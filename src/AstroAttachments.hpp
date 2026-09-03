@@ -117,6 +117,26 @@ AstroSignalAttachment<ParameterType,Slots>::AstroSignalAttachment(const AstroSig
 { ; }
 
 template<class ParameterType, int Slots>
+AstroSignalAttachment<ParameterType,Slots> &AstroSignalAttachment<ParameterType,Slots>::operator=(const AstroSignalAttachment<ParameterType,Slots> &attachment)
+{
+    if (this != &attachment) {
+        if (isResolved() && _handleSlot && _signalGetter) {
+            (get()->*_signalGetter)().detach(*_handleSlot);
+        }
+
+        AstroAttachment::operator=(attachment);
+        _signalGetter = attachment._signalGetter;
+        if (_handleSlot) { delete _handleSlot; _handleSlot = nullptr; }
+        _handleSlot = attachment._handleSlot ? attachment._handleSlot->clone() : nullptr;
+
+        if (isResolved() && _handleSlot && _signalGetter) {
+            (get()->*_signalGetter)().attach(*_handleSlot);
+        }
+    }
+    return *this;
+}
+
+template<class ParameterType, int Slots>
 AstroSignalAttachment<ParameterType,Slots>::~AstroSignalAttachment()
 {
     if (isResolved() && _handleSlot && _signalGetter) {

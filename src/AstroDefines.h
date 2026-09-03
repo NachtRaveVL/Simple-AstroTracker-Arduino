@@ -240,7 +240,11 @@ typedef typeof(LOW)                     ard_pinstatus_t;    // Arduino pin statu
 #define ASTRO_SYS_ATWIFI_SERIALMODE     SERIAL_8N1          // Data transfer mode for serial AT WiFi (see SERIAL_* defines)
 #define ASTRO_SYS_NMEAGPS_SERIALBAUD    9600                // Data baud rate for serial NMEA GPS, in bps (older modules may need 4800)
 #define ASTRO_SYS_URLHTTP_PORT          80                  // Which default port to access when accessing HTTP resources
-#define ASTRO_SYS_LEAVE_FILES_OPEN      !defined(__AVR__)   // If high access files should be left open to improve performance (true), or closed after use to reduce memory consumption (false)
+#if defined(__AVR__)
+#define ASTRO_SYS_LEAVE_FILES_OPEN          false               // If high access files should be left open to improve performance (true), or closed after use to reduce memory consumption (false)
+#else
+#define ASTRO_SYS_LEAVE_FILES_OPEN          true                // If high access files should be left open to improve performance (true), or closed after use to reduce memory consumption (false)
+#endif
 #define ASTRO_SYS_FREERAM_LOWBYTES      1024                // How many bytes of free memory left spawns a handle low mem call to all objects
 #define ASTRO_SYS_FREESPACE_INTERVAL    240                 // How many minutes should pass before checking attached file systems have enough disk space (performs cleanup if not)
 #define ASTRO_SYS_FREESPACE_LOWSPACE    256                 // How many kilobytes of disk space remaining will force cleanup of oldest log/data files first

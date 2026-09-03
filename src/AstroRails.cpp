@@ -25,17 +25,15 @@ AstroRail *newRailObjectFromData(const AstroRailData *dataIn)
 
 
 AstroRail::AstroRail(Astro_RailType railType, aposi_t railIndex, int classTypeIn)
-    : AstroObject(AstroIdentity(railType, railIndex)), classType((typeof(classType))classTypeIn),
-      AstroPowerUnitsInterfaceStorage(defaultPowerUnits()),
-      _limitState(Astro_TriggerState_Undefined)
+    : AstroObject(AstroIdentity(railType, railIndex)), AstroPowerUnitsInterfaceStorage(defaultPowerUnits()),
+      classType(static_cast<decltype(Simple)>(classTypeIn)), _limitState(Astro_TriggerState_Undefined)
 {
     allocateLinkages(ASTRO_RAILS_LINKS_BASESIZE);
 }
 
 AstroRail::AstroRail(const AstroRailData *dataIn)
-    : AstroObject(dataIn), classType((typeof(classType))(dataIn->id.object.classType)),
-      AstroPowerUnitsInterfaceStorage(definedUnitsElse(dataIn->powerUnits, defaultPowerUnits())),
-      _limitState(Astro_TriggerState_Undefined)
+    : AstroObject(dataIn), AstroPowerUnitsInterfaceStorage(definedUnitsElse(dataIn->powerUnits, defaultPowerUnits())),
+      classType(static_cast<decltype(Simple)>(dataIn->id.object.classType)), _limitState(Astro_TriggerState_Undefined)
 {
     allocateLinkages(ASTRO_RAILS_LINKS_BASESIZE);
 }
@@ -138,11 +136,13 @@ AstroSimpleRail::AstroSimpleRail(const AstroSimpleRailData *dataIn)
 
 bool AstroSimpleRail::canActivate(AstroActuator *actuator)
 {
+    (void)actuator;
     return _activeCount < _maxActiveAtOnce;
 }
 
 float AstroSimpleRail::getCapacity(bool poll)
 {
+    (void)poll;
     return _activeCount / (float)_maxActiveAtOnce;
 }
 

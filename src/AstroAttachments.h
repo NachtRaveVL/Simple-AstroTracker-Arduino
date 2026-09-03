@@ -26,6 +26,7 @@ class AstroDLinkObject {
 public:
     AstroDLinkObject();
     AstroDLinkObject(const AstroDLinkObject &obj);
+    AstroDLinkObject &operator=(const AstroDLinkObject &obj);
     virtual ~AstroDLinkObject();
 
     inline bool isUnresolved() const { return !_obj; }
@@ -78,6 +79,7 @@ class AstroAttachment : public AstroSubObject {
 public:
     AstroAttachment(AstroObjInterface *parent = nullptr, aposi_t subIndex = 0);
     AstroAttachment(const AstroAttachment &attachment);
+    AstroAttachment &operator=(const AstroAttachment &attachment);
     virtual ~AstroAttachment();
 
     // Attaches object and any relevant signaling mechanisms. Derived classes should call base class's method first.
@@ -142,6 +144,7 @@ public:
 
     template<class U> AstroSignalAttachment(AstroObjInterface *parent = nullptr, aposi_t subIndex = 0, Signal<ParameterType,Slots> &(U::*signalGetter)(void) = nullptr);
     AstroSignalAttachment(const AstroSignalAttachment<ParameterType,Slots> &attachment);
+    AstroSignalAttachment<ParameterType,Slots> &operator=(const AstroSignalAttachment<ParameterType,Slots> &attachment);
     virtual ~AstroSignalAttachment();
 
     virtual void attachObject() override;
@@ -174,6 +177,7 @@ class AstroActuatorAttachment : public AstroSignalAttachment<AstroActuator *, AS
 public:
     AstroActuatorAttachment(AstroObjInterface *parent = nullptr, aposi_t subIndex = 0);
     AstroActuatorAttachment(const AstroActuatorAttachment &attachment);
+    AstroActuatorAttachment &operator=(const AstroActuatorAttachment &attachment);
     virtual ~AstroActuatorAttachment();
 
     // Updates with actuator activation handle. Does not call actuator's update() (handled by system).
