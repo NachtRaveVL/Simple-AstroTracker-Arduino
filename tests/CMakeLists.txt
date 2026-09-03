@@ -43,9 +43,25 @@ set(ASTRUINO_SRC
 
 add_library(astruino_host STATIC ${ASTRUINO_SRC})
 target_include_directories(astruino_host PUBLIC ../src)
+target_include_directories(astruino_host SYSTEM PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/shims
+)
+target_compile_definitions(astruino_host PUBLIC
+    ARDUINO=10819
+    ASTRO_DISABLE_GUI
+    ASTRO_DISABLE_MULTITASKING
+)
 
 add_library(astruino_host_debug STATIC ${ASTRUINO_SRC})
 target_include_directories(astruino_host_debug PUBLIC ../src)
+target_include_directories(astruino_host_debug SYSTEM PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/shims
+)
+target_compile_definitions(astruino_host_debug PUBLIC
+    ARDUINO=10819
+    ASTRO_DISABLE_GUI
+    ASTRO_DISABLE_MULTITASKING
+)
 target_compile_definitions(astruino_host_debug PRIVATE
     ASTRO_ENABLE_DEBUG_OUTPUT
     ASTRO_ENABLE_VERBOSE_DEBUG
