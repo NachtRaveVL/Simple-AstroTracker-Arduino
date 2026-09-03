@@ -3,191 +3,281 @@
     Astruino Sensor Measurements
 */
 
-#include "AstroMeasurements.h"
-#include "AstroUtils.h"
+#include "Astruino.h"
 #include <math.h>
 #include <stdio.h>
 
-void AstroMeasurement::updateFrame(aframe_t minFrame)
+AstroMeasurement *newMeasurementObjectFromSubData(const AstroMeasurementData *dataIn)
 {
-    if (frame < minFrame) { frame = minFrame; }
-    else if (++frame == aframe_none) { frame = 1; }
-}
+    if (!dataIn || !isValidType(dataIn->type)) return nullptr;
+    ASTRO_SOFT_ASSERT(dataIn && isValidType(dataIn->type), SFP(AStr_Err_InvalidParameter));
 
-AstroSingleMeasurement &AstroSingleMeasurement::toUnits(Astro_UnitsType outUnits, double convertParam)
-{
-    double converted;
-    if (astroConvertUnits(value, units, outUnits, &converted, convertParam)) {
-        value = converted;
-        units = outUnits;
+    if (dataIn) {
+        switch (dataIn->type) {
+            case (aid_t)AstroMeasurement::Binary:
+                return new AstroBinaryMeasurement(dataIn);
+            case (aid_t)AstroMeasurement::Single:
+                return new AstroSingleMeasurement(dataIn);
+            case (aid_t)AstroMeasurement::Double:
+                return new AstroDoubleMeasurement(dataIn);
+            case (aid_t)AstroMeasurement::Triple:
+                return new AstroTripleMeasurement(dataIn);
+            default: break;
+        }
     }
-    return *this;
+
+    return nullptr;
 }
 
-AstroSingleMeasurement AstroSingleMeasurement::asUnits(Astro_UnitsType outUnits, double convertParam) const
+float getMeasurementValue(const AstroMeasurement *measurement, uint8_t measurementRow, float binScale)
 {
-    AstroSingleMeasurement copy(*this);
-    copy.toUnits(outUnits, convertParam);
-    return copy;
-}
-
-AstroSingleMeasurement &AstroSingleMeasurement::wrapBy(double range)
-{
-    if (range > 0.0) {
-        value = fmod(value, range);
-        if (value < 0.0) { value += range; }
+    if (measurement) {
+        switch (measurement->type) {
+            case AstroMeasurement::Binary:
+                return ((AstroBinaryMeasurement *)measurement)->state ? binScale : 0.0f;
+            case AstroMeasurement::Single:
+                return ((AstroSingleMeasurement *)measurement)->value;
+            case AstroMeasurement::Double:
+                return ((AstroDoubleMeasurement *)measurement)->value[measurementRow];
+            case AstroMeasurement::Triple:
+                return ((AstroTripleMeasurement *)measurement)->value[measurementRow];
+            default: break;
+        }
     }
-    return *this;
+    return 0.0f;
 }
 
-AstroSingleMeasurement &AstroSingleMeasurement::wrapBySplit(double range)
+Astro_UnitsType getMeasurementUnits(const AstroMeasurement *measurement, uint8_t measurementRow, Astro_UnitsType binUnits)
 {
-    wrapBy(range);
-    if (range > 0.0 && value > range * 0.5) { value -= range; }
-    return *this;
-}
-
-AstroSingleMeasurement AstroSingleMeasurement::wrappedBy(double range) const
-{
-    AstroSingleMeasurement copy(*this);
-    copy.wrapBy(range);
-    return copy;
-}
-
-AstroSingleMeasurement AstroSingleMeasurement::wrappedBySplit(double range) const
-{
-    AstroSingleMeasurement copy(*this);
-    copy.wrapBySplit(range);
-    return copy;
-}
-
-AstroSingleMeasurement AstroBinaryMeasurement::getAsSingleMeasurement(double trueScale, Astro_UnitsType unitsIn) const
-{
-    return AstroSingleMeasurement(state ? trueScale : 0.0, unitsIn, timestamp, frame);
-}
-
-AstroDoubleMeasurement::AstroDoubleMeasurement(double value1, Astro_UnitsType units1,
-                                               double value2, Astro_UnitsType units2,
-                                               int64_t timestampIn, aframe_t frameIn)
-    : AstroMeasurement(Double, timestampIn, frameIn), value{value1, value2}, units{units1, units2}
-{ ; }
-
-AstroSingleMeasurement AstroDoubleMeasurement::getAsSingleMeasurement(uint8_t row) const
-{
-    row = row > 1 ? 1 : row;
-    return AstroSingleMeasurement(value[row], units[row], timestamp, frame);
-}
-
-AstroTripleMeasurement::AstroTripleMeasurement(double value1, Astro_UnitsType units1,
-                                               double value2, Astro_UnitsType units2,
-                                               double value3, Astro_UnitsType units3,
-                                               int64_t timestampIn, aframe_t frameIn)
-    : AstroMeasurement(Triple, timestampIn, frameIn), value{value1, value2, value3},
-      units{units1, units2, units3}
-{ ; }
-
-AstroSingleMeasurement AstroTripleMeasurement::getAsSingleMeasurement(uint8_t row) const
-{
-    row = row > 2 ? 2 : row;
-    return AstroSingleMeasurement(value[row], units[row], timestamp, frame);
-}
-
-AstroDoubleMeasurement AstroTripleMeasurement::getAsDoubleMeasurement(uint8_t row1, uint8_t row2) const
-{
-    row1 = row1 > 2 ? 2 : row1;
-    row2 = row2 > 2 ? 2 : row2;
-    return AstroDoubleMeasurement(value[row1], units[row1], value[row2], units[row2], timestamp, frame);
-}
-
-double getMeasurementValue(const AstroMeasurement *measurement, uint8_t row, double trueScale)
-{
-    if (!measurement) { return 0.0; }
-    switch (measurement->type) {
-        case AstroMeasurement::Binary:
-            return ((const AstroBinaryMeasurement *)measurement)->state ? trueScale : 0.0;
-        case AstroMeasurement::Single:
-            return ((const AstroSingleMeasurement *)measurement)->value;
-        case AstroMeasurement::Double:
-            return ((const AstroDoubleMeasurement *)measurement)->value[row > 1 ? 1 : row];
-        case AstroMeasurement::Triple:
-            return ((const AstroTripleMeasurement *)measurement)->value[row > 2 ? 2 : row];
-        default:
-            return 0.0;
+    if (measurement) {
+        switch (measurement->type) {
+            case AstroMeasurement::Binary:
+                return binUnits;
+            case AstroMeasurement::Single:
+                return ((AstroSingleMeasurement *)measurement)->units;
+            case AstroMeasurement::Double:
+                return ((AstroDoubleMeasurement *)measurement)->units[measurementRow];
+            case AstroMeasurement::Triple:
+                return ((AstroTripleMeasurement *)measurement)->units[measurementRow];
+            default: break;
+        }
     }
-}
-
-Astro_UnitsType getMeasurementUnits(const AstroMeasurement *measurement, uint8_t row, Astro_UnitsType binaryUnits)
-{
-    if (!measurement) { return Astro_UnitsType_Undefined; }
-    switch (measurement->type) {
-        case AstroMeasurement::Binary:
-            return binaryUnits;
-        case AstroMeasurement::Single:
-            return ((const AstroSingleMeasurement *)measurement)->units;
-        case AstroMeasurement::Double:
-            return ((const AstroDoubleMeasurement *)measurement)->units[row > 1 ? 1 : row];
-        case AstroMeasurement::Triple:
-            return ((const AstroTripleMeasurement *)measurement)->units[row > 2 ? 2 : row];
-        default:
-            return Astro_UnitsType_Undefined;
-    }
+    return Astro_UnitsType_Undefined;
 }
 
 uint8_t getMeasurementRowCount(const AstroMeasurement *measurement)
 {
-    if (!measurement) { return 0; }
-    switch (measurement->type) {
-        case AstroMeasurement::Binary:
-        case AstroMeasurement::Single: return 1;
-        case AstroMeasurement::Double: return 2;
-        case AstroMeasurement::Triple: return 3;
-        default: return 0;
-    }
+    return measurement ? max(1, (int)(measurement->type)) : 0;
 }
 
-AstroSingleMeasurement getAsSingleMeasurement(const AstroMeasurement *measurement, uint8_t row,
-                                              double trueScale, Astro_UnitsType binaryUnits)
+AstroSingleMeasurement getAsSingleMeasurement(const AstroMeasurement *measurement, uint8_t measurementRow, float binScale, Astro_UnitsType binUnits)
 {
-    if (!measurement) { return AstroSingleMeasurement(); }
-    return AstroSingleMeasurement(getMeasurementValue(measurement, row, trueScale),
-                                  getMeasurementUnits(measurement, row, binaryUnits),
-                                  measurement->timestamp, measurement->frame);
+    if (measurement) {
+        switch (measurement->type) {
+            case AstroMeasurement::Binary:
+                return ((AstroBinaryMeasurement *)measurement)->getAsSingleMeasurement(binScale, binUnits);
+            case AstroMeasurement::Single:
+                return *((const AstroSingleMeasurement *)measurement);
+            case AstroMeasurement::Double:
+                return ((AstroDoubleMeasurement *)measurement)->getAsSingleMeasurement(measurementRow);
+            case AstroMeasurement::Triple:
+                return ((AstroTripleMeasurement *)measurement)->getAsSingleMeasurement(measurementRow);
+            default: break;
+        }
+    }
+    AstroSingleMeasurement retVal;
+    retVal.frame = aframe_none; // meant to fail frame checks
+    return retVal;
 }
 
-AstroMeasurementData::AstroMeasurementData()
-    : measurementRow(0), value(0.0), units(Astro_UnitsType_Undefined), timestamp(0), frame(aframe_none)
+
+AstroMeasurement::AstroMeasurement(int classType, time_t timestampIn)
+    : type((typeof(type))classType), timestamp(timestampIn)
+{
+    updateFrame();
+}
+
+AstroMeasurement::AstroMeasurement(const AstroMeasurementData *dataIn)
+    : type((typeof(type))(dataIn->type)), timestamp(dataIn->timestamp)
+{
+    updateFrame(1);
+}
+
+void AstroMeasurement::saveToData(AstroMeasurementData *dataOut, uint8_t measurementRow, unsigned int additionalDecPlaces) const
+{
+    (void)additionalDecPlaces;
+    dataOut->type = (int8_t)type;
+    dataOut->measurementRow = measurementRow;
+    dataOut->timestamp = timestamp;
+}
+
+void AstroMeasurement::updateFrame(aframe_t minFrame)
+{
+    frame = max(minFrame, getController() ? getController()->getPollingFrame() : 0);
+}
+
+
+AstroBinaryMeasurement::AstroBinaryMeasurement()
+    : AstroMeasurement(), state(false)
 { ; }
 
-bool AstroMeasurementData::toJSON(char *bufferOut, size_t bufferSize) const
+AstroBinaryMeasurement::AstroBinaryMeasurement(bool stateIn, time_t timestamp)
+    : AstroMeasurement((int)Binary, timestamp), state(stateIn)
+{ ; }
+
+AstroBinaryMeasurement::AstroBinaryMeasurement(bool stateIn, time_t timestamp, aframe_t frame)
+    : AstroMeasurement((int)Binary, timestamp, frame), state(stateIn)
+{ ; }
+
+AstroBinaryMeasurement::AstroBinaryMeasurement(const AstroMeasurementData *dataIn)
+    : AstroMeasurement(dataIn),
+      state(dataIn->measurementRow == 0 && dataIn->value >= 0.5f - FLT_EPSILON)
+{ ; }
+
+void AstroBinaryMeasurement::saveToData(AstroMeasurementData *dataOut, uint8_t measurementRow, unsigned int additionalDecPlaces) const
 {
-    if (!bufferOut || !bufferSize) { return false; }
-    int written = snprintf(bufferOut, bufferSize,
-        "{\"type\":\"AMSR\",\"row\":%u,\"value\":%.8f,\"units\":%d,\"timestamp\":%lld,\"frame\":%lu}",
-        (unsigned int)measurementRow, value, (int)units, (long long)timestamp, (unsigned long)frame);
-    return written >= 0 && (size_t)written < bufferSize;
+    AstroMeasurement::saveToData(dataOut, measurementRow, additionalDecPlaces);
+
+    dataOut->value = measurementRow == 0 && state ? 1.0f : 0.0f;
+    dataOut->units = measurementRow == 0 ? Astro_UnitsType_Raw_1 : Astro_UnitsType_Undefined;
 }
 
-bool AstroMeasurementData::fromJSON(const char *jsonIn)
+
+AstroSingleMeasurement::AstroSingleMeasurement()
+    : AstroMeasurement((int)Single), value(0.0f), units(Astro_UnitsType_Undefined)
+{ ; }
+
+AstroSingleMeasurement::AstroSingleMeasurement(float valueIn, Astro_UnitsType unitsIn, time_t timestamp)
+    : AstroMeasurement((int)Single, timestamp), value(valueIn), units(unitsIn)
+{ ; }
+
+AstroSingleMeasurement::AstroSingleMeasurement(float valueIn, Astro_UnitsType unitsIn, time_t timestamp, aframe_t frame)
+    : AstroMeasurement((int)Single, timestamp, frame), value(valueIn), units(unitsIn)
+{ ; }
+
+AstroSingleMeasurement::AstroSingleMeasurement(const AstroMeasurementData *dataIn)
+    : AstroMeasurement(dataIn),
+      value(dataIn->measurementRow == 0 ? dataIn->value : 0.0f),
+      units(dataIn->measurementRow == 0 ? dataIn->units : Astro_UnitsType_Undefined)
+{ ; }
+
+void AstroSingleMeasurement::saveToData(AstroMeasurementData *dataOut, uint8_t measurementRow, unsigned int additionalDecPlaces) const
 {
-    if (!jsonIn) { return false; }
+    AstroMeasurement::saveToData(dataOut, measurementRow, additionalDecPlaces);
 
-    char typeIn[8] = {0};
-    unsigned long rowIn, frameIn;
-    long unitsIn, timestampIn;
-    double valueIn;
-    if (!astroJSONGetString(jsonIn, "type", typeIn, sizeof(typeIn)) || strcmp(typeIn, "AMSR") != 0 ||
-        !astroJSONGetUnsignedLong(jsonIn, "row", &rowIn) ||
-        !astroJSONGetDouble(jsonIn, "value", &valueIn) ||
-        !astroJSONGetLong(jsonIn, "units", &unitsIn) ||
-        !astroJSONGetLong(jsonIn, "timestamp", &timestampIn) ||
-        !astroJSONGetUnsignedLong(jsonIn, "frame", &frameIn)) {
-        return false;
+    dataOut->value = measurementRow == 0 ? roundForExport(value, additionalDecPlaces) : 0.0f;
+    dataOut->units = measurementRow == 0 ? units : Astro_UnitsType_Undefined;
+}
+
+
+AstroDoubleMeasurement::AstroDoubleMeasurement()
+    : AstroMeasurement((int)Double), value{0}, units{Astro_UnitsType_Undefined,Astro_UnitsType_Undefined}
+{ ; }
+
+AstroDoubleMeasurement::AstroDoubleMeasurement(float value1, Astro_UnitsType units1,
+                                               float value2, Astro_UnitsType units2,
+                                               time_t timestamp)
+    : AstroMeasurement((int)Double, timestamp), value{value1,value2}, units{units1,units2}
+{ ; }
+
+AstroDoubleMeasurement::AstroDoubleMeasurement(float value1, Astro_UnitsType units1,
+                                               float value2, Astro_UnitsType units2,
+                                               time_t timestamp, aframe_t frame)
+    : AstroMeasurement((int)Double, timestamp, frame), value{value1,value2}, units{units1,units2}
+{ ; }
+
+AstroDoubleMeasurement::AstroDoubleMeasurement(const AstroMeasurementData *dataIn)
+    : AstroMeasurement(dataIn),
+      value{dataIn->measurementRow == 0 ? dataIn->value : 0.0f,
+            dataIn->measurementRow == 1 ? dataIn->value : 0.0f
+      },
+      units{dataIn->measurementRow == 0 ? dataIn->units : Astro_UnitsType_Undefined,
+            dataIn->measurementRow == 1 ? dataIn->units : Astro_UnitsType_Undefined
+      }
+{ ; }
+
+void AstroDoubleMeasurement::saveToData(AstroMeasurementData *dataOut, uint8_t measurementRow, unsigned int additionalDecPlaces) const
+{
+    AstroMeasurement::saveToData(dataOut, measurementRow, additionalDecPlaces);
+
+    dataOut->value = measurementRow < 2 ? roundForExport(value[measurementRow], additionalDecPlaces) : 0.0f;
+    dataOut->units = measurementRow < 2 ? units[measurementRow] : Astro_UnitsType_Undefined;
+}
+
+
+AstroTripleMeasurement::AstroTripleMeasurement()
+    : AstroMeasurement((int)Triple), value{0}, units{Astro_UnitsType_Undefined,Astro_UnitsType_Undefined,Astro_UnitsType_Undefined}
+{ ; }
+
+AstroTripleMeasurement::AstroTripleMeasurement(float value1, Astro_UnitsType units1,
+                                               float value2, Astro_UnitsType units2,
+                                               float value3, Astro_UnitsType units3,
+                                               time_t timestamp)
+    : AstroMeasurement((int)Triple, timestamp), value{value1,value2,value3}, units{units1,units2,units3}
+{ ; }
+
+AstroTripleMeasurement::AstroTripleMeasurement(float value1, Astro_UnitsType units1,
+                                               float value2, Astro_UnitsType units2,
+                                               float value3, Astro_UnitsType units3,
+                                               time_t timestamp, aframe_t frame)
+    : AstroMeasurement((int)Triple, timestamp, frame), value{value1,value2,value3}, units{units1,units2,units3}
+{ ; }
+
+AstroTripleMeasurement::AstroTripleMeasurement(const AstroMeasurementData *dataIn)
+    : AstroMeasurement(dataIn),
+      value{dataIn->measurementRow == 0 ? dataIn->value : 0.0f,
+            dataIn->measurementRow == 1 ? dataIn->value : 0.0f,
+            dataIn->measurementRow == 2 ? dataIn->value : 0.0f,
+      },
+      units{dataIn->measurementRow == 0 ? dataIn->units : Astro_UnitsType_Undefined,
+            dataIn->measurementRow == 1 ? dataIn->units : Astro_UnitsType_Undefined,
+            dataIn->measurementRow == 2 ? dataIn->units : Astro_UnitsType_Undefined,
+      }
+{ ; }
+
+void AstroTripleMeasurement::saveToData(AstroMeasurementData *dataOut, uint8_t measurementRow, unsigned int additionalDecPlaces) const
+{
+    AstroMeasurement::saveToData(dataOut, measurementRow, additionalDecPlaces);
+
+    dataOut->value = measurementRow < 3 ? roundForExport(value[measurementRow], additionalDecPlaces) : 0.0f;
+    dataOut->units = measurementRow < 3 ? units[measurementRow] : Astro_UnitsType_Undefined;
+}
+
+
+AstroMeasurementData::AstroMeasurementData()
+    : AstroSubData(), measurementRow(0), value(0.0f), units(Astro_UnitsType_Undefined), timestamp(0)
+{
+    type = 0; // no type differentiation
+}
+
+void AstroMeasurementData::toJSONObject(JsonObject &objectOut) const
+{
+    //AstroSubData::toJSONObject(objectOut); // purposeful no call to base method (ignores type)
+
+    objectOut[SFP(AStr_Key_MeasurementRow)] = measurementRow;
+    objectOut[SFP(AStr_Key_Value)] = value;
+    objectOut[SFP(AStr_Key_Units)] = unitsTypeToSymbol(units);
+    objectOut[SFP(AStr_Key_Timestamp)] = timestamp;
+}
+
+void AstroMeasurementData::fromJSONObject(JsonObjectConst &objectIn)
+{
+    //AstroSubData::fromJSONObject(objectIn); // purposeful no call to base method (ignores type)
+
+    measurementRow = objectIn[SFP(AStr_Key_MeasurementRow)] | measurementRow;
+    value = objectIn[SFP(AStr_Key_Value)] | value;
+    units = unitsTypeFromSymbol(objectIn[SFP(AStr_Key_Units)]);
+    timestamp = objectIn[SFP(AStr_Key_Timestamp)] | timestamp;
+}
+
+void AstroMeasurementData::fromJSONVariant(JsonVariantConst &variantIn)
+{
+    if (variantIn.is<JsonObjectConst>()) {
+        JsonObjectConst variantObj = variantIn;
+        fromJSONObject(variantObj);
+    } else if (variantIn.is<float>() || variantIn.is<int>()) {
+        value = variantIn.as<float>();
+    } else {
+        ASTRO_SOFT_ASSERT(false, SFP(AStr_Err_UnsupportedOperation));
     }
-
-    measurementRow = (uint8_t)rowIn;
-    value = valueIn;
-    units = (Astro_UnitsType)unitsIn;
-    timestamp = (int64_t)timestampIn;
-    frame = (aframe_t)frameIn;
-    return true;
 }

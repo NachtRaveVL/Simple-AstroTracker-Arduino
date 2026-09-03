@@ -6,113 +6,160 @@
 #ifndef AstroMeasurements_H
 #define AstroMeasurements_H
 
-#include "AstroDefines.h"
+struct AstroMeasurement;
+struct AstroSingleMeasurement;
+struct AstroBinaryMeasurement;
+struct AstroDoubleMeasurement;
+struct AstroTripleMeasurement;
 
-// Sensor Measurement Base
-// Common timestamp and polling-frame metadata for sensor measurements.
+struct AstroMeasurementData;
+
+#include "Astruino.h"
+#include "AstroData.h"
+
+// Creates measurement object from passed trigger sub data (return ownership transfer - user code *must* delete returned object)
+extern AstroMeasurement *newMeasurementObjectFromSubData(const AstroMeasurementData *dataIn);
+
+// Gets the value of a measurement at a specified row (with optional binary true scaling value).
+extern float getMeasurementValue(const AstroMeasurement *measurement, uint8_t measurementRow = 0, float binScale = 1.0f);
+// Gets the units of a measurement at a specified row (with optional binary units).
+extern Astro_UnitsType getMeasurementUnits(const AstroMeasurement *measurement, uint8_t measurementRow = 0, Astro_UnitsType binUnits = Astro_UnitsType_Raw_1);
+// Gets the number of rows of data that a measurement holds.
+extern uint8_t getMeasurementRowCount(const AstroMeasurement *measurement);
+// Gets the single measurement of a measurement (with optional binary true scaling value / units).
+extern AstroSingleMeasurement getAsSingleMeasurement(const AstroMeasurement *measurement, uint8_t measurementRow = 0, float binScale = 1.0f, Astro_UnitsType binUnits = Astro_UnitsType_Raw_1);
+
+// Sensor Data Measurement Base
 struct AstroMeasurement {
-    enum : signed char { Binary, Single, Double, Triple, Unknown = -1 } type;
-
-    int64_t timestamp;                                       // Measurement/event timestamp
-    aframe_t frame;                                          // Polling frame number
-
-    AstroMeasurement(int classType = Unknown, int64_t timestampIn = 0, aframe_t frameIn = aframe_none)
-        : type((decltype(type))classType), timestamp(timestampIn), frame(frameIn)
-    { ; }
-
+    enum : signed char { Binary, Single, Double, Triple, Unknown = -1 } type; // Measurement type (custom RTTI)
     inline bool isBinaryType() const { return type == Binary; }
     inline bool isSingleType() const { return type == Single; }
     inline bool isDoubleType() const { return type == Double; }
     inline bool isTripleType() const { return type == Triple; }
     inline bool isUnknownType() const { return type <= Unknown; }
+
+    time_t timestamp;                                       // Time event recorded (UTC)
+    aframe_t frame;                                         // Polling frame # measurement taken on, or 0 if not-set else 1 if user-set
+
+    inline AstroMeasurement() : type(Unknown), timestamp(unixNow()), frame(0) { ; }
+    inline AstroMeasurement(int classType, time_t timestampIn, aframe_t frameIn) : type((typeof(type))classType), timestamp(timestampIn), frame(frameIn) { ; }
+    AstroMeasurement(int classType, time_t timestamp = 0);
+    AstroMeasurement(const AstroMeasurementData *dataIn);
+
+    void saveToData(AstroMeasurementData *dataOut, uint8_t measurementRow = 0, unsigned int additionalDecPlaces = 0) const;
+
+    inline void updateTimestamp() { timestamp = unixNow(); }
+    void updateFrame(aframe_t minFrame = 0);
+    inline void setMinFrame(aframe_t minFrame = 0) { frame = max(minFrame, frame); }
     inline bool isSet() const { return frame != aframe_none; }
-
-    void updateFrame(aframe_t minFrame = 1);
 };
 
-// Single Value Measurement
-// One measured value with associated units.
+// Single Value Sensor Data Measurement
 struct AstroSingleMeasurement : public AstroMeasurement {
-    double value;                                            // Measured value
-    Astro_UnitsType units;                                   // Measurement units
+    float value;                                            // Polled value
+    Astro_UnitsType units;                                  // Units of value
 
-    AstroSingleMeasurement(double valueIn = 0.0,
-                           Astro_UnitsType unitsIn = Astro_UnitsType_Undefined,
-                           int64_t timestampIn = 0,
-                           aframe_t frameIn = aframe_none)
-        : AstroMeasurement(Single, timestampIn, frameIn), value(valueIn), units(unitsIn)
-    { ; }
+    AstroSingleMeasurement();
+    AstroSingleMeasurement(float value, Astro_UnitsType units, time_t timestamp = unixNow());
+    AstroSingleMeasurement(float value, Astro_UnitsType units, time_t timestamp, aframe_t frame);
+    AstroSingleMeasurement(const AstroMeasurementData *dataIn);
 
-    AstroSingleMeasurement &toUnits(Astro_UnitsType outUnits, double convertParam = 0.0);
-    AstroSingleMeasurement asUnits(Astro_UnitsType outUnits, double convertParam = 0.0) const;
+    void saveToData(AstroMeasurementData *dataOut, uint8_t measurementRow = 0, unsigned int additionalDecPlaces = 0) const;
 
-    AstroSingleMeasurement &wrapBy(double range);
-    AstroSingleMeasurement &wrapBySplit(double range);
-    AstroSingleMeasurement wrappedBy(double range) const;
-    AstroSingleMeasurement wrappedBySplit(double range) const;
+    // Modifiers (in utils)
+
+    inline AstroSingleMeasurement &toUnits(Astro_UnitsType outUnits, float convertParam = FLT_UNDEF);
+
+    inline AstroSingleMeasurement &wrapBy(float range);
+    inline AstroSingleMeasurement &wrapBySplit(float range);
+    inline AstroSingleMeasurement &wrapBy360() { return wrapBy(360); }
+    inline AstroSingleMeasurement &wrapBy180Neg180() { return wrapBySplit(360); }
+    inline AstroSingleMeasurement &wrapBy2Pi() { return wrapBy(TWO_PI); }
+    inline AstroSingleMeasurement &wrapByPiNegPi() { return wrapBySplit(TWO_PI); }
+    inline AstroSingleMeasurement &wrapBy24Hr() { return wrapBy(MIN_PER_DAY); }
+    inline AstroSingleMeasurement &wrapBy12HrNeg12Hr() { return wrapBySplit(MIN_PER_DAY); }
+
+    // Copiers (in utils)
+
+    inline AstroSingleMeasurement asUnits(Astro_UnitsType outUnits, float convertParam = FLT_UNDEF) const;
+
+    inline AstroSingleMeasurement wrappedBy(float range) const;
+    inline AstroSingleMeasurement wrappedBySplit(float range) const;
+    inline AstroSingleMeasurement wrappedBy360() const { return wrappedBy(360); }
+    inline AstroSingleMeasurement wrappedBy180Neg180() const { return wrappedBySplit(360); }
+    inline AstroSingleMeasurement wrappedBy2Pi() const { return wrappedBy(TWO_PI); }
+    inline AstroSingleMeasurement wrappedByPiNegPi() const { return wrappedBySplit(TWO_PI); }
+    inline AstroSingleMeasurement wrappedBy24Hr() const { return wrappedBy(MIN_PER_DAY); }
+    inline AstroSingleMeasurement wrappedBy12HrNeg12Hr() const { return wrappedBySplit(MIN_PER_DAY); }
 };
 
-// Binary Measurement
-// Boolean sensor state with common measurement metadata.
+// Binary Value Sensor Data Measurement
 struct AstroBinaryMeasurement : public AstroMeasurement {
-    bool state;                                              // Binary state
+    bool state;                                             // Polled state
 
-    AstroBinaryMeasurement(bool stateIn = false, int64_t timestampIn = 0, aframe_t frameIn = aframe_none)
-        : AstroMeasurement(Binary, timestampIn, frameIn), state(stateIn)
-    { ; }
+    AstroBinaryMeasurement();
+    AstroBinaryMeasurement(bool state, time_t timestamp = unixNow());
+    AstroBinaryMeasurement(bool state, time_t timestamp, aframe_t frame);
+    AstroBinaryMeasurement(const AstroMeasurementData *dataIn);
 
-    AstroSingleMeasurement getAsSingleMeasurement(double trueScale = 1.0,
-                                                  Astro_UnitsType unitsIn = Astro_UnitsType_Raw_1) const; // Units in
+    void saveToData(AstroMeasurementData *dataOut, uint8_t measurementRow = 0, unsigned int additionalDecPlaces = 0) const;
+
+    inline AstroSingleMeasurement getAsSingleMeasurement(float binScale = 1.0f, Astro_UnitsType binUnits = Astro_UnitsType_Raw_1) { return AstroSingleMeasurement(state ? binScale : 0.0f, binUnits, timestamp, frame); }
 };
 
-// Double Value Measurement
-// Two related measured values with independent units.
+// Double Value Sensor Data Measurement
 struct AstroDoubleMeasurement : public AstroMeasurement {
-    double value[2];                                         // Measured value
-    Astro_UnitsType units[2];                                // Measurement units
+    float value[2];                                         // Polled values
+    Astro_UnitsType units[2];                               // Units of values
 
-    AstroDoubleMeasurement(double value1 = 0.0, Astro_UnitsType units1 = Astro_UnitsType_Undefined,
-                           double value2 = 0.0, Astro_UnitsType units2 = Astro_UnitsType_Undefined,
-                           int64_t timestampIn = 0, aframe_t frameIn = aframe_none); // Timestamp in
+    AstroDoubleMeasurement();
+    AstroDoubleMeasurement(float value1, Astro_UnitsType units1, 
+                           float value2, Astro_UnitsType units2, 
+                           time_t timestamp = unixNow());
+    AstroDoubleMeasurement(float value1, Astro_UnitsType units1, 
+                           float value2, Astro_UnitsType units2, 
+                           time_t timestamp, aframe_t frame);
+    AstroDoubleMeasurement(const AstroMeasurementData *dataIn);
 
-    AstroSingleMeasurement getAsSingleMeasurement(uint8_t row) const;
+    void saveToData(AstroMeasurementData *dataOut, uint8_t measurementRow = 0, unsigned int additionalDecPlaces = 0) const;
+
+    inline AstroSingleMeasurement getAsSingleMeasurement(uint8_t measurementRow) { return AstroSingleMeasurement(value[measurementRow], units[measurementRow], timestamp, frame); }
 };
 
-// Triple Value Measurement
-// Three related measured values with independent units.
+// Triple Value Sensor Data Measurement
 struct AstroTripleMeasurement : public AstroMeasurement {
-    double value[3];                                         // Measured value
-    Astro_UnitsType units[3];                                // Measurement units
+    float value[3];                                         // Polled values
+    Astro_UnitsType units[3];                               // Units of values
 
-    AstroTripleMeasurement(double value1 = 0.0, Astro_UnitsType units1 = Astro_UnitsType_Undefined,
-                           double value2 = 0.0, Astro_UnitsType units2 = Astro_UnitsType_Undefined,
-                           double value3 = 0.0, Astro_UnitsType units3 = Astro_UnitsType_Undefined,
-                           int64_t timestampIn = 0, aframe_t frameIn = aframe_none); // Timestamp in
+    AstroTripleMeasurement();
+    AstroTripleMeasurement(float value1, Astro_UnitsType units1, 
+                           float value2, Astro_UnitsType units2, 
+                           float value3, Astro_UnitsType units3,
+                           time_t timestamp = unixNow());
+    AstroTripleMeasurement(float value1, Astro_UnitsType units1, 
+                           float value2, Astro_UnitsType units2, 
+                           float value3, Astro_UnitsType units3,
+                           time_t timestamp, aframe_t frame);
+    AstroTripleMeasurement(const AstroMeasurementData *dataIn);
 
-    AstroSingleMeasurement getAsSingleMeasurement(uint8_t row) const;
-    AstroDoubleMeasurement getAsDoubleMeasurement(uint8_t row1, uint8_t row2) const;
+    void saveToData(AstroMeasurementData *dataOut, uint8_t measurementRow = 0, unsigned int additionalDecPlaces = 0) const;
+
+    inline AstroSingleMeasurement getAsSingleMeasurement(uint8_t measurementRow) { return AstroSingleMeasurement(value[measurementRow], units[measurementRow], timestamp, frame); }
+    inline AstroDoubleMeasurement getAsDoubleMeasurement(uint8_t measurementRow1, uint8_t measurementRow2) { return AstroDoubleMeasurement(value[measurementRow1], units[measurementRow1], value[measurementRow2], units[measurementRow2], timestamp, frame); }
 };
 
-extern double getMeasurementValue(const AstroMeasurement *measurement, uint8_t row = 0, double trueScale = 1.0);
-extern Astro_UnitsType getMeasurementUnits(const AstroMeasurement *measurement, uint8_t row = 0,
-                                           Astro_UnitsType binaryUnits = Astro_UnitsType_Raw_1);
-extern uint8_t getMeasurementRowCount(const AstroMeasurement *measurement);
-extern AstroSingleMeasurement getAsSingleMeasurement(const AstroMeasurement *measurement, uint8_t row = 0,
-                                                      double trueScale = 1.0,
-                                                      Astro_UnitsType binaryUnits = Astro_UnitsType_Raw_1);
 
-// Measurement Serialization Data
-// Serializable representation of one sensor measurement row.
-struct AstroMeasurementData {
-    uint8_t measurementRow;                                  // Measurement row
-    double value;                                            // Measured value
-    Astro_UnitsType units;                                   // Measurement units
-    int64_t timestamp;                                       // Measurement/event timestamp
-    aframe_t frame;                                          // Polling frame number
+// Combined Measurement Serialization Sub Data
+struct AstroMeasurementData : public AstroSubData {
+    uint8_t measurementRow;                                 // Source measurement row index that data is from
+    float value;                                            // Value
+    Astro_UnitsType units;                                  // Units of value
+    time_t timestamp;                                       // Timestamp
 
     AstroMeasurementData();
-    bool toJSON(char *bufferOut, size_t bufferSize) const;
-    bool fromJSON(const char *jsonIn);
+    void toJSONObject(JsonObject &objectOut) const;
+    void fromJSONObject(JsonObjectConst &objectIn);
+    void fromJSONVariant(JsonVariantConst &variantIn);
 };
 
 #endif // /ifndef AstroMeasurements_H

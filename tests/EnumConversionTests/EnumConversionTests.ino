@@ -8,7 +8,7 @@ static int failures = 0;
     do { \
         for (int typeIndex = -1; typeIndex <= (int)(countValue); ++typeIndex) { \
             prefix value = typeIndex < 0 ? undefinedValue : (prefix)typeIndex; \
-            AstroString typeString = toStringFn(value); \
+            String typeString = toStringFn(value); \
             prefix retValue = fromStringFn(typeString); \
             if (value != retValue) { \
                 Serial.print(F("Conversion failure: ")); \
@@ -41,7 +41,20 @@ void setup()
     TEST_ENUM_RANGE(Astro_ThermalMode, Astro_ThermalMode_Count, Astro_ThermalMode_Undefined, thermalModeToString, thermalModeFromString);
     TEST_ENUM_RANGE(Astro_SchedulerStage, Astro_SchedulerStage_Count, Astro_SchedulerStage_Undefined, schedulerStageToString, schedulerStageFromString);
 
-    if (unitsTypeFromSymbol(AstroString("J/s")) != Astro_UnitsType_Power_Wattage) { ++failures; }
+    if (unitsTypeFromSymbol(String("J/s")) != Astro_UnitsType_Power_Wattage) { ++failures; }
+
+    float converted = 0.0f;
+    if (!tryConvertUnits(32.0f, Astro_UnitsType_Temperature_Fahrenheit, &converted, Astro_UnitsType_Temperature_Celsius) ||
+        !isFPEqual(converted, 0.0f)) { ++failures; }
+    if (!tryConvertUnits(1.0f, Astro_UnitsType_Distance_Feet, &converted, Astro_UnitsType_Distance_Meters) ||
+        fabsf(converted - 0.3048f) > 0.0001f) { ++failures; }
+    if (!tryConvertUnits(1.0f, Astro_UnitsType_Speed_FeetPerSec, &converted, Astro_UnitsType_Speed_MetersPerSec) ||
+        fabsf(converted - 0.3048f) > 0.0001f) { ++failures; }
+    if (!tryConvertUnits(1.0f, Astro_UnitsType_Current_Amperage, &converted, Astro_UnitsType_Power_Wattage, 12.0f) ||
+        !isFPEqual(converted, 12.0f)) { ++failures; }
+    if (defaultUnits(Astro_UnitsCategory_Humidity, Astro_MeasurementMode_Metric) != Astro_UnitsType_Humidity_RH ||
+        defaultUnits(Astro_UnitsCategory_Voltage, Astro_MeasurementMode_Metric) != Astro_UnitsType_Voltage_Volts ||
+        defaultUnits(Astro_UnitsCategory_Current, Astro_MeasurementMode_Metric) != Astro_UnitsType_Current_Amperage) { ++failures; }
 
     char targetName[ASTRO_TARGET_NAME_MAXSIZE];
     for (unsigned int targetIndex = 0; targetIndex < Astro_Target_Count; ++targetIndex) {

@@ -12,9 +12,14 @@
 
 Astruino astroController(Astro_MountType_Equatorial);
 
-static millis_t lastUpdate = 0;
 static float coverPower = 0.0f;
 static bool cameraActive = false;
+static double ambientTemperatureC = 8.0;
+static double humidityPercent = 78.0;
+static double opticsTemperatureC = 8.5;
+static double cameraSensorTemperatureC = -9.5;
+static double cameraBodyTemperatureC = 7.0;
+static double rainState = 0.0;
 
 void driveCover(void *context, float power)
 {
@@ -28,6 +33,13 @@ void triggerCamera(void *context, bool active)
     (void)context;
     cameraActive = active;
     digitalWrite(LED_BUILTIN, active ? HIGH : LOW); // Replace with shutter/record pin if desired.
+}
+
+bool readValue(void *context, double *valueOut)
+{
+    if (!context || !valueOut) { return false; }
+    *valueOut = *(double *)context;
+    return true;
 }
 
 void logEvent(void *context, const AstroLogEvent &event)
@@ -46,43 +58,51 @@ void setup()
     AstroObserver observer(SETUP_LATITUDE, SETUP_LONGITUDE, SETUP_ELEVATION);
     astroController.init();
     astroController.setObserver(observer);
-    astroController.launch();
+    setTime((time_t)SETUP_START_UNIX);
 
-    static AstroCallbackActuator coverActuator(driveCover, nullptr, Astro_ActuatorType_Cover);
-    astroController.getCover().setActuator(&coverActuator);
+    auto coverActuator = astroController.addCallbackActuator(driveCover, Astro_ActuatorType_Cover);
+    astroController.getCover().setActuator(coverActuator);
     astroController.getCover().setTravelRate(0.15f);
+
+    auto ambientSensor = astroController.addCallbackSensor(readValue, Astro_SensorType_Temperature,
+                                                            Astro_UnitsType_Temperature_Celsius, &ambientTemperatureC);
+    auto humiditySensor = astroController.addCallbackSensor(readValue, Astro_SensorType_Humidity,
+                                                             Astro_UnitsType_Humidity_RH, &humidityPercent);
+    auto opticsSensor = astroController.addCallbackSensor(readValue, Astro_SensorType_Temperature,
+                                                           Astro_UnitsType_Temperature_Celsius, &opticsTemperatureC);
+    auto cameraSensor = astroController.addCallbackSensor(readValue, Astro_SensorType_CameraTemperature,
+                                                           Astro_UnitsType_Temperature_Celsius, &cameraSensorTemperatureC);
+    auto cameraBodySensor = astroController.addCallbackSensor(readValue, Astro_SensorType_Temperature,
+                                                               Astro_UnitsType_Temperature_Celsius, &cameraBodyTemperatureC);
+    auto rainSensor = astroController.addCallbackSensor(readValue, Astro_SensorType_Rain,
+                                                         Astro_UnitsType_Raw_1, &rainState);
+
+    astroController.getThermalBalancer().setAmbientTemperatureSensor(ambientSensor);
+    astroController.getThermalBalancer().setHumiditySensor(humiditySensor);
+    astroController.getThermalBalancer().setOpticsTemperatureSensor(opticsSensor);
+    astroController.getThermalBalancer().setCameraSensorTemperatureSensor(cameraSensor);
+    astroController.getThermalBalancer().setCameraBodyTemperatureSensor(cameraBodySensor);
+
+    auto rainTrigger = astroController.addThresholdTrigger(rainSensor, 0.5, false, 0.0, 1000);
+    astroController.getScheduler().setSafetyTrigger(rainTrigger);
 
     astroController.getCamera().setTriggerCallback(triggerCamera);
     astroController.getCamera().setReady(true);
     astroController.getLogger().setSink(logEvent);
-
     astroController.getScheduler().setTarget(Astro_Target_M31);
 
-    lastUpdate = millis();
+    astroController.launch();
 }
 
 void loop()
 {
-    millis_t now = millis();
-    double elapsedSeconds = (now - lastUpdate) / 1000.0;
-    lastUpdate = now;
-    int64_t unixTime = SETUP_START_UNIX + (now / 1000);
+    // Replace these example values with installed sensors.
+    ambientTemperatureC -= 0.0002;
 
-    // Replace these example values with real light/weather/environment sensors.
-    double seconds = now / 1000.0;
-    double sunAltitude = -15.0;                            // Below twilight threshold in this example
-    bool safeToObserve = true;                             // Rain/wind/limit interlocks feed this value
-
-    AstroThermalReadings readings;
-    readings.ambientTemperatureC = 8.0 - seconds * 0.0002;
-    readings.humidityPercent = 78.0;
-    readings.opticsTemperatureC = 8.5;
-    readings.cameraSensorTemperatureC = -9.5;
-    readings.cameraBodyTemperatureC = 7.0;
-
-    astroController.update(unixTime, elapsedSeconds, sunAltitude, safeToObserve, readings);
+    astroController.update();
 
     static millis_t lastReport = 0;
+    millis_t now = millis();
     if (now - lastReport >= 5000) {
         lastReport = now;
         Serial.print(F("Cover: "));

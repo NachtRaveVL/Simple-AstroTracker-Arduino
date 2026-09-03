@@ -4,166 +4,160 @@
 #include <stdio.h>
 #include <string.h>
 
-static void testObjectData()
-{
-    AstroMount mount(Astro_MountType_AltAz, 3);
-    mount.unsetModified();
-    mount.bumpRevisionIfNeeded();
-
-    AstroObjectData *saveData = mount.newSaveData();
-    assert(saveData);
-    assert(saveData->idType == AstroIdentity::Mount);
-    assert(saveData->objType == Astro_MountType_AltAz);
-    assert(saveData->posIndex == 3);
-
-    char json[256];
-    assert(saveData->toJSON(json, sizeof(json)));
-
-    AstroObjectData decoded;
-    assert(decoded.fromJSON(json));
-    assert(decoded.idType == saveData->idType);
-    assert(decoded.objType == saveData->objType);
-    assert(decoded.posIndex == saveData->posIndex);
-    assert(decoded.revision == saveData->revision);
-    assert(strcmp(decoded.name, saveData->name) == 0);
-
-    AstroObject *restored = AstroFactory::newObjectFromData(&decoded);
-    assert(restored);
-    assert(restored->getId().isMountType());
-    assert(restored->getId().objTypeAs.mountType == Astro_MountType_AltAz);
-    assert(restored->getId().posIndex == 3);
-    assert(restored->getRevision() == decoded.revision);
-    assert(restored->getKeyString() == AstroString(decoded.name));
-
-    delete restored;
-    delete saveData;
-}
-
-static void testFactoryObjects()
-{
-    AstroObjectData data;
-    data.revision = 7;
-    data.posIndex = 2;
-
-    data.idType = AstroIdentity::Actuator;
-    data.objType = Astro_ActuatorType_DewHeater;
-    snprintf(data.name, sizeof(data.name), "DewHeater #2");
-    AstroObject *object = AstroFactory::newObjectFromData(&data);
-    assert(object && object->getId().isActuatorType());
-    assert(object->getRevision() == 7);
-    delete object;
-
-    data.idType = AstroIdentity::Sensor;
-    data.objType = Astro_SensorType_Humidity;
-    snprintf(data.name, sizeof(data.name), "Humidity #2");
-    object = AstroFactory::newObjectFromData(&data);
-    assert(object && object->getId().isSensorType());
-    assert(object->getRevision() == 7);
-    delete object;
-
-    data.idType = AstroIdentity::Rail;
-    data.objType = Astro_RailType_DC12V;
-    snprintf(data.name, sizeof(data.name), "DC12V #2");
-    object = AstroFactory::newObjectFromData(&data);
-    assert(object && object->getId().isRailType());
-    assert(isFPEqual(static_cast<AstroRail *>(object)->getVoltage(), 12.0));
-    delete object;
-
-    data.idType = AstroIdentity::Cover;
-    data.objType = 0;
-    snprintf(data.name, sizeof(data.name), "Cover #2");
-    object = AstroFactory::newObjectFromData(&data);
-    assert(object && object->getId().isCoverType());
-    delete object;
-
-    data.idType = AstroIdentity::ObservationDevice;
-    snprintf(data.name, sizeof(data.name), "Observation #2");
-    object = AstroFactory::newObjectFromData(&data);
-    assert(object && object->getId().isObservationDeviceType());
-    delete object;
-}
-
-static void testMeasurementData()
-{
-    AstroMeasurementData data;
-    data.measurementRow = 2;
-    data.value = 12.345678;
-    data.units = Astro_UnitsType_Temperature_Celsius;
-    data.timestamp = 1787101200LL;
-    data.frame = 42;
-
-    char json[256];
-    assert(data.toJSON(json, sizeof(json)));
-
-    AstroMeasurementData decoded;
-    assert(decoded.fromJSON(json));
-    assert(decoded.measurementRow == data.measurementRow);
-    assert(isFPEqual(decoded.value, data.value));
-    assert(decoded.units == data.units);
-    assert(decoded.timestamp == data.timestamp);
-    assert(decoded.frame == data.frame);
-}
-
 static void testSystemData()
 {
     AstroSystemData data;
-    snprintf(data.systemName, sizeof(data.systemName), "Backyard Tracker");
+    strncpy(data.systemName, "Backyard Tracker", sizeof(data.systemName) - 1);
+    data.systemName[sizeof(data.systemName) - 1] = '\0';
     data.systemMode = Astro_SystemMode_Balancing;
-    data.measurementMode = Astro_MeasurementMode_Scientific;
-    data.observer = AstroObserver(49.2827, -123.1207, 70.0);
-    data.scheduler.deploySunAltitudeDegrees = -12.0;
-    data.scheduler.stowSunAltitudeDegrees = -6.0;
-    data.scheduler.alignmentToleranceDegrees = 0.35;
-    data.scheduler.settleSeconds = 12;
-    data.scheduler.reportIntervalSeconds = 90;
+    data.measureMode = Astro_MeasurementMode_Scientific;
+    data.latitude = 49.2827;
+    data.longitude = -123.1207;
+    data.altitude = 70.0;
+    data.scheduler.preDuskHeatingMins = 12;
+    data.scheduler.reportInterval = 3600;
     data.logger.logLevel = Astro_LogLevel_Warnings;
-    snprintf(data.logger.logFilePrefix, sizeof(data.logger.logFilePrefix), "logs/test");
-    data.logger.logToSDCard = true;
-    snprintf(data.publisher.dataFilePrefix, sizeof(data.publisher.dataFilePrefix), "data/test");
-    data.publisher.pubToMQTT = true;
 
-    char json[512];
-    assert(data.toJSON(json, sizeof(json)));
+    StaticJsonDocument<1024> doc;
+    JsonObject object = doc.to<JsonObject>();
+    data.toJSONObject(object);
 
     AstroSystemData decoded;
-    assert(decoded.fromJSON(json));
+    JsonObjectConst objectConst = doc.as<JsonObjectConst>();
+    decoded.fromJSONObject(objectConst);
+    assert(decoded.isSystemData());
     assert(strcmp(decoded.systemName, data.systemName) == 0);
     assert(decoded.systemMode == data.systemMode);
-    assert(decoded.measurementMode == data.measurementMode);
-    assert(isFPEqual(decoded.observer.latitudeDegrees, data.observer.latitudeDegrees));
-    assert(isFPEqual(decoded.observer.longitudeDegrees, data.observer.longitudeDegrees));
-    assert(decoded.scheduler.settleSeconds == data.scheduler.settleSeconds);
-    assert(decoded.scheduler.reportIntervalSeconds == data.scheduler.reportIntervalSeconds);
+    assert(decoded.measureMode == data.measureMode);
+    assert(isFPEqual(decoded.latitude, data.latitude));
+    assert(isFPEqual(decoded.longitude, data.longitude));
+    assert(isFPEqual(decoded.altitude, data.altitude));
+    assert(decoded.scheduler.preDuskHeatingMins == data.scheduler.preDuskHeatingMins);
+    assert(decoded.scheduler.reportInterval == data.scheduler.reportInterval);
     assert(decoded.logger.logLevel == data.logger.logLevel);
-    assert(strcmp(decoded.logger.logFilePrefix, data.logger.logFilePrefix) == 0);
-    assert(decoded.logger.logToSDCard == data.logger.logToSDCard);
-    assert(strcmp(decoded.publisher.dataFilePrefix, data.publisher.dataFilePrefix) == 0);
-    assert(decoded.publisher.pubToMQTT == data.publisher.pubToMQTT);
+    assert(decoded.publisher.pubToSDCard == data.publisher.pubToSDCard);
+
+    AstroData *allocated = newDataFromJSONObject(objectConst);
+    assert(allocated && allocated->isSystemData());
+    delete allocated;
 }
 
 static void testCalibrationData()
 {
     AstroCalibrationData data(AstroIdentity(Astro_SensorType_Temperature, 1), Astro_UnitsType_Temperature_Celsius);
     data.setFromTwoPoints(0.1, -10.0, 0.9, 30.0);
-    assert(isFPEqual(data.transform(0.5), 10.0));
-    assert(isFPEqual(data.inverseTransform(10.0), 0.5));
+    assert(isFPEqual(data.transform(0.5f), 10.0f));
+    assert(isFPEqual(data.inverseTransform(10.0f), 0.5f));
 
-    char json[256];
-    assert(data.toJSON(json, sizeof(json)));
+    StaticJsonDocument<256> doc;
+    JsonObject object = doc.to<JsonObject>();
+    data.toJSONObject(object);
+    JsonObjectConst objectConst = doc.as<JsonObjectConst>();
+
     AstroCalibrationData decoded;
-    assert(decoded.fromJSON(json));
+    decoded.fromJSONObject(objectConst);
+    assert(decoded.isCalibrationData());
+    assert(strcmp(decoded.ownerName, data.ownerName) == 0);
     assert(decoded.calibrationUnits == data.calibrationUnits);
     assert(isFPEqual(decoded.multiplier, data.multiplier));
     assert(isFPEqual(decoded.offset, data.offset));
 }
 
+static void testActuatorData()
+{
+    AstroActuatorData data;
+    data.id.object.idType = AstroIdentity::Actuator;
+    data.id.object.objType = Astro_ActuatorType_Cover;
+    data.id.object.posIndex = 2;
+    data.id.object.classType = AstroActuator::RelayMotor;
+    data.enableMode = Astro_EnableMode_InOrder;
+    AstroDigitalPin(8, Astro_PinMode_Digital_Output, false).saveToData(&data.outputPin);
+    AstroDigitalPin(9, Astro_PinMode_Digital_Output, true).saveToData(&data.outputPin2);
+
+    StaticJsonDocument<512> doc;
+    JsonObject object = doc.to<JsonObject>();
+    data.toJSONObject(object);
+    JsonObjectConst objectConst = doc.as<JsonObjectConst>();
+
+    AstroData *allocated = newDataFromJSONObject(objectConst);
+    assert(allocated && allocated->isObjectData());
+    AstroActuatorData *decoded = static_cast<AstroActuatorData *>(allocated);
+    assert(decoded->id.object.idType == AstroIdentity::Actuator);
+    assert(decoded->id.object.objType == Astro_ActuatorType_Cover);
+    assert(decoded->id.object.posIndex == 2);
+    assert(decoded->id.object.classType == AstroActuator::RelayMotor);
+    assert(decoded->enableMode == Astro_EnableMode_InOrder);
+    assert(decoded->outputPin.pin == 8);
+    assert(decoded->outputPin2.pin == 9);
+    assert(decoded->outputPin2.dataAs.digitalPin.activeLow);
+    delete allocated;
+}
+
+
+static void testBinarySensorData()
+{
+    AstroBinarySensorData data;
+    data.id.object.idType = AstroIdentity::Sensor;
+    data.id.object.objType = Astro_SensorType_LimitSwitch;
+    data.id.object.posIndex = 1;
+    data.id.object.classType = AstroSensor::Binary;
+    AstroDigitalPin(14, Astro_PinMode_Digital_Input_PullUp, true).saveToData(&data.inputPin);
+    data.stateStableTimeMs = 75;
+
+    StaticJsonDocument<384> doc;
+    JsonObject object = doc.to<JsonObject>();
+    data.toJSONObject(object);
+    JsonObjectConst objectConst = doc.as<JsonObjectConst>();
+
+    AstroData *allocated = newDataFromJSONObject(objectConst);
+    assert(allocated && allocated->isObjectData());
+    AstroBinarySensorData *decoded = static_cast<AstroBinarySensorData *>(allocated);
+    assert(decoded->id.object.classType == AstroSensor::Binary);
+    assert(decoded->inputPin.pin == 14);
+    assert(decoded->inputPin.dataAs.digitalPin.activeLow);
+    assert(decoded->stateStableTimeMs == 75);
+
+    AstroSensor *sensor = newSensorObjectFromData(decoded);
+    assert(sensor && sensor->isBinaryClass() && !sensor->isDigitalClass());
+    delete sensor;
+    delete allocated;
+}
+
+static void testTriggerSubData()
+{
+    AstroTriggerSubData data;
+    data.type = AstroTrigger::MeasureValue;
+    strncpy(data.sensorName, "Temperature #1", sizeof(data.sensorName) - 1);
+    data.measurementRow = 0;
+    data.measurementUnits = Astro_UnitsType_Temperature_Celsius;
+    data.detriggerTol = 0.5;
+    data.detriggerDelay = 1000;
+    data.dataAs.measureValue.tolerance = 5.0;
+    data.dataAs.measureValue.triggerBelow = true;
+
+    StaticJsonDocument<384> doc;
+    JsonObject object = doc.to<JsonObject>();
+    data.toJSONObject(object);
+    JsonObjectConst objectConst = doc.as<JsonObjectConst>();
+
+    AstroTriggerSubData decoded;
+    decoded.fromJSONObject(objectConst);
+    assert(decoded.type == data.type);
+    assert(strcmp(decoded.sensorName, data.sensorName) == 0);
+    assert(decoded.measurementUnits == data.measurementUnits);
+    assert(isFPEqual(decoded.detriggerTol, data.detriggerTol));
+    assert(decoded.detriggerDelay == data.detriggerDelay);
+    assert(isFPEqual(decoded.dataAs.measureValue.tolerance, data.dataAs.measureValue.tolerance));
+    assert(decoded.dataAs.measureValue.triggerBelow == data.dataAs.measureValue.triggerBelow);
+}
+
 int main()
 {
-    testObjectData();
-    testFactoryObjects();
-    testMeasurementData();
     testSystemData();
     testCalibrationData();
+    testActuatorData();
+    testBinarySensorData();
+    testTriggerSubData();
     puts("PASS serialization");
     return 0;
 }

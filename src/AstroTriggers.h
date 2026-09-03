@@ -6,67 +6,132 @@
 #ifndef AstroTriggers_H
 #define AstroTriggers_H
 
-#include "AstroMeasurements.h"
-#include "AstroInterfaces.h"
+class AstroTrigger;
+class AstroMeasurementValueTrigger;
+class AstroMeasurementRangeTrigger;
+struct AstroTriggerSubData;
 
-// Trigger Base
-// Base class for sensor/value conditions used by scheduler and equipment safety logic.
-class AstroTrigger : public AstroTriggerObjectInterface {
+#include "Astruino.h"
+
+extern AstroTrigger *newTriggerObjectFromSubData(const AstroTriggerSubData *dataIn);
+
+class AstroTrigger : public AstroSubObject,
+                     public AstroTriggerObjectInterface,
+                     public AstroMeasurementUnitsInterfaceStorageSingle,
+                     public AstroSensorAttachmentInterface {
 public:
-    AstroTrigger(uint32_t stableTimeMs = 0);
+    const enum : signed char { MeasureValue, MeasureRange, Unknown = -1 } type;
 
-    bool update(bool requestedState, millis_t now = astroNZMillis());
-    void reset(bool state = false, millis_t now = astroNZMillis());
+    AstroTrigger(AstroIdentity sensorId,
+                 uint8_t measurementRow,
+                 double detriggerTol,
+                 millis_t detriggerDelay,
+                 int typeIn = Unknown);
+    AstroTrigger(SharedPtr<AstroSensor> sensor,
+                 uint8_t measurementRow,
+                 double detriggerTol,
+                 millis_t detriggerDelay,
+                 int typeIn = Unknown);
+    AstroTrigger(const AstroTriggerSubData *dataIn);
 
-    virtual bool isTriggered() const override { return _state; }
-    inline bool getPendingState() const { return _pendingState; }
-    inline uint32_t getStableTimeMs() const { return _stableTimeMs; }
-    inline void setStableTimeMs(uint32_t stableTimeMs) { _stableTimeMs = stableTimeMs; }
+    virtual void saveToData(AstroTriggerSubData *dataOut) const;
+    virtual void update();
+    virtual Astro_TriggerState getTriggerState(bool poll = false) override;
+
+    virtual void setMeasurementUnits(Astro_UnitsType measurementUnits, uint8_t measurementRow = 0) override;
+    virtual Astro_UnitsType getMeasurementUnits(uint8_t measurementRow = 0) const override;
+    inline uint8_t getMeasurementRow() const { return _sensor.getMeasurementRow(); }
+    inline double getMeasurementConvertParam() const { return _sensor.getMeasurementConvertParam(); }
+    inline double getDetriggerTolerance() const { return _detriggerTol; }
+    inline millis_t getDetriggerDelay() const { return _detriggerDelay; }
+    inline bool isDetriggerDelayActive() const { return _lastTrigger != millis_none; }
+
+    virtual AstroSensorAttachment &getSensorAttachment() override { return _sensor; }
+    Signal<Astro_TriggerState, ASTRO_TRIGGER_SIGNAL_SLOTS> &getTriggerSignal();
 
 protected:
-    bool _state;                                             // Current state flag
-    bool _pendingState;                                      // Pending state awaiting stability time
-    millis_t _pendingSince;                                  // Pending state start time, in milliseconds
-    uint32_t _stableTimeMs;                                  // Minimum stable time, in milliseconds
+    AstroSensorAttachment _sensor;                          // Sensor attachment
+    double _detriggerTol;                                   // De-trigger tolerance additive
+    millis_t _detriggerDelay;                               // De-trigger timing delay
+    millis_t _lastTrigger;                                  // Last trigger millis
+    Astro_TriggerState _triggerState;                       // Trigger state
+    Signal<Astro_TriggerState, ASTRO_TRIGGER_SIGNAL_SLOTS> _triggerSignal; // Trigger signal
+
+    virtual void handleMeasurement(const AstroMeasurement *measurement) = 0;
 };
 
-// Threshold Trigger
-// Triggers when a value crosses a configured upper or lower threshold.
-class AstroThresholdTrigger : public AstroTrigger {
+class AstroMeasurementValueTrigger : public AstroTrigger {
 public:
-    AstroThresholdTrigger(double threshold = 0.0, bool triggerBelow = false,
-                          double tolerance = 0.0, uint32_t stableTimeMs = 0); // Tolerance
+    AstroMeasurementValueTrigger(AstroIdentity sensorId,
+                                 double triggerTol,
+                                 bool triggerBelow = true,
+                                 uint8_t measurementRow = 0,
+                                 double detriggerTol = 0.0,
+                                 millis_t detriggerDelay = 0);
+    AstroMeasurementValueTrigger(SharedPtr<AstroSensor> sensor,
+                                 double triggerTol,
+                                 bool triggerBelow = true,
+                                 uint8_t measurementRow = 0,
+                                 double detriggerTol = 0.0,
+                                 millis_t detriggerDelay = 0);
+    AstroMeasurementValueTrigger(const AstroTriggerSubData *dataIn);
 
-    bool update(double value, millis_t now = astroNZMillis());
-
-    inline void setThreshold(double threshold) { _threshold = threshold; }
-    inline void setTolerance(double tolerance) { _tolerance = tolerance < 0.0 ? -tolerance : tolerance; }
-    inline void setTriggerBelow(bool triggerBelow) { _triggerBelow = triggerBelow; }
+    virtual void saveToData(AstroTriggerSubData *dataOut) const override;
+    void setTriggerTolerance(double tolerance);
+    inline double getTriggerTolerance() const { return _triggerTol; }
+    inline bool getTriggerBelow() const { return _triggerBelow; }
 
 protected:
-    double _threshold;                                       // Threshold
-    double _tolerance;                                       // Tolerance
-    bool _triggerBelow;                                      // Trigger below
+    double _triggerTol;                                     // Trigger tolerance limit
+    bool _triggerBelow;                                     // Trigger below flag
+    virtual void handleMeasurement(const AstroMeasurement *measurement) override;
 };
 
-// Range Trigger
-// Triggers when a value moves inside or outside a configured range.
-class AstroRangeTrigger : public AstroTrigger {
+class AstroMeasurementRangeTrigger : public AstroTrigger {
 public:
-    AstroRangeTrigger(double low = 0.0, double high = 0.0, bool triggerOutside = true,
-                      double tolerance = 0.0, uint32_t stableTimeMs = 0); // Tolerance
+    AstroMeasurementRangeTrigger(AstroIdentity sensorId,
+                                 double toleranceLow,
+                                 double toleranceHigh,
+                                 bool triggerOutside = true,
+                                 uint8_t measurementRow = 0,
+                                 double detriggerTol = 0.0,
+                                 millis_t detriggerDelay = 0);
+    AstroMeasurementRangeTrigger(SharedPtr<AstroSensor> sensor,
+                                 double toleranceLow,
+                                 double toleranceHigh,
+                                 bool triggerOutside = true,
+                                 uint8_t measurementRow = 0,
+                                 double detriggerTol = 0.0,
+                                 millis_t detriggerDelay = 0);
+    AstroMeasurementRangeTrigger(const AstroTriggerSubData *dataIn);
 
-    bool update(double value, millis_t now = astroNZMillis());
-
-    inline void setRange(double low, double high) { _low = low; _high = high; }
-    inline void setTolerance(double tolerance) { _tolerance = tolerance < 0.0 ? -tolerance : tolerance; }
-    inline void setTriggerOutside(bool triggerOutside) { _triggerOutside = triggerOutside; }
+    virtual void saveToData(AstroTriggerSubData *dataOut) const override;
+    void setTriggerMidpoint(double toleranceMid);
+    inline double getTriggerToleranceLow() const { return _triggerTolLow; }
+    inline double getTriggerToleranceHigh() const { return _triggerTolHigh; }
+    inline bool getTriggerOutside() const { return _triggerOutside; }
 
 protected:
-    double _low;                                             // Low
-    double _high;                                            // High
-    double _tolerance;                                       // Tolerance
-    bool _triggerOutside;                                    // Trigger outside
+    double _triggerTolLow;                                  // Low value tolerance
+    double _triggerTolHigh;                                 // High value tolerance
+    bool _triggerOutside;                                   // Trigger on outside flag
+    virtual void handleMeasurement(const AstroMeasurement *measurement) override;
+};
+
+struct AstroTriggerSubData : public AstroSubData {
+    char sensorName[ASTRO_NAME_MAXSIZE];                    // Sensor identity string
+    int8_t measurementRow;                                  // Measurement row
+    union {
+        struct { double tolerance; bool triggerBelow; } measureValue;
+        struct { double toleranceLow; double toleranceHigh; bool triggerOutside; } measureRange;
+    } dataAs;
+    double detriggerTol;                                    // De-trigger tolerance
+    millis_t detriggerDelay;                                // De-trigger delay millis
+    Astro_UnitsType measurementUnits;                       // Measurement units
+
+    AstroTriggerSubData();
+    void toJSONObject(JsonObject &objectOut) const;
+    void fromJSONObject(JsonObjectConst &objectIn);
 };
 
 #endif // /ifndef AstroTriggers_H

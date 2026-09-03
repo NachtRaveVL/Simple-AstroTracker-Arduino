@@ -1,37 +1,42 @@
 # Astruino syntax coloring
 
-# Controller and core types
+# Controller, objects, and system services
 Astruino	KEYWORD1
+AstroIdentity	KEYWORD1
 AstroObject	KEYWORD1
 AstroSubObject	KEYWORD1
-AstroIdentity	KEYWORD1
-AstroObjectData	KEYWORD1
-AstroObjectLink	KEYWORD1
 AstroFactory	KEYWORD1
+AstroCalibrations	KEYWORD1
+AstroObjectRegistration	KEYWORD1
+AstroPinHandlers	KEYWORD1
 AstroScheduler	KEYWORD1
 AstroLogger	KEYWORD1
 AstroPublisher	KEYWORD1
 
-# Coordinates and astronomy data
+# Core astronomy and target data
 AstroEquatorialCoordinates	KEYWORD1
 AstroHorizontalCoordinates	KEYWORD1
 AstroObserver	KEYWORD1
+AstroAxisState	KEYWORD1
+AstroTarget	KEYWORD1
+AstroStaticTarget	KEYWORD1
+AstroDynamicTarget	KEYWORD1
 AstroTargetData	KEYWORD1
+AstroStaticTargetData	KEYWORD1
+AstroDynamicTargetData	KEYWORD1
+AstroTargetsLibData	KEYWORD1
 AstroTargetsLibraryBook	KEYWORD1
 AstroTargetsLibrary	KEYWORD1
-AstroAxisState	KEYWORD1
 
-# Activations and attachments
+# Dynamic links, activations, and attachments
+AstroDLinkObject	KEYWORD1
 AstroActivation	KEYWORD1
 AstroActivationHandle	KEYWORD1
 AstroAttachment	KEYWORD1
 AstroActuatorAttachment	KEYWORD1
 AstroSensorAttachment	KEYWORD1
 AstroAxisDriverAttachment	KEYWORD1
-AstroMountAttachment	KEYWORD1
-AstroRailAttachment	KEYWORD1
 AstroTriggerAttachment	KEYWORD1
-AstroObservationDeviceAttachment	KEYWORD1
 
 # Measurements and pins
 AstroMeasurement	KEYWORD1
@@ -45,82 +50,128 @@ AstroDigitalPin	KEYWORD1
 AstroAnalogPin	KEYWORD1
 AstroPinData	KEYWORD1
 AstroPinMuxer	KEYWORD1
+AstroPinExpander	KEYWORD1
 
-# Drivers, actuators, and sensors
+# Axis drivers
 AstroAxisDriver	KEYWORD1
 AstroCallbackAxisDriver	KEYWORD1
 AstroServoAxisDriver	KEYWORD1
+AstroStepDirAxisDriver	KEYWORD1
+
+# Actuators
 AstroActuator	KEYWORD1
 AstroCallbackActuator	KEYWORD1
 AstroDigitalActuator	KEYWORD1
+AstroRelayMotorActuator	KEYWORD1
 AstroAnalogActuator	KEYWORD1
 AstroFocuser	KEYWORD1
+AstroActuatorData	KEYWORD1
+
+# Sensors
 AstroSensor	KEYWORD1
 AstroValueSensor	KEYWORD1
 AstroCallbackSensor	KEYWORD1
+AstroBinarySensor	KEYWORD1
 AstroDigitalSensor	KEYWORD1
 AstroAnalogSensor	KEYWORD1
+AstroSensorData	KEYWORD1
 
-# Mount, cover, camera, thermal, and rails
+# Mount, cover, camera, and thermal
 AstroMount	KEYWORD1
+AstroMountData	KEYWORD1
 AstroCover	KEYWORD1
-AstroObservationDevice	KEYWORD1
-AstroCameraTrigger	KEYWORD1
+AstroCamera	KEYWORD1
+AstroCameraSubData	KEYWORD1
 AstroThermalReadings	KEYWORD1
 AstroThermalOutputs	KEYWORD1
 AstroThermalBalancer	KEYWORD1
+
+# Power rails
 AstroRail	KEYWORD1
+AstroSimpleRail	KEYWORD1
+AstroRegulatedRail	KEYWORD1
+AstroRailData	KEYWORD1
+AstroSimpleRailData	KEYWORD1
+AstroRegulatedRailData	KEYWORD1
 
-# Triggers and modules
+# Triggers
 AstroTrigger	KEYWORD1
-AstroThresholdTrigger	KEYWORD1
-AstroRangeTrigger	KEYWORD1
-AstroModule	KEYWORD1
-AstroTimeProvider	KEYWORD1
-AstroLocationProvider	KEYWORD1
-AstroManualTimeProvider	KEYWORD1
-AstroFixedLocationProvider	KEYWORD1
-AstroCallbackTimeProvider	KEYWORD1
-AstroCallbackLocationProvider	KEYWORD1
+AstroMeasurementValueTrigger	KEYWORD1
+AstroMeasurementRangeTrigger	KEYWORD1
+AstroTriggerSubData	KEYWORD1
 
-# Scheduler, logger, and publisher data
-AstroSchedulerConfig	KEYWORD1
+# Persistent and reporting data
+AstroSystemData	KEYWORD1
+AstroCalibrationData	KEYWORD1
+AstroObjectData	KEYWORD1
 AstroSchedulerSubData	KEYWORD1
 AstroLogEvent	KEYWORD1
 AstroLoggerSubData	KEYWORD1
 AstroDataColumn	KEYWORD1
 AstroPublisherSubData	KEYWORD1
+AstroBinaryDataReadPlan	KEYWORD1
+
+# Common setup structures
+DeviceSetup	KEYWORD1
+Location	KEYWORD1
+Twilight	KEYWORD1
 
 # Public enum types
+Astro_EEPROMType	KEYWORD1
+Astro_RTCType	KEYWORD1
+Astro_DHTType	KEYWORD1
+Astro_TargetType	KEYWORD1
+Astro_TargetClass	KEYWORD1
 Astro_SystemMode	KEYWORD1
 Astro_MeasurementMode	KEYWORD1
-Astro_DirectionMode	KEYWORD1
-Astro_EnableMode	KEYWORD1
+Astro_DisplayOutputMode	KEYWORD1
+Astro_ControlInputMode	KEYWORD1
 Astro_ActuatorType	KEYWORD1
 Astro_SensorType	KEYWORD1
 Astro_MountType	KEYWORD1
 Astro_RailType	KEYWORD1
 Astro_PinMode	KEYWORD1
-Astro_UnitsCategory	KEYWORD1
-Astro_UnitsType	KEYWORD1
-Astro_TargetId	KEYWORD1
-Astro_TargetClass	KEYWORD1
+Astro_EnableMode	KEYWORD1
+Astro_DirectionMode	KEYWORD1
+Astro_TriggerState	KEYWORD1
 Astro_ThermalMode	KEYWORD1
 Astro_SchedulerStage	KEYWORD1
+Astro_UnitsCategory	KEYWORD1
+Astro_UnitsType	KEYWORD1
+Astro_Autosave	KEYWORD1
 Astro_LogLevel	KEYWORD1
 Astro_ActivationFlags	KEYWORD1
 
-# Astronomy and conversion helpers
+# Astronomy and core helpers
+astroElapsedTime	KEYWORD2
+astroHasElapsed	KEYWORD2
+astroLargerMagnitude	KEYWORD2
+astroDirectionForOffset	KEYWORD2
+astroTravelDistanceForTime	KEYWORD2
+astroPoweredTravelTime	KEYWORD2
+astroShouldHoldIncrementalMotor	KEYWORD2
+astroWrappedAngleDelta	KEYWORD2
+astroUpdateRunningCorrection	KEYWORD2
+astroUpdateStableBinaryState	KEYWORD2
+astroBinaryDataReadPlan	KEYWORD2
 astroJulianDate	KEYWORD2
 astroGreenwichSiderealDegrees	KEYWORD2
 astroLocalSiderealDegrees	KEYWORD2
 astroPrecessJ2000	KEYWORD2
 astroEquatorialToHorizontal	KEYWORD2
-astroNormalizeDegrees	KEYWORD2
-astroNormalizeSignedDegrees	KEYWORD2
-astroTargetIdToString	KEYWORD2
-astroTargetIdFromString	KEYWORD2
-astroLib	KEYWORD2
+astroResolveSolarSystemTarget	KEYWORD2
+astroTargetsLib	KEYWORD2
+getTargetsLib	KEYWORD2
+
+# Measurement helpers
+getMeasurementValue	KEYWORD2
+getMeasurementUnits	KEYWORD2
+getMeasurementRowCount	KEYWORD2
+getAsSingleMeasurement	KEYWORD2
+
+# Sensor helpers
+defaultUnitsForSensor	KEYWORD2
+defaultCategoryForSensor	KEYWORD2
 
 # Build flags and common constants
 ASTRO_DISABLE_MULTITASKING	LITERAL1
@@ -136,3 +187,4 @@ ASTRO_ENABLE_VERBOSE_DEBUG	LITERAL1
 ASTRO_ENABLE_DEBUG_ASSERTIONS	LITERAL1
 ASTRO_POS_SEARCH_FROMBEG	LITERAL1
 ASTRO_POS_SEARCH_FROMEND	LITERAL1
+apin_none	LITERAL1

@@ -6,26 +6,23 @@
 static void testUserTargetCheckoutLifetime()
 {
     AstroTargetsLibrary library;
-    AstroTargetData custom;
-    custom.targetId = Astro_Target_Custom1;
-    std::strcpy(custom.id, "ShopStar");
+    AstroTargetsLibData custom;
+    custom.targetType = Astro_TargetType_CustomTarget1;
+    std::strcpy(custom.catalogId, "ShopStar");
     std::strcpy(custom.targetName, "Shop Star");
     custom.targetClass = Astro_TargetClass_Star;
-    custom.modified = true;
+    custom.bumpRevisionIfNeeded();
 
     assert(library.setUserTargetData(&custom));
-    const AstroTargetData *checkedOut = library.checkoutTargetData(Astro_Target_Custom1);
+    const AstroTargetsLibData *checkedOut = library.checkoutTargetsData(Astro_TargetType_CustomTarget1);
     assert(checkedOut != nullptr);
-    assert(library.getCheckoutCount(Astro_Target_Custom1) == 2);
 
     assert(!library.dropUserTargetData(&custom));
     assert(std::strcmp(checkedOut->targetName, "Shop Star") == 0);
-    assert(library.getCheckoutCount(Astro_Target_Custom1) == 2);
 
-    library.returnTargetData(checkedOut);
-    assert(library.getCheckoutCount(Astro_Target_Custom1) == 1);
+    library.returnTargetsData(checkedOut);
     assert(library.dropUserTargetData(&custom));
-    assert(library.getLoadedBookCount() == 0);
+    assert(!library.hasUserTargets());
 }
 
 static void testJ2000IdentityAndClockStep()
@@ -43,9 +40,9 @@ static void testCalibrationDegenerateSpan()
 {
     AstroCalibrationData calibration;
     calibration.setFromTwoPoints(0.5, 10.0, 0.5, 20.0);
-    assert(isFPEqual(calibration.multiplier, 1.0));
-    assert(isFPEqual(calibration.offset, 0.0));
-    assert(isFPEqual(calibration.transform(3.0), 3.0));
+    assert(isFPEqual(calibration.multiplier, 1.0f));
+    assert(isFPEqual(calibration.offset, 0.0f));
+    assert(isFPEqual(calibration.transform(3.0f), 3.0f));
 }
 
 int main()

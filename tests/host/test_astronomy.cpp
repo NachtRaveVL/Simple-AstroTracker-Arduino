@@ -23,15 +23,15 @@ int main()
     check(std::fabs(m31Date.rightAscensionHours - m31J2000.rightAscensionHours) < 0.1, "Precession RA sane");
     check(std::fabs(m31Date.declinationDegrees - m31J2000.declinationDegrees) < 1.0, "Precession DEC sane");
 
-    for (int id = Astro_Target_Sun; id <= Astro_Target_Neptune; ++id) {
+    for (int type = Astro_TargetType_Sun; type <= Astro_TargetType_Neptune; ++type) {
         AstroEquatorialCoordinates coords;
-        check(astroResolveSolarSystemTarget((Astro_TargetId)id, 1787011200, &coords), "moving target resolves");
+        check(astroResolveSolarSystemTarget((Astro_TargetType)type, 1787011200, &coords), "moving target resolves");
         check(coords.rightAscensionHours >= 0.0 && coords.rightAscensionHours < 24.0, "moving RA range");
         check(coords.declinationDegrees >= -90.0 && coords.declinationDegrees <= 90.0, "moving DEC range");
     }
 
     AstroEquatorialCoordinates sun;
-    check(astroResolveSolarSystemTarget(Astro_Target_Sun, 946728000, &sun), "J2000 sun resolves");
+    check(astroResolveSolarSystemTarget(Astro_TargetType_Sun, 946728000, &sun), "J2000 sun resolves");
     check(sun.rightAscensionHours > 18.0 && sun.rightAscensionHours < 19.5, "J2000 sun RA plausible");
     check(sun.declinationDegrees < -20.0 && sun.declinationDegrees > -25.0, "J2000 sun DEC plausible");
 

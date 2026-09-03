@@ -6,71 +6,119 @@
 #ifndef AstroLogger_H
 #define AstroLogger_H
 
-#include "AstroDefines.h"
-#include <stdint.h>
-
+class AstroLogger;
 struct AstroLoggerSubData;
 
-// Logging Event
-// Logging event structure used by logger sink callbacks.
+#include "Astruino.h"
+
+// Logging Level
+// Log levels that can be filtered upon if desired.
+enum Astro_LogLevel : signed char {
+    Astro_LogLevel_All,                                     // All (info, warn, err)
+    Astro_LogLevel_Warnings,                                // Warnings & errors (warn, err)
+    Astro_LogLevel_Errors,                                  // Just errors (err)
+    Astro_LogLevel_None = -1,                               // None / disabled
+    Astro_LogLevel_Info = Astro_LogLevel_All                // Info alias
+};
+
+// Logging Events
+// Logging event structure that is used in signaling.
 struct AstroLogEvent {
     Astro_LogLevel level;                                   // Log level
-    int64_t timestamp;                                      // Event timestamp, unix/UTC when available
-    char prefix[12];                                        // Generated log prefix
-    char message[ASTRO_LOG_MESSAGE_MAXSIZE];                // Log message
+    String timestamp;                                       // Timestamp (generated)
+    String prefix;                                          // Prefix
+    String msg;                                             // Message
+    String suffix1;                                         // Suffix1 (optional)
+    String suffix2;                                         // Suffix2 (optional)
+
+    AstroLogEvent(Astro_LogLevel levelIn,
+                  const String &prefixIn,
+                  const String &msgIn,
+                  const String &suffix1In = String(),
+                  const String &suffix2In = String());
 };
 
 // Data Logger
-// Collects and reports system events while keeping the output sink optional. The sink
-// callback keeps offline operation simple while allowing serial, file, network, or user
-// supplied logging backends to be attached without changing the astronomy core.
+// The Logger acts as the system's event monitor that collects and reports on the various
+// processes of interest inside of the system. It allows for different log levels to be
+// used that can help filter out unwanted noise, as well as attempts to be more optimized
+// for embedded systems by spreading string data out over multiple call parameters to
+// avoid large string concatenations that can overstress and crash constrained devices.
+// Logging to SD card .txt log files (via SPI card reader) is supported as is logging to
+// WiFiStorage .txt log files (via OS/OTA filesystem / WiFiNINA_Generic only).
 class AstroLogger {
 public:
-    typedef void (*LogSink)(void *context, const AstroLogEvent &event);
-
     AstroLogger();
+    ~AstroLogger();
 
-    // Assigns an output sink and optional user context.
-    void setSink(LogSink sink, void *context = nullptr);
-    // Binds logger settings to system serialization data.
-    void setSubData(AstroLoggerSubData *data);
+    bool beginLoggingToSDCard(String logFilePrefix);
+    inline bool isLoggingToSDCard() const;
 
-    // Changes the minimum log level accepted by the logger.
+#ifdef ASTRO_USE_WIFI_STORAGE
+    bool beginLoggingToWiFiStorage(String logFilePrefix);
+    inline bool isLoggingToWiFiStorage() const;
+#endif
+
+    inline void logActivation(const AstroActuator *actuator);
+    inline void logDeactivation(const AstroActuator *actuator);
+    inline void logProcess(const AstroObjInterface *obj, const String &processString = String(), const String &statusString = String());
+    inline void logStatus(const AstroObjInterface *obj, const String &statusString = String());
+
+    void logSystemUptime();
+    inline void logSystemSave() { logMessage(SFP(AStr_Log_SystemDataSaved)); }
+
+    void logMessage(const String &msg, const String &suffix1 = String(), const String &suffix2 = String());
+    void logWarning(const String &warn, const String &suffix1 = String(), const String &suffix2 = String());
+    void logError(const String &err, const String &suffix1 = String(), const String &suffix2 = String());
+    void flush();
+
     void setLogLevel(Astro_LogLevel logLevel);
-    Astro_LogLevel getLogLevel() const;
-    inline bool isLoggingEnabled() const { return _sink && getLogLevel() != Astro_LogLevel_None; }
+    inline Astro_LogLevel getLogLevel() const;
 
-    // Standard message helpers.
-    void logMessage(int64_t timestamp, const char *message);
-    void logWarning(int64_t timestamp, const char *message);
-    void logError(int64_t timestamp, const char *message);
-    void logField(int64_t timestamp, const char *fieldName, double value, const char *units = nullptr);
+    inline bool isLoggingEnabled() const;
+    inline time_t getSystemInit() const { return _initTime; }
+    inline time_t getSystemUptime() const { return unixNow() - (_initTime ?: SECS_YR_2000); }
 
-    // Generates the common Astruino environment report.
-    void logEnvironment(int64_t timestamp, double ambientC, double humidity, double dewPointC,
-                        double opticsC = 999.0, double cameraSensorC = 999.0, double cameraBodyC = 999.0,
-                        float dewHeaterPower = -1.0f, float cameraCoolingPower = -1.0f, float cameraFanPower = -1.0f); // Dew heater power
+    Signal<const AstroLogEvent, ASTRO_LOG_SIGNAL_SLOTS> &getLogSignal();
+
+    void notifyDateChanged();
 
 protected:
-    LogSink _sink;                                          // Output sink callback
-    void *_context;                                         // Output sink user context
-    Astro_LogLevel _logLevel;                               // Local fallback log level
-    AstroLoggerSubData *_data;                              // Bound logger serialization data, not owned
+#if ASTRO_SYS_LEAVE_FILES_OPEN
+    File *_logFileSD;                                       // SD card log file instance (owned)
+#ifdef ASTRO_USE_WIFI_STORAGE
+    WiFiStorageFile *_logFileWS;                            // WiFiStorageFile log file instance (owned)
+#endif
+#endif
+    String _logFilename;                                    // Resolved log file name (based on day)
+    time_t _initTime;                                       // Time of init, for uptime (UTC)
+    time_t _lastSpaceCheck;                                 // Last time enough space was checked (UTC)
 
-    void log(Astro_LogLevel level, int64_t timestamp, const char *prefix, const char *message);
+    Signal<const AstroLogEvent, ASTRO_LOG_SIGNAL_SLOTS> _logSignal; // Logging signal
+
+    friend class Astruino;
+    
+    void log(const AstroLogEvent &event);
+
+public: // consider protected
+    inline AstroLoggerSubData *loggerData() const;
+    inline bool hasLoggerData() const;
+
+    inline void updateInitTracking(time_t time = unixNow()) { _initTime = time; }
+    void cleanupOldestLogs(bool force = false);
 };
 
 // Logger Serialization Sub Data
-// A part of ASYS system data, modeled after the Hydruino/Helioduino logger settings.
-struct AstroLoggerSubData {
-    Astro_LogLevel logLevel;                                // Log level filter, default All
-    char logFilePrefix[ASTRO_PREFIX_MAXSIZE];               // Base log file prefix/folder
-    bool logToSDCard;                                       // SD card logging enabled flag
-    bool logToWiFiStorage;                                  // WiFiStorage logging enabled flag
+// A part of ASYS system data.
+struct AstroLoggerSubData : public AstroSubData {
+    Astro_LogLevel logLevel;                                // Log level filter (default: All)
+    char logFilePrefix[ASTRO_PREFIX_MAXSIZE];               // Base log file name prefix / folder (default: "logs/he")
+    bool logToSDCard;                                       // If system logging to SD card is enabled (default: false)
+    bool logToWiFiStorage;                                  // If system logging to WiFiStorage is enabled (default: false)
 
     AstroLoggerSubData();
-    bool toJSON(char *bufferOut, size_t bufferSize) const;
-    bool fromJSON(const char *jsonIn);
+    void toJSONObject(JsonObject &objectOut) const;
+    void fromJSONObject(JsonObjectConst &objectIn);
 };
 
 #endif // /ifndef AstroLogger_H

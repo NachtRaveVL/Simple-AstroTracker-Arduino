@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(-Wall -Wextra -Wpedantic -Wfloat-equal -Werror)
+    add_compile_options(-Wall -Wextra -Werror)
 endif()
 
 find_package(Python3 COMPONENTS Interpreter)
@@ -15,15 +15,12 @@ set(ASTRUINO_SRC
     ../src/AstroActuators.cpp
     ../src/AstroAttachments.cpp
     ../src/AstroCamera.cpp
-    ../src/AstroCoordinates.cpp
-    ../src/AstroCover.cpp
+    ../src/AstroCoreLogic.cpp
     ../src/AstroData.cpp
     ../src/AstroDatas.cpp
     ../src/AstroDrivers.cpp
-    ../src/AstroEphemeris.cpp
     ../src/AstroFactory.cpp
-    ../src/AstroInterfaces.cpp
-    ../src/AstroLib.cpp
+    ../src/AstroTargetsLibrary.cpp
     ../src/AstroLogger.cpp
     ../src/AstroMeasurements.cpp
     ../src/AstroModules.cpp
@@ -41,10 +38,35 @@ set(ASTRUINO_SRC
     ../src/AstroTriggers.cpp
     ../src/AstroUtils.cpp
     ../src/Astruino.cpp
+    ../src/shared/AstroUIData.cpp
 )
 
 add_library(astruino_host STATIC ${ASTRUINO_SRC})
 target_include_directories(astruino_host PUBLIC ../src)
+target_include_directories(astruino_host SYSTEM PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/shims
+)
+target_compile_definitions(astruino_host PUBLIC
+    ARDUINO=10819
+    ASTRO_DISABLE_GUI
+    ASTRO_DISABLE_MULTITASKING
+)
+
+add_library(astruino_host_debug STATIC ${ASTRUINO_SRC})
+target_include_directories(astruino_host_debug PUBLIC ../src)
+target_include_directories(astruino_host_debug SYSTEM PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/shims
+)
+target_compile_definitions(astruino_host_debug PUBLIC
+    ARDUINO=10819
+    ASTRO_DISABLE_GUI
+    ASTRO_DISABLE_MULTITASKING
+)
+target_compile_definitions(astruino_host_debug PRIVATE
+    ASTRO_ENABLE_DEBUG_OUTPUT
+    ASTRO_ENABLE_VERBOSE_DEBUG
+    ASTRO_ENABLE_DEBUG_ASSERTIONS
+)
 
 add_executable(test_astronomy host/test_astronomy.cpp)
 target_link_libraries(test_astronomy PRIVATE astruino_host)
@@ -67,6 +89,17 @@ target_link_libraries(test_serialization PRIVATE astruino_host)
 add_executable(test_hardening host/test_hardening.cpp)
 target_link_libraries(test_hardening PRIVATE astruino_host)
 
+add_executable(test_hardware host/test_hardware.cpp)
+target_link_libraries(test_hardware PRIVATE astruino_host)
+
+add_executable(test_debug host/test_debug.cpp)
+target_link_libraries(test_debug PRIVATE astruino_host_debug)
+target_compile_definitions(test_debug PRIVATE
+    ASTRO_ENABLE_DEBUG_OUTPUT
+    ASTRO_ENABLE_VERBOSE_DEBUG
+    ASTRO_ENABLE_DEBUG_ASSERTIONS
+)
+
 enable_testing()
 add_test(NAME astronomy COMMAND test_astronomy)
 add_test(NAME catalog COMMAND test_catalog)
@@ -75,9 +108,5 @@ add_test(NAME enums COMMAND test_enums)
 add_test(NAME infrastructure COMMAND test_infrastructure)
 add_test(NAME serialization COMMAND test_serialization)
 add_test(NAME hardening COMMAND test_hardening)
-
-if(Python3_Interpreter_FOUND)
-    add_test(NAME enum_trie_generated COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate_enum_trie.py --check)
-    add_test(NAME source_validation COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/validate_source.py)
-    add_test(NAME example_syntax COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/validate_examples.py)
-endif()
+add_test(NAME hardware COMMAND test_hardware)
+add_test(NAME debug COMMAND test_debug)

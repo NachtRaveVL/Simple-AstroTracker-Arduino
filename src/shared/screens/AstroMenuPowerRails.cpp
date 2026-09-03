@@ -1,3 +1,4 @@
-/*  Astruino UI Screen: PowerRails
-    // TODO: Implement Astruino powerrails screen.
+/*  Astruino: PowerRails menu screen scaffold.
+    Copyright (C) 2026 NachtRaveVL
 */
+#include "AstroMenuPowerRails.h"

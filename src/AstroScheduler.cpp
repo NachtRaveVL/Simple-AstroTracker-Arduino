@@ -3,196 +3,563 @@
     Astruino Scheduler
 */
 
-#include "AstroScheduler.h"
-#include "AstroUtils.h"
-#include <stdio.h>
-
-AstroSchedulerConfig::AstroSchedulerConfig()
-    : deploySunAltitudeDegrees(ASTRO_SCH_DEPLOY_SUN_ALT_DEG), stowSunAltitudeDegrees(ASTRO_SCH_STOW_SUN_ALT_DEG),
-      alignmentToleranceDegrees(ASTRO_SCH_ALIGN_TOL_DEG), settleSeconds(ASTRO_SCH_SETTLE_SECS), reportIntervalSeconds(ASTRO_SCH_REPORT_INTERVAL_SECS)
-{ ; }
+#include "Astruino.h"
 
 AstroScheduler::AstroScheduler()
-    : _mount(nullptr), _cover(nullptr), _device(nullptr), _thermal(nullptr), _logger(nullptr),
-      _targetId(Astro_Target_M42), _config(), _stage(Astro_SchedulerStage_DayStowed),
-      _stageStart(0), _settleStart(0), _lastEnvReport(0)
+    : _needsScheduling(false), _inNighttimeMode(false), _lastDay{0}
 { ; }
 
-void AstroScheduler::setMount(AstroMount *mount) { _mount = mount; }
-void AstroScheduler::setCover(AstroCover *cover) { _cover = cover; }
-void AstroScheduler::setObservationDevice(AstroObservationDevice *device) { _device = device; }
-void AstroScheduler::setThermalBalancer(AstroThermalBalancer *thermal) { _thermal = thermal; }
-void AstroScheduler::setLogger(AstroLogger *logger) { _logger = logger; }
-void AstroScheduler::setTarget(Astro_TargetId targetId) { _targetId = targetId; if (_mount) { _mount->setTarget(targetId); } }
-void AstroScheduler::setConfig(const AstroSchedulerConfig &config) { _config = config; }
-
-void AstroScheduler::enterStage(Astro_SchedulerStage stage, int64_t unixTime)
+AstroScheduler::~AstroScheduler()
 {
-    if (_stage == stage) { return; }
-    _stage = stage;
-    _stageStart = unixTime;
-    _settleStart = 0;
-    if (_logger) {
-        AstroString stageName = schedulerStageToString(stage, true);
-        if (!stageName.empty()) { _logger->logMessage(unixTime, stageName.c_str()); }
+    while (_trackings.size()) {
+        auto trackingIter = _trackings.begin();
+        delete trackingIter->second;
+        _trackings.erase(trackingIter);
     }
 }
 
-void AstroScheduler::reportEnvironment(int64_t unixTime, const AstroThermalReadings &readings, const AstroThermalOutputs &outputs)
+void AstroScheduler::update()
 {
-    if (!_logger || !_config.reportIntervalSeconds) { return; }
-    if (_lastEnvReport && unixTime < _lastEnvReport + _config.reportIntervalSeconds) { return; }
-    _logger->logEnvironment(unixTime, readings.ambientTemperatureC, readings.humidityPercent, outputs.dewPointC,
-                            readings.opticsTemperatureC, readings.cameraSensorTemperatureC, readings.cameraBodyTemperatureC,
-                            outputs.dewHeaterPower, outputs.cameraCoolingPower, outputs.cameraFanPower);
-    _lastEnvReport = unixTime;
-}
+    if (hasSchedulerData()) {
+        #ifdef ASTRO_USE_VERBOSE_OUTPUT
+            Serial.println(F("Scheduler::update")); flushYield();
+        #endif
 
-void AstroScheduler::update(int64_t unixTime, double elapsedSeconds, double sunAltitudeDegrees,
-                            bool safeToObserve, const AstroThermalReadings &thermalReadings)
-{
-    AstroThermalOutputs outputs;
-    if (_thermal) { outputs = _thermal->update(thermalReadings, elapsedSeconds); }
-    reportEnvironment(unixTime, thermalReadings, outputs);
+        {   time_t time = unixNow();
+            DateTime currTime = localTime(time);
+            bool nighttimeMode = _dailyTwilight.isNighttime(time);
 
-    if (_cover) { _cover->update(elapsedSeconds); }
-    if (_mount) { _mount->update(unixTime, elapsedSeconds); }
-
-    if ((_cover && _cover->isFaulted()) || (_mount && _mount->isLimitHit())) {
-        if (_device) { _device->stopObservation(); }
-        if (_mount && !_mount->isLimitHit()) { _mount->park(); }
-        if (_thermal) { _thermal->setMode(Astro_ThermalMode_SafeStowed); }
-        enterStage(Astro_SchedulerStage_Fault, unixTime);
-        return;
-    }
-
-    if (!safeToObserve && _stage != Astro_SchedulerStage_Fault) {
-        enterStage(Astro_SchedulerStage_SafeStowed, unixTime);
-    }
-
-    switch (_stage) {
-        case Astro_SchedulerStage_DayStowed: {
-            if (_thermal) { _thermal->setMode(Astro_ThermalMode_DayStorage); }
-            if (_mount) { _mount->park(); }
-            if (_cover && (!_mount || _mount->isParked())) { _cover->close(); }
-            if (sunAltitudeDegrees <= _config.deploySunAltitudeDegrees &&
-                (!_cover || _cover->isClosed()) && (!_mount || _mount->isParked())) {
-                if (_cover) { _cover->open(); }
-                enterStage(Astro_SchedulerStage_Deploying, unixTime);
+            if (_inNighttimeMode != nighttimeMode) {
+                _inNighttimeMode = nighttimeMode;
+                setNeedsScheduling();
+                Astruino::_activeInstance->setNeedsRedraw();
             }
-        } break;
 
-        case Astro_SchedulerStage_Deploying: {
-            if (_cover) { _cover->open(); }
-            if (!_cover || _cover->isOpen()) {
-                if (_mount) { _mount->unpark(); }
-                if (_thermal) { _thermal->setMode(Astro_ThermalMode_NightObserving); }
-                enterStage(Astro_SchedulerStage_Cooling, unixTime);
-            }
-        } break;
-
-        case Astro_SchedulerStage_Cooling: {
-            if (_thermal) { _thermal->setMode(Astro_ThermalMode_NightObserving); }
-            if (!_thermal || _thermal->cameraStable(thermalReadings, ASTRO_SCH_CAMERA_STABLE_DEG)) {
-                if (_mount) {
-                    _mount->unpark();
-                    _mount->setTarget(_targetId);
-                    _mount->track();
+            if (!(_lastDay[0] == currTime.year()-2000 &&
+                  _lastDay[1] == currTime.month() &&
+                  _lastDay[2] == currTime.day())) {
+                // only log uptime upon actual day change and if uptime has been at least 1d
+                if (getLogger()->getSystemUptime() >= (time_t)SECS_PER_DAY) {
+                    getLogger()->logSystemUptime();
                 }
-                enterStage(Astro_SchedulerStage_Slewing, unixTime);
+                broadcastDateChange();
             }
+        }
+
+        if (needsScheduling()) { performScheduling(); }
+
+        for (auto trackingIter = _trackings.begin(); trackingIter != _trackings.end(); ++trackingIter) {
+            trackingIter->second->update();
+        }
+
+        #ifdef ASTRO_USE_VERBOSE_OUTPUT
+            Serial.println(F("Scheduler::~update")); flushYield();
+        #endif
+    }
+}
+
+void AstroScheduler::setPreDuskHeatingMins(unsigned int heatingMins)
+{
+    ASTRO_SOFT_ASSERT(hasSchedulerData(), SFP(AStr_Err_NotYetInitialized));
+
+    if (hasSchedulerData() && schedulerData()->preDuskHeatingMins != heatingMins) {
+        schedulerData()->preDuskHeatingMins = heatingMins;
+
+        setNeedsScheduling();
+        Astruino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+    }
+}
+
+void AstroScheduler::setReportInterval(TimeSpan interval)
+{
+    ASTRO_SOFT_ASSERT(hasSchedulerData(), SFP(AStr_Err_NotYetInitialized));
+
+    if (hasSchedulerData() && schedulerData()->reportInterval != interval.totalseconds()) {
+        schedulerData()->reportInterval = interval.totalseconds();
+        Astruino::_activeInstance->_systemData->bumpRevisionIfNeeded();
+    }
+}
+
+unsigned int AstroScheduler::getPreDuskHeatingMins() const
+{
+    ASTRO_SOFT_ASSERT(hasSchedulerData(), SFP(AStr_Err_NotYetInitialized));
+    return hasSchedulerData() ? schedulerData()->preDuskHeatingMins : 0;
+}
+
+TimeSpan AstroScheduler::getReportInterval() const
+{
+    ASTRO_SOFT_ASSERT(hasSchedulerData(), SFP(AStr_Err_NotYetInitialized));
+    return TimeSpan(hasSchedulerData() ? schedulerData()->reportInterval : 0);
+}
+
+void AstroScheduler::updateNightTracking()
+{
+    time_t time = unixNow();
+    DateTime currTime = localTime(time);
+    _lastDay[0] = currTime.year()-2000;
+    _lastDay[1] = currTime.month();
+    _lastDay[2] = currTime.day();
+
+    Location loc = getController()->getSystemLocation();
+    if (loc.hasPosition()) {
+        double transit; // high noon, hours +fractional
+        calcSunriseSunset((unsigned long)time, loc.latitude, loc.longitude, transit, _dailyTwilight.sunrise, _dailyTwilight.sunset,
+                          loc.resolveSunAlt(), ASTRO_SYS_SUNRISESET_CALCITERS);
+        calcSunriseSunset((unsigned long)time + SECS_PER_DAY, loc.latitude, loc.longitude, transit, _tomorrowTwilight.sunrise, _tomorrowTwilight.sunset,
+                          loc.resolveSunAlt(), ASTRO_SYS_SUNRISESET_CALCITERS);
+        _dailyTwilight.isUTC = true;
+        _tomorrowTwilight.isUTC = true;
+    } else if (_dailyTwilight.isUTC) {
+        _dailyTwilight = Twilight();
+        _tomorrowTwilight = Twilight();
+    }
+    _inNighttimeMode = _dailyTwilight.isNighttime(time);
+
+    setNeedsScheduling();
+    Astruino::_activeInstance->setNeedsRedraw();
+}
+
+void AstroScheduler::performScheduling()
+{
+    ASTRO_HARD_ASSERT(hasSchedulerData(), SFP(AStr_Err_NotYetInitialized));
+
+    for (auto iter = Astruino::_activeInstance->_objects.begin(); iter != Astruino::_activeInstance->_objects.end(); ++iter) {
+        if (iter->second->isMountType()) {
+            auto mount = static_pointer_cast<AstroMount>(iter->second);
+
+            {   auto trackingIter = _trackings.find(mount->getKey());
+
+                if (trackingIter != _trackings.end()) {
+                    if (trackingIter->second) {
+                        trackingIter->second->setupStaging();
+                    }
+                } else {
+                    #ifdef ASTRO_USE_VERBOSE_OUTPUT
+                        Serial.print(F("Scheduler::performScheduling Mount found for: ")); Serial.println(iter->second->getId().getDisplayString()); flushYield();
+                    #endif
+
+                    AstroTracking *tracking = new AstroTracking(mount);
+                    ASTRO_SOFT_ASSERT(tracking, SFP(AStr_Err_AllocationFailure));
+                    if (tracking) { _trackings[mount->getKey()] = tracking; }
+                }
+            }
+        }
+    }
+
+    _needsScheduling = false;
+}
+
+void AstroScheduler::broadcastDateChange()
+{
+    updateNightTracking();
+
+    #ifdef ASTRO_USE_MULTITASKING
+        // these can take a while to complete
+        taskManager.scheduleOnce(0, []{
+            if (getController()) {
+                getController()->broadcastDateChanged();
+            }
+            yield();
+            if (getLogger()) {
+                getLogger()->notifyDateChanged();
+            }
+            yield();
+            if (getPublisher()) {
+                getPublisher()->notifyDateChanged();
+            }
+            yield();
+        });
+    #else
+        if (getController()) {
+            getController()->broadcastDateChanged();
+        }
+        if (getLogger()) {
+            getLogger()->notifyDateChanged();
+        }
+        if (getPublisher()) {
+            getPublisher()->notifyDateChanged();
+        }
+    #endif
+}
+
+
+AstroProcess::AstroProcess(SharedPtr<AstroMount> mountIn)
+    : mount(mountIn), stageStart(unixNow())
+{ ; }
+
+void AstroProcess::clearActuatorReqs()
+{
+    while (actuatorReqs.size()) {
+        actuatorReqs.begin()->disableActivation();
+        actuatorReqs.erase(actuatorReqs.begin());
+    }
+}
+
+void AstroProcess::setActuatorReqs(const Vector<AstroActuatorAttachment, ASTRO_SCH_REQACTS_MAXSIZE> &actuatorReqsIn)
+{
+    for (auto attachIter = actuatorReqs.begin(); attachIter != actuatorReqs.end(); ++attachIter) {
+        bool found = false;
+        auto key = attachIter->getKey();
+
+        for (auto attachInIter = actuatorReqsIn.begin(); attachInIter != actuatorReqsIn.end(); ++attachInIter) {
+            if (key == attachInIter->getKey()) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) { // disables actuators not found in new list
+            attachIter->disableActivation();
+        }
+    }
+
+    {   actuatorReqs.clear();
+        for (auto attachInIter = actuatorReqsIn.begin(); attachInIter != actuatorReqsIn.end(); ++attachInIter) {
+            actuatorReqs.push_back(*attachInIter);
+            actuatorReqs.back().setParent(nullptr);
+        }
+    }
+}
+
+
+AstroTracking::AstroTracking(SharedPtr<AstroMount> mount)
+    : AstroProcess(mount), stage(Init), canProcessAfter(0), lastEnvReport(0),
+      stormingReported(false), daytimeSeqReported(false), stowageSeqReported(false)
+{
+    setupStaging();
+}
+
+AstroTracking::~AstroTracking()
+{
+    clearActuatorReqs();
+}
+
+void AstroTracking::setupStaging()
+{
+    #ifdef ASTRO_USE_VERBOSE_OUTPUT
+    {   static int8_t _stageFS1 = (int8_t)-1; if (_stageFS1 != (int8_t)stage) {
+        Serial.print(F("Tracking::setupStaging stage: ")); Serial.println((_stageFS1 = (int8_t)stage)); flushYield(); } }
+    #endif
+
+    bool isStorming = mount->getStormingTriggerAttachment().isTriggered();
+    auto coverDriver = mount->getMountCoverDriver();
+    auto &camera = mount->getCamera();
+    auto &thermalBalancer = mount->getThermalBalancer();
+
+    Vector<AstroActuatorAttachment, ASTRO_SCH_REQACTS_MAXSIZE> newActuatorReqs;
+
+    switch (stage) {
+        case Init:
+        case Stow: {
+            camera.stopObservation();
+            mount->park();
+            thermalBalancer.setMode(isStorming ? Astro_ThermalMode_SafeStowed : Astro_ThermalMode_DayStorage);
+            if (coverDriver && coverDriver->isMoving()) { coverDriver->stop(); }
         } break;
 
-        case Astro_SchedulerStage_Slewing: {
-            if (_mount) { _mount->track(); }
-            if (!_mount || _mount->isAligned(_config.alignmentToleranceDegrees)) {
-                enterStage(Astro_SchedulerStage_Settling, unixTime);
-                _settleStart = unixTime;
-            }
+        case Warm: {
+            camera.stopObservation();
+            mount->park();
+            thermalBalancer.setMode(Astro_ThermalMode_DayStorage);
+            if (coverDriver && mount->isParked() && thermalBalancer.cameraSafeToStow()) { coverDriver->close(); }
         } break;
 
-        case Astro_SchedulerStage_Settling: {
-            bool aligned = !_mount || _mount->isAligned(_config.alignmentToleranceDegrees);
-            if (!aligned) { _settleStart = unixTime; }
-            else if (unixTime >= _settleStart + _config.settleSeconds) {
-                if (_device && _device->ready()) { _device->startObservation(); }
-                enterStage(Astro_SchedulerStage_Observing, unixTime);
-            }
+        case Deploy: {
+            camera.stopObservation();
+            mount->park();
+            thermalBalancer.setMode(Astro_ThermalMode_NightObserving);
+            if (coverDriver) { coverDriver->open(); }
         } break;
 
-        case Astro_SchedulerStage_Observing: {
-            if (sunAltitudeDegrees >= _config.stowSunAltitudeDegrees) {
-                if (_device) { _device->stopObservation(); }
-                if (_mount) { _mount->park(); }
-                if (_thermal) { _thermal->setMode(Astro_ThermalMode_DayStorage); }
-                enterStage(Astro_SchedulerStage_Warming, unixTime);
-            }
+        case Acquire: {
+            camera.stopObservation();
+            thermalBalancer.setMode(Astro_ThermalMode_NightObserving);
+            if (coverDriver) { coverDriver->open(); }
+            mount->unpark();
+            mount->track();
         } break;
 
-        case Astro_SchedulerStage_Warming: {
-            if (_mount) { _mount->park(); }
-            if (!_thermal || _thermal->cameraSafeToStow(thermalReadings)) {
-                enterStage(Astro_SchedulerStage_Stowing, unixTime);
-            }
-        } break;
-
-        case Astro_SchedulerStage_Stowing: {
-            if (_mount) { _mount->park(); }
-            if (!_mount || _mount->isParked()) {
-                if (_cover) { _cover->close(); }
-                if (!_cover || _cover->isClosed()) { enterStage(Astro_SchedulerStage_DayStowed, unixTime); }
-            }
-        } break;
-
-        case Astro_SchedulerStage_SafeStowed: {
-            if (_device) { _device->stopObservation(); }
-            if (_mount) { _mount->park(); }
-            if (_thermal) { _thermal->setMode(Astro_ThermalMode_SafeStowed); }
-            if (_cover && (!_mount || _mount->isParked())) { _cover->close(); }
-
-            if (safeToObserve && (!_mount || _mount->isParked()) && (!_cover || _cover->isClosed())) {
-                enterStage(Astro_SchedulerStage_DayStowed, unixTime);
-            }
-        } break;
-
-        case Astro_SchedulerStage_Fault: {
-            if (_device) { _device->stopObservation(); }
-            if (_thermal) { _thermal->setMode(Astro_ThermalMode_SafeStowed); }
+        case Track: {
+            thermalBalancer.setMode(Astro_ThermalMode_NightObserving);
+            if (coverDriver) { coverDriver->open(); }
+            mount->unpark();
+            mount->track();
+            if (camera.ready()) { camera.startObservation(); }
         } break;
 
         default:
             break;
     }
+
+    setActuatorReqs(newActuatorReqs);
+    canProcessAfter = unixNow();
+
+    #ifdef ASTRO_USE_VERBOSE_OUTPUT
+    {   static int8_t _stageFS2 = (int8_t)-1; if (_stageFS2 != (int8_t)stage) {
+        Serial.print(F("Tracking::~setupStaging stage: ")); Serial.println((_stageFS2 = (int8_t)stage)); flushYield(); } }
+    #endif
 }
+
+void AstroTracking::update()
+{
+    #ifdef ASTRO_USE_VERBOSE_OUTPUT
+    {   static int8_t _stageFU1 = (int8_t)-1; if (_stageFU1 != (int8_t)stage) {
+        Serial.print(F("Tracking::update stage: ")); Serial.println((_stageFU1 = (int8_t)stage)); flushYield(); } }
+    #endif
+
+    time_t time = unixNow();
+    bool reportDue = (!lastEnvReport || time >= lastEnvReport + getScheduler()->schedulerData()->reportInterval) &&
+                     getScheduler()->schedulerData()->reportInterval > 0; // 0 disables
+    auto temperatureSensor = mount->getTemperatureSensor();
+    auto windSpeedSensor = mount->getWindSpeedSensor();
+
+    if (reportDue && (temperatureSensor || windSpeedSensor)) {
+        getLogger()->logProcess(mount.get(), SFP(AStr_Log_EnvReport));
+        if (mount->getTemperatureSensor(true)) {
+            #ifdef ASTRO_USE_MULTITASKING
+                mount->getTemperatureSensor()->yieldForMeasurement();
+            #endif
+            auto temp = mount->getTemperatureSensorAttachment().getMeasurement();
+            convertUnits(&temp, defaultTemperatureUnits());
+            getLogger()->logMessage(SFP(AStr_Log_Field_Temp_Measured), measurementToString(temp));
+        }
+        if (mount->getWindSpeedSensor(true)) {
+            #ifdef ASTRO_USE_MULTITASKING
+                mount->getWindSpeedSensor()->yieldForMeasurement();
+            #endif
+            auto windSpeed = mount->getWindSpeedSensorAttachment().getMeasurement();
+            convertUnits(&windSpeed, defaultSpeedUnits());
+            getLogger()->logMessage(SFP(AStr_Log_Field_WindSpeed_Measured), measurementToString(windSpeed));
+        }
+        lastEnvReport = time;
+    }
+
+    if (!canProcessAfter || time >= canProcessAfter) {
+        auto stageWas = stage != Init ? stage : Stow;
+        auto currTime = localTime(time);
+        bool logStage = false;
+        auto sunrise = getScheduler()->getDailyTwilight().getSunriseLocalTime();
+        auto sunset = getScheduler()->getDailyTwilight().getSunsetLocalTime();
+        bool beforeSunrise = currTime < sunrise;
+        bool afterSunset = currTime >= sunset;
+        bool nighttime = beforeSunrise || afterSunset;
+        auto nextSunrise = beforeSunrise ? sunrise : getScheduler()->getTomorrowTwilight().getSunriseLocalTime();
+        bool preHeatingDue = !nighttime && currTime >= sunset - TimeSpan(0,0,getScheduler()->schedulerData()->preDuskHeatingMins,0) &&
+                             mount->getHeatingTriggerAttachment().isTriggered() &&
+                             linksFilterActuatorsByMountAndType(mount->getLinkages(), mount.get(), Astro_ActuatorType_DewHeater).size();
+        bool isStorming = mount->getStormingTriggerAttachment().isTriggered();
+        auto coverDriver = mount->getMountCoverDriver();
+        auto &thermalBalancer = mount->getThermalBalancer();
+
+        switch (stage) {
+            case Init: {
+                if (isStorming) {
+                    stage = Stow; stageStart = time;
+                    setupStaging();
+                } else if (nighttime) {
+                    stage = Deploy; stageStart = time;
+                    setupStaging();
+                } else if (preHeatingDue) {
+                    stage = Warm; stageStart = time;
+                    setupStaging();
+                } else { // before-sunset / fail-safe
+                    stage = Stow; stageStart = time;
+                    setupStaging();
+                }
+            } break;
+
+            case Warm: {
+                if (isStorming) {
+                    stage = Stow; stageStart = time;
+                    setupStaging(); logStage = true;
+                } else if (nighttime) {
+                    stage = Deploy; stageStart = time;
+                    setupStaging(); logStage = true;
+                } else if (!preHeatingDue) {
+                    stage = Stow; stageStart = time;
+                    setupStaging(); logStage = true;
+                } // else running heating
+            } break;
+
+            case Deploy: {
+                if (!nighttime || isStorming) {
+                    stage = Stow; stageStart = time;
+                    setupStaging(); logStage = true;
+                } else if (!mount->getMountCoverDriver() || mount->getMountCoverDriver()->isAligned()) {
+                    stage = Acquire; stageStart = time;
+                    setupStaging(); logStage = true;
+                } // else running uncover
+            } break;
+
+            case Acquire: {
+                if (!nighttime || isStorming) {
+                    stage = Stow; stageStart = time;
+                    setupStaging(); logStage = true;
+                } else if (mount->isAligned()) {
+                    stage = Track; stageStart = time;
+                    setupStaging(); logStage = true;
+                } // else acquiring target
+            } break;
+
+            case Track: {
+                if (!nighttime || isStorming) {
+                    stage = Stow; stageStart = time;
+                    setupStaging(); logStage = true;
+                } // else running tracking
+            } break;
+
+            case Stow: {
+                if (mount->isParked() && thermalBalancer.cameraSafeToStow() && coverDriver) {
+                    coverDriver->close();
+                }
+
+                bool stowed = mount->isParked() && thermalBalancer.cameraSafeToStow() &&
+                              (!coverDriver || coverDriver->isClosed());
+
+                if (stowed && !isStorming) {
+                    if (nighttime) {
+                        stage = Deploy; stageStart = time;
+                        setupStaging(); logStage = true;
+                    } else if (preHeatingDue) {
+                        stage = Warm; stageStart = time;
+                        setupStaging(); logStage = true;
+                    } else if (!daytimeSeqReported) {
+                        stormingReported = false; logStage = true;
+                    }
+                }
+
+                if (stowageSeqReported && (!coverDriver || coverDriver->isClosed())) {
+                    getLogger()->logProcess(mount.get(), SFP(AStr_Log_StowSequence), SFP(AStr_Log_HasEnded));
+                    getLogger()->logMessage(SFP(AStr_Log_Field_Time_Measured), timeSpanToString(TimeSpan(time - stageStart)));
+                    stowageSeqReported = false;
+                }
+            } break;
+
+            default:
+                break;
+        }
+
+        if (logStage) {
+            if (stageWas != stage) {
+                switch (stageWas) {
+                    case Init: break;
+
+                    case Warm: {
+                        getLogger()->logProcess(mount.get(), SFP(AStr_Log_PreDuskWarmup), SFP(AStr_Log_HasEnded));
+                        getLogger()->logMessage(SFP(AStr_Log_Field_Time_Measured), timeSpanToString(TimeSpan(time - stageStart)));
+                    } break;
+
+                    case Deploy: {
+                        if (mount->getMountCoverDriver() && mount->getMountCoverDriver()->isAligned()) {
+                            getLogger()->logProcess(mount.get(), SFP(AStr_Log_DeploySequence), SFP(AStr_Log_HasEnded));
+                            getLogger()->logMessage(SFP(AStr_Log_Field_Time_Measured), timeSpanToString(TimeSpan(time - stageStart)));
+                        }
+                    } break;
+
+                    case Acquire: {
+                        getLogger()->logProcess(mount.get(), SFP(AStr_Log_AcquireSequence), SFP(AStr_Log_HasEnded));
+                        getLogger()->logMessage(SFP(AStr_Log_Field_Time_Measured), timeSpanToString(TimeSpan(time - stageStart)));
+                    } break;
+
+                    case Track: {
+                        getLogger()->logProcess(mount.get(), SFP(AStr_Log_TrackingSequence), SFP(AStr_Log_HasEnded));
+                        getLogger()->logMessage(SFP(AStr_Log_Field_Time_Measured), timeSpanToString(TimeSpan(time - stageStart)));
+                    } break;
+
+                    case Stow: {
+                        if (stormingReported) {
+                            getLogger()->logProcess(mount.get(), SFP(AStr_Log_StormingSequence), SFP(AStr_Log_HasEnded));
+                            getLogger()->logMessage(SFP(AStr_Log_Field_Time_Measured), timeSpanToString(TimeSpan(time - stageStart)));
+                            stormingReported = false;
+                        } else if (daytimeSeqReported) {
+                            getLogger()->logProcess(mount.get(), SFP(AStr_Log_DaytimeSequence), SFP(AStr_Log_HasEnded));
+                            getLogger()->logMessage(SFP(AStr_Log_Field_Time_Measured), timeSpanToString(TimeSpan(time - stageStart)));
+                            daytimeSeqReported = false;
+                        }
+                        if (stowageSeqReported) {
+                            stowageSeqReported = false;
+                        }
+                    } break;
+                }
+            }
+
+            switch (stage) {
+                case Warm: {
+                    getLogger()->logProcess(mount.get(), SFP(AStr_Log_PreDuskWarmup), SFP(AStr_Log_HasBegan));
+                    getLogger()->logMessage(SFP(AStr_Log_Field_Heating_Duration), roundToString(getScheduler()->schedulerData()->preDuskHeatingMins), String('m'));
+                    getLogger()->logMessage(SFP(AStr_Log_Field_Time_Start), localTime(stageStart).timestamp(DateTime::TIMESTAMP_TIME));
+                    getLogger()->logMessage(SFP(AStr_Log_Field_Time_Finish), sunset.timestamp(DateTime::TIMESTAMP_TIME));
+                } break;
+
+                case Deploy: {
+                    if (mount->getMountCoverDriver() && !mount->getMountCoverDriver()->isAligned()) {
+                        getLogger()->logProcess(mount.get(), SFP(AStr_Log_DeploySequence), SFP(AStr_Log_HasBegan));
+                    }
+                } break;
+
+                case Acquire: {
+                    getLogger()->logProcess(mount.get(), SFP(AStr_Log_AcquireSequence), SFP(AStr_Log_HasBegan));
+                    getLogger()->logMessage(SFP(AStr_Log_Field_Time_Start), localTime(stageStart).timestamp(DateTime::TIMESTAMP_TIME));
+                } break;
+
+                case Track: {
+                    TimeSpan trackingSpan = nextSunrise - localTime(stageStart);
+                    getLogger()->logProcess(mount.get(), SFP(AStr_Log_TrackingSequence), SFP(AStr_Log_HasBegan));
+                    getLogger()->logMessage(SFP(AStr_Log_Field_Light_Duration), roundToString(trackingSpan.totalseconds() / (float)SECS_PER_HOUR, 1), String('h'));
+                    getLogger()->logMessage(SFP(AStr_Log_Field_Time_Start), localTime(stageStart).timestamp(DateTime::TIMESTAMP_TIME));
+                    getLogger()->logMessage(SFP(AStr_Log_Field_Time_Finish), nextSunrise.timestamp(DateTime::TIMESTAMP_TIME));
+                } break;
+
+                case Stow: {
+                    if (isStorming && (nighttime || preHeatingDue) && !stormingReported) {
+                        getLogger()->logProcess(mount.get(), SFP(AStr_Log_StormingSequence), SFP(AStr_Log_HasBegan));
+                        stormingReported = true;
+                    } else if (!nighttime && !daytimeSeqReported) {
+                        getLogger()->logProcess(mount.get(), SFP(AStr_Log_DaytimeSequence), SFP(AStr_Log_HasBegan));
+                        daytimeSeqReported = true;
+                    }
+                    if (mount->getMountCoverDriver() && !mount->getMountCoverDriver()->isClosed() && !stowageSeqReported) {
+                        getLogger()->logProcess(mount.get(), SFP(AStr_Log_StowSequence), SFP(AStr_Log_HasBegan));
+                        stowageSeqReported = true;
+                    }
+                } break;
+
+                default:
+                    break;
+            }
+        }
+    }
+
+    if (actuatorReqs.size()) {
+        for (auto attachIter = actuatorReqs.begin(); attachIter != actuatorReqs.end(); ++attachIter) {
+            attachIter->setupActivation();
+            attachIter->enableActivation();
+        }
+    }
+
+    #ifdef ASTRO_USE_VERBOSE_OUTPUT
+    {   static int8_t _stageFU2 = (int8_t)-1; if (_stageFU2 != (int8_t)stage) {
+        Serial.print(F("Tracking::~update stage: ")); Serial.println((_stageFU2 = (int8_t)stage)); flushYield(); } }
+    #endif
+}
+
 
 AstroSchedulerSubData::AstroSchedulerSubData()
-    : AstroSchedulerConfig()
+    : AstroSubData(0), preDuskHeatingMins(10), reportInterval(8 * SECS_PER_HOUR)
 { ; }
 
-bool AstroSchedulerSubData::toJSON(char *bufferOut, size_t bufferSize) const
+void AstroSchedulerSubData::toJSONObject(JsonObject &objectOut) const
 {
-    if (!bufferOut || !bufferSize) { return false; }
-    int written = snprintf(bufferOut, bufferSize,
-        "{\"deploySunAlt\":%.4f,\"stowSunAlt\":%.4f,\"alignTol\":%.5f,\"settleSecs\":%u,\"reportSecs\":%lu}",
-        deploySunAltitudeDegrees, stowSunAltitudeDegrees, alignmentToleranceDegrees,
-        (unsigned int)settleSeconds, (unsigned long)reportIntervalSeconds);
-    return written >= 0 && (size_t)written < bufferSize;
+    //AstroSubData::toJSONObject(objectOut); // purposeful no call to base method (ignores type)
+
+    if (preDuskHeatingMins != 10) { objectOut[SFP(AStr_Key_PreDuskHeatingMins)] = preDuskHeatingMins; }
+    if (reportInterval != (8 * SECS_PER_HOUR)) { objectOut[SFP(AStr_Key_ReportInterval)] = reportInterval; }
 }
 
-bool AstroSchedulerSubData::fromJSON(const char *jsonIn)
+void AstroSchedulerSubData::fromJSONObject(JsonObjectConst &objectIn)
 {
-    if (!jsonIn) { return false; }
-    double deployIn, stowIn, alignIn;
-    unsigned long settleIn, reportIn;
-    if (!astroJSONGetDouble(jsonIn, "deploySunAlt", &deployIn) ||
-        !astroJSONGetDouble(jsonIn, "stowSunAlt", &stowIn) ||
-        !astroJSONGetDouble(jsonIn, "alignTol", &alignIn) ||
-        !astroJSONGetUnsignedLong(jsonIn, "settleSecs", &settleIn) ||
-        !astroJSONGetUnsignedLong(jsonIn, "reportSecs", &reportIn)) { return false; }
-    deploySunAltitudeDegrees = deployIn;
-    stowSunAltitudeDegrees = stowIn;
-    alignmentToleranceDegrees = alignIn;
-    settleSeconds = (uint16_t)settleIn;
-    reportIntervalSeconds = (uint32_t)reportIn;
-    return true;
+    //AstroSubData::fromJSONObject(objectIn); // purposeful no call to base method (ignores type)
+
+    preDuskHeatingMins = objectIn[SFP(AStr_Key_PreDuskHeatingMins)] | preDuskHeatingMins;
+    reportInterval = objectIn[SFP(AStr_Key_ReportInterval)] | reportInterval;
 }

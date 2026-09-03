@@ -1,6 +1,10 @@
-/*  Astruino UI support.
-    // TODO: Port Astruino-specific menu behavior.
+/*  Astruino: Overview Screens.
+    Copyright (C) 2026 NachtRaveVL
 */
-#ifndef AstroOverviews_hpp
-#define AstroOverviews_hpp
+
+#include "AstruinoUI.h"
+#ifdef ASTRO_USE_GUI
+
+#include "screens/AstroOverviewGFX.hpp"
+
 #endif

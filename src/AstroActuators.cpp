@@ -5,140 +5,501 @@
 
 #include "Astruino.h"
 
-AstroActuator::AstroActuator(Astro_ActuatorType actuatorType, aposi_t positionIndex)
-    : AstroObject(AstroIdentity(actuatorType, positionIndex)), _actuatorType(actuatorType),
-      _enableMode(Astro_EnableMode_Highest), _power(0.0f), _handles{nullptr}
+AstroActuator *newActuatorObjectFromData(const AstroActuatorData *dataIn)
+{
+    if (dataIn && !isValidType(dataIn->id.object.idType)) return nullptr;
+    ASTRO_SOFT_ASSERT(dataIn && dataIn->isObjectData(), SFP(AStr_Err_InvalidParameter));
+
+    if (dataIn && dataIn->isObjectData() && dataIn->id.object.idType == (aid_t)AstroIdentity::Actuator) {
+        switch (dataIn->id.object.classType) {
+            case (aid_t)AstroActuator::Base:
+                return new AstroActuator(dataIn);
+            case (aid_t)AstroActuator::Callback:
+                return new AstroCallbackActuator(dataIn);
+            case (aid_t)AstroActuator::Digital:
+                return new AstroDigitalActuator(dataIn);
+            case (aid_t)AstroActuator::RelayMotor:
+                return new AstroRelayMotorActuator(dataIn);
+            case (aid_t)AstroActuator::Analog:
+                return new AstroAnalogActuator(dataIn);
+            case (aid_t)AstroActuator::Focuser:
+                return new AstroFocuser(dataIn);
+            default: break;
+        }
+    }
+
+    return nullptr;
+}
+
+AstroActuator::AstroActuator(Astro_ActuatorType actuatorType, aposi_t positionIndex, int classTypeIn)
+    : AstroObject(AstroIdentity(actuatorType, positionIndex)), classType(static_cast<decltype(Base)>(classTypeIn)),
+      _enabled(false), _actuatorType(actuatorType), _enableMode(Astro_EnableMode_Highest), _power(0.0f), _needsUpdate(false),
+      _contPowerUsage(), _parentRail(this), _parentMount(this)
 { ; }
 
-AstroActuator::AstroActuator(const AstroObjectData *dataIn)
-    : AstroObject(dataIn), _actuatorType(dataIn ? (Astro_ActuatorType)dataIn->objType : Astro_ActuatorType_Undefined),
-      _enableMode(Astro_EnableMode_Highest), _power(0.0f), _handles{nullptr}
-{ ; }
-
-void AstroActuator::setPower(float power)
+AstroActuator::AstroActuator(const AstroActuatorData *dataIn)
+    : AstroObject(dataIn), classType(dataIn ? static_cast<decltype(Base)>(dataIn->id.object.classType) : Unknown),
+      _enabled(false), _actuatorType(dataIn ? (Astro_ActuatorType)dataIn->id.object.objType : Astro_ActuatorType_Undefined),
+      _enableMode(dataIn ? dataIn->enableMode : Astro_EnableMode_Highest), _power(0.0f), _needsUpdate(false),
+      _contPowerUsage(), _parentRail(this), _parentMount(this)
 {
-    _power = astroConstrain(power, -1.0f, 1.0f);
+    if (dataIn) {
+        if (dataIn->contPowerUsage.units != Astro_UnitsType_Undefined) { _contPowerUsage = AstroSingleMeasurement(&dataIn->contPowerUsage); }
+        _parentRail.initObject(dataIn->railName);
+        _parentMount.initObject(dataIn->mountName);
+        _parentMount.setParentSubIndex(dataIn->mountAxisIndex);
+    }
 }
 
-bool AstroActuator::addActivationHandle(AstroActivationHandle *handle)
+void AstroActuator::_enableActuator(float intensity)
 {
-    if (!handle) { return false; }
-    for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS; ++i) {
-        if (_handles[i] == handle) { return true; }
-        if (!_handles[i]) {
-            _handles[i] = handle;
-            return true;
-        }
-    }
-    return false;
+    bool wasEnabled = _enabled;
+    _power = constrain(intensity, -1.0f, 1.0f);
+    _enabled = fabsf(_power) > FLT_EPSILON;
+    if (wasEnabled != _enabled) { handleActivation(); }
 }
 
-bool AstroActuator::removeActivationHandle(AstroActivationHandle *handle)
+void AstroActuator::_disableActuator()
 {
-    for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS; ++i) {
-        if (_handles[i] == handle) {
-            for (size_t j = i; j + 1 < ASTRO_ACTIVATION_HANDLE_SLOTS; ++j) { _handles[j] = _handles[j + 1]; }
-            _handles[ASTRO_ACTIVATION_HANDLE_SLOTS - 1] = nullptr;
-            return true;
-        }
-    }
-    return false;
+    bool wasEnabled = _enabled;
+    _enabled = false;
+    _power = 0.0f;
+    if (wasEnabled) { handleActivation(); }
 }
 
-void AstroActuator::resolveActivations()
+bool AstroActuator::getCanEnable()
 {
-    float resolved = 0.0f;
-    float total = 0.0f;
-    int count = 0;
+    return !getParentRail() || getParentRail()->canActivate(this);
+}
 
-    if (_enableMode == Astro_EnableMode_Multiply) { resolved = 1.0f; }
+void AstroActuator::setContinuousPowerUsage(AstroSingleMeasurement contPowerUsage)
+{
+    _contPowerUsage = contPowerUsage;
+    _contPowerUsage.setMinFrame(1);
+    bumpRevisionIfNeeded();
+}
 
-    for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
-        AstroActivationHandle *handle = _handles[i];
-        if (!handle->isValid() || handle->isDone()) { continue; }
-        float drive = handle->getDriveIntensity();
+const AstroSingleMeasurement &AstroActuator::getContinuousPowerUsage()
+{
+    return _contPowerUsage;
+}
 
-        switch (_enableMode) {
-            case Astro_EnableMode_Highest:
-                if (fabs(drive) > fabs(resolved)) { resolved = drive; }
-                break;
-            case Astro_EnableMode_Lowest:
-                if (!count || fabs(drive) < fabs(resolved)) { resolved = drive; }
-                break;
-            case Astro_EnableMode_Average:
-                total += drive;
-                resolved = total / (float)(count + 1);
-                break;
-            case Astro_EnableMode_Multiply:
-                resolved *= drive;
-                break;
-            case Astro_EnableMode_InOrder:
-                if (!count) { resolved = drive; }
-                break;
-            case Astro_EnableMode_RevOrder:
-                resolved = drive;
-                break;
-            default:
-                break;
+AstroAttachment &AstroActuator::getParentRailAttachment()
+{
+    return _parentRail;
+}
+
+AstroAttachment &AstroActuator::getParentMountAttachment()
+{
+    return _parentMount;
+}
+
+Signal<AstroActuator *, ASTRO_ACTUATOR_SIGNAL_SLOTS> &AstroActuator::getActivationSignal()
+{
+    return _activateSignal;
+}
+
+void AstroActuator::handleActivation()
+{
+    if (_enabled) {
+        getLogger()->logActivation(this);
+    } else {
+        for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+            if ((*handleIter)->checkTime) { (*handleIter)->checkTime = 0; }
         }
-        ++count;
+
+        getLogger()->logDeactivation(this);
     }
 
-    if (!count) { resolved = 0.0f; }
-    setPower(resolved);
+    #ifdef ASTRO_USE_MULTITASKING
+        scheduleSignalFireOnce<AstroActuator *>(getSharedPtr(), _activateSignal, this);
+    #else
+        _activateSignal.fire(this);
+    #endif
 }
 
 void AstroActuator::update()
 {
-    millis_t now = astroMillis();
-    for (size_t i = 0; i < ASTRO_ACTIVATION_HANDLE_SLOTS && _handles[i]; ++i) {
-        _handles[i]->elapseTo(now);
+    AstroObject::update();
+
+    _parentRail.resolve();
+    _parentMount.resolve();
+
+    millis_t time = nzMillis();
+
+    // Update running handles and elapse them as needed, determine forced status, and remove invalid/finished handles
+    bool forced = false;
+    if (_handles.size()) {
+        for (auto handleIter = _handles.begin(); handleIter != _handles.end();) {
+            if (_enabled && (*handleIter)->isActive()) {
+                (*handleIter)->elapseTo(time);
+            }
+            if ((*handleIter)->actuator.get() != this || !(*handleIter)->isValid() || (*handleIter)->isDone()) {
+                if ((*handleIter)->actuator.get() == this) { (*handleIter)->actuator = nullptr; }
+                handleIter = _handles.erase(handleIter);
+                setNeedsUpdate();
+                continue;
+            }
+            forced = forced || (*handleIter)->isForced();
+            ++handleIter;
+        }
     }
-    resolveActivations();
+
+    // Enablement checking
+    bool canEnable = _handles.size() && (forced || getCanEnable());
+
+    if (!canEnable && (_enabled || _needsUpdate)) { // If enabled and shouldn't be (unless force enabled)
+        _disableActuator();
+    } else if (canEnable && (!_enabled || _needsUpdate)) { // If can enable and isn't (maybe force enabled)
+        float drivingIntensity = 0.0f;
+
+        // Determine what driving intensity [-1,1] actuator should use
+        switch (_enableMode) {
+            case Astro_EnableMode_Highest:
+            case Astro_EnableMode_DescOrder: {
+                drivingIntensity = -__FLT_MAX__;
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        auto handleIntensity = (*handleIter)->getDriveIntensity();
+                        if (handleIntensity > drivingIntensity) { drivingIntensity = handleIntensity; }
+                    }
+                }
+            } break;
+
+            case Astro_EnableMode_Lowest:
+            case Astro_EnableMode_AscOrder: {
+                drivingIntensity = __FLT_MAX__;
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        auto handleIntensity = (*handleIter)->getDriveIntensity();
+                        if (handleIntensity < drivingIntensity) { drivingIntensity = handleIntensity; }
+                    }
+                }
+            } break;
+
+            case Astro_EnableMode_Average: {
+                int handleCount = 0;
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        drivingIntensity += (*handleIter)->getDriveIntensity();
+                        ++handleCount;
+                    }
+                }
+                if (handleCount) { drivingIntensity /= handleCount; }
+            } break;
+
+            case Astro_EnableMode_Multiply: {
+                drivingIntensity = (*_handles.begin())->getDriveIntensity();
+                for (auto handleIter = _handles.begin() + 1; handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        drivingIntensity *= (*handleIter)->getDriveIntensity();
+                    }
+                }
+            } break;
+
+            case Astro_EnableMode_InOrder: {
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        drivingIntensity += (*handleIter)->getDriveIntensity();
+                        break;
+                    }
+                }
+            } break;
+
+            case Astro_EnableMode_RevOrder: {
+                for (auto handleIter = _handles.end(); handleIter != _handles.begin();) {
+                    --handleIter;
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone()) {
+                        drivingIntensity += (*handleIter)->getDriveIntensity();
+                        break;
+                    }
+                }
+            } break;
+
+            default:
+                break;
+        }
+
+        // Enable/disable activation handles as needed (serial modes only select 1 at a time)
+        switch (_enableMode) {
+            case Astro_EnableMode_InOrder:
+            case Astro_EnableMode_DescOrder: {
+                bool selected = false;
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if (!selected && (*handleIter)->isValid() && !(*handleIter)->isDone() && isFPEqual((*handleIter)->getDriveIntensity(), drivingIntensity)) {
+                        selected = true; (*handleIter)->checkTime = time;
+                    } else if ((*handleIter)->checkTime != 0) {
+                        (*handleIter)->checkTime = 0;
+                    }
+                }
+            } break;
+
+            case Astro_EnableMode_RevOrder:
+            case Astro_EnableMode_AscOrder: {
+                bool selected = false;
+                for (auto handleIter = _handles.end(); handleIter != _handles.begin();) {
+                    --handleIter;
+                    if (!selected && (*handleIter)->isValid() && !(*handleIter)->isDone() && isFPEqual((*handleIter)->getDriveIntensity(), drivingIntensity)) {
+                        selected = true; (*handleIter)->checkTime = time;
+                    } else if ((*handleIter)->checkTime != 0) {
+                        (*handleIter)->checkTime = 0;
+                    }
+                }
+            } break;
+
+            default: {
+                for (auto handleIter = _handles.begin(); handleIter != _handles.end(); ++handleIter) {
+                    if ((*handleIter)->isValid() && !(*handleIter)->isDone() && (*handleIter)->checkTime == 0) {
+                        (*handleIter)->checkTime = time;
+                    }
+                }
+            } break;
+        }
+
+        _enableActuator(drivingIntensity);
+    }
+    _needsUpdate = false;
 }
 
-void AstroCallbackActuator::setPower(float power)
+
+AstroData *AstroActuator::allocateData() const
 {
-    AstroActuator::setPower(power);
+    return _allocateDataForObjType((int8_t)_id.type, (int8_t)classType);
+}
+
+void AstroActuator::saveToData(AstroData *dataOut)
+{
+    AstroObject::saveToData(dataOut);
+    if (!dataOut) { return; }
+    AstroActuatorData *actuatorData = static_cast<AstroActuatorData *>(dataOut);
+    actuatorData->id.object.classType = (aid_t)classType;
+    actuatorData->enableMode = _enableMode;
+    if (_contPowerUsage.isSet()) { _contPowerUsage.saveToData(&actuatorData->contPowerUsage); }
+    if (_parentRail.isSet()) {
+        strncpy(actuatorData->railName, _parentRail.getKeyString().c_str(), ASTRO_NAME_MAXSIZE - 1);
+        actuatorData->railName[ASTRO_NAME_MAXSIZE - 1] = '\0';
+    }
+    if (_parentMount.isSet()) {
+        strncpy(actuatorData->mountName, _parentMount.getKeyString().c_str(), ASTRO_NAME_MAXSIZE - 1);
+        actuatorData->mountName[ASTRO_NAME_MAXSIZE - 1] = '\0';
+        actuatorData->mountAxisIndex = _parentMount.getParentSubIndex();
+    }
+}
+
+void AstroCallbackActuator::_enableActuator(float intensity)
+{
+    bool wasEnabled = _enabled;
+    _power = constrain(intensity, -1.0f, 1.0f);
+    _enabled = fabsf(_power) > FLT_EPSILON;
     if (_callback) { _callback(_context, _power); }
+    if (wasEnabled != _enabled) { handleActivation(); }
+}
+
+void AstroCallbackActuator::_disableActuator()
+{
+    bool wasEnabled = _enabled;
+    _enabled = false;
+    _power = 0.0f;
+    if (_callback) { _callback(_context, 0.0f); }
+    if (wasEnabled) { handleActivation(); }
 }
 
 AstroDigitalActuator::AstroDigitalActuator(AstroDigitalPin outputPin, Astro_ActuatorType actuatorType, aposi_t positionIndex)
-    : AstroActuator(actuatorType, positionIndex), _outputPin(outputPin)
+    : AstroActuator(actuatorType, positionIndex, Digital), _outputPin(outputPin)
 {
     _outputPin.init();
+    _outputPin.deactivate();
 }
 
-void AstroDigitalActuator::setPower(float power)
+AstroDigitalActuator::AstroDigitalActuator(const AstroActuatorData *dataIn)
+    : AstroActuator(dataIn), _outputPin(dataIn ? &dataIn->outputPin : nullptr)
 {
-    AstroActuator::setPower(power);
-    if (_outputPin.isValid()) {
-        if (!isFPEqual(_power, 0.0f)) { _outputPin.activate(); }
-        else { _outputPin.deactivate(); }
+    _outputPin.init();
+    _outputPin.deactivate();
+}
+
+AstroDigitalActuator::~AstroDigitalActuator()
+{
+    if (_enabled) {
+        _enabled = false;
+        _power = 0.0f;
+        _outputPin.deactivate();
+    }
+}
+
+bool AstroDigitalActuator::getCanEnable()
+{
+    return _outputPin.isValid() && AstroActuator::getCanEnable();
+}
+
+void AstroDigitalActuator::_enableActuator(float intensity)
+{
+    bool wasEnabled = _enabled;
+    if (_outputPin.isValid() && intensity > FLT_EPSILON) {
+        _enabled = true;
+        _power = 1.0f;
+        _outputPin.activate();
+    } else {
+        _enabled = false;
+        _power = 0.0f;
+        if (_outputPin.isValid()) { _outputPin.deactivate(); }
+    }
+    if (wasEnabled != _enabled) { handleActivation(); }
+}
+
+void AstroDigitalActuator::_disableActuator()
+{
+    bool wasEnabled = _enabled;
+    _enabled = false;
+    _power = 0.0f;
+    if (_outputPin.isValid()) { _outputPin.deactivate(); }
+    if (wasEnabled) { handleActivation(); }
+}
+
+void AstroDigitalActuator::saveToData(AstroData *dataOut)
+{
+    AstroActuator::saveToData(dataOut);
+    if (dataOut) { _outputPin.saveToData(&static_cast<AstroActuatorData *>(dataOut)->outputPin); }
+}
+
+AstroRelayMotorActuator::AstroRelayMotorActuator(AstroDigitalPin forwardPin, AstroDigitalPin reversePin,
+                                                 Astro_ActuatorType actuatorType, aposi_t positionIndex)
+    : AstroActuator(actuatorType, positionIndex, RelayMotor), _forwardPin(forwardPin), _reversePin(reversePin)
+{
+    _forwardPin.init();
+    _reversePin.init();
+    _forwardPin.deactivate();
+    _reversePin.deactivate();
+}
+
+AstroRelayMotorActuator::AstroRelayMotorActuator(const AstroActuatorData *dataIn)
+    : AstroActuator(dataIn), _forwardPin(dataIn ? &dataIn->outputPin : nullptr),
+      _reversePin(dataIn ? &dataIn->outputPin2 : nullptr)
+{
+    _forwardPin.init();
+    _reversePin.init();
+    _forwardPin.deactivate();
+    _reversePin.deactivate();
+}
+
+AstroRelayMotorActuator::~AstroRelayMotorActuator()
+{
+    if (_enabled) {
+        _enabled = false;
+        _power = 0.0f;
+        _forwardPin.deactivate();
+        _reversePin.deactivate();
+    }
+}
+
+bool AstroRelayMotorActuator::getCanEnable()
+{
+    return _forwardPin.isValid() && _reversePin.isValid() && AstroActuator::getCanEnable();
+}
+
+void AstroRelayMotorActuator::_enableActuator(float intensity)
+{
+    bool wasEnabled = _enabled;
+    _power = constrain(intensity, -1.0f, 1.0f);
+    if (_power > FLT_EPSILON) {
+        _enabled = true;
+        _reversePin.deactivate();
+        _forwardPin.activate();
+    } else if (_power < -FLT_EPSILON) {
+        _enabled = true;
+        _forwardPin.deactivate();
+        _reversePin.activate();
+    } else {
+        _enabled = false;
+        _power = 0.0f;
+        _forwardPin.deactivate();
+        _reversePin.deactivate();
+    }
+    if (wasEnabled != _enabled) { handleActivation(); }
+}
+
+void AstroRelayMotorActuator::_disableActuator()
+{
+    bool wasEnabled = _enabled;
+    _enabled = false;
+    _power = 0.0f;
+    _forwardPin.deactivate();
+    _reversePin.deactivate();
+    if (wasEnabled) { handleActivation(); }
+}
+
+void AstroRelayMotorActuator::saveToData(AstroData *dataOut)
+{
+    AstroActuator::saveToData(dataOut);
+    if (dataOut) {
+        AstroActuatorData *actuatorData = static_cast<AstroActuatorData *>(dataOut);
+        _forwardPin.saveToData(&actuatorData->outputPin);
+        _reversePin.saveToData(&actuatorData->outputPin2);
     }
 }
 
 AstroAnalogActuator::AstroAnalogActuator(AstroAnalogPin outputPin, Astro_ActuatorType actuatorType, aposi_t positionIndex)
-    : AstroActuator(actuatorType, positionIndex), _outputPin(outputPin)
+    : AstroActuator(actuatorType, positionIndex, Analog), _outputPin(outputPin)
 {
     _outputPin.init();
+    _outputPin.analogWrite(0.0f);
 }
 
-void AstroAnalogActuator::setPower(float power)
+AstroAnalogActuator::AstroAnalogActuator(const AstroActuatorData *dataIn)
+    : AstroActuator(dataIn), _outputPin(dataIn ? &dataIn->outputPin : nullptr)
 {
-    AstroActuator::setPower(power);
-    if (_outputPin.isValid()) { _outputPin.analogWrite(_power < 0.0f ? -_power : _power); }
+    _outputPin.init();
+    _outputPin.analogWrite(0.0f);
+}
+
+AstroAnalogActuator::~AstroAnalogActuator()
+{
+    if (_enabled) {
+        _enabled = false;
+        _power = 0.0f;
+        _outputPin.analogWrite(0.0f);
+    }
+}
+
+bool AstroAnalogActuator::getCanEnable()
+{
+    return _outputPin.isValid() && AstroActuator::getCanEnable();
+}
+
+void AstroAnalogActuator::_enableActuator(float intensity)
+{
+    bool wasEnabled = _enabled;
+    _power = constrain(intensity, 0.0f, 1.0f);
+    _enabled = _power > FLT_EPSILON;
+    if (_outputPin.isValid()) { _outputPin.analogWrite(_power); }
+    if (wasEnabled != _enabled) { handleActivation(); }
+}
+
+void AstroAnalogActuator::_disableActuator()
+{
+    bool wasEnabled = _enabled;
+    _enabled = false;
+    _power = 0.0f;
+    if (_outputPin.isValid()) { _outputPin.analogWrite(0.0f); }
+    if (wasEnabled) { handleActivation(); }
+}
+
+void AstroAnalogActuator::saveToData(AstroData *dataOut)
+{
+    AstroActuator::saveToData(dataOut);
+    if (dataOut) { _outputPin.saveToData(&static_cast<AstroActuatorData *>(dataOut)->outputPin); }
 }
 
 AstroFocuser::AstroFocuser(int32_t maximumPosition, aposi_t positionIndex)
-    : AstroActuator(Astro_ActuatorType_Focuser, positionIndex), _position(0), _targetPosition(0),
+    : AstroActuator(Astro_ActuatorType_Focuser, positionIndex, Focuser), _position(0), _targetPosition(0),
       _minimumPosition(0), _maximumPosition(maximumPosition > 0 ? maximumPosition : 0), _moving(false),
       _moveCallback(nullptr), _stopCallback(nullptr), _positionCallback(nullptr), _context(nullptr)
 { ; }
 
-AstroFocuser::AstroFocuser(const AstroObjectData *dataIn, int32_t maximumPosition)
+AstroFocuser::AstroFocuser(const AstroActuatorData *dataIn, int32_t maximumPosition)
     : AstroActuator(dataIn), _position(0), _targetPosition(0),
-      _minimumPosition(0), _maximumPosition(maximumPosition > 0 ? maximumPosition : 0), _moving(false),
+      _minimumPosition(dataIn ? dataIn->minimumPosition : 0),
+      _maximumPosition(dataIn ? dataIn->maximumPosition : (maximumPosition > 0 ? maximumPosition : 0)), _moving(false),
       _moveCallback(nullptr), _stopCallback(nullptr), _positionCallback(nullptr), _context(nullptr)
 { ; }
 
@@ -193,14 +554,84 @@ void AstroFocuser::halt()
 {
     _targetPosition = _position;
     _moving = false;
-    setPower(0.0f);
+    _disableActuator();
     if (_stopCallback) { _stopCallback(_context); }
 }
 
 void AstroFocuser::update()
 {
+    AstroActuator::update();
+
     if (_positionCallback) {
         int32_t position = _position;
         if (_positionCallback(_context, &position)) { setPosition(position); }
     }
+}
+
+void AstroFocuser::saveToData(AstroData *dataOut)
+{
+    AstroActuator::saveToData(dataOut);
+    if (dataOut) {
+        AstroActuatorData *actuatorData = static_cast<AstroActuatorData *>(dataOut);
+        actuatorData->minimumPosition = _minimumPosition;
+        actuatorData->maximumPosition = _maximumPosition;
+    }
+}
+
+AstroActuatorData::AstroActuatorData()
+    : AstroObjectData(), enableMode(Astro_EnableMode_Highest), outputPin(), outputPin2(),
+      minimumPosition(0), maximumPosition(10000), contPowerUsage(), railName{0}, mountName{0}, mountAxisIndex(aposi_none)
+{
+    _size = sizeof(*this);
+    id.object.idType = (aid_t)AstroIdentity::Actuator;
+    id.object.objType = (aid_t)Astro_ActuatorType_Undefined;
+    id.object.posIndex = aposi_none;
+    id.object.classType = (aid_t)AstroActuator::Unknown;
+}
+
+void AstroActuatorData::toJSONObject(JsonObject &objectOut) const
+{
+    AstroObjectData::toJSONObject(objectOut);
+    if (enableMode != Astro_EnableMode_Undefined) { objectOut[SFP(AStr_Key_EnableMode)] = enableModeToString(enableMode); }
+    if (outputPin.isSet()) { JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_OutputPin)); outputPin.toJSONObject(pinObj); }
+    if (outputPin2.isSet()) { JsonObject pinObj = objectOut.createNestedObject(SFP(AStr_Key_OutputPin2)); outputPin2.toJSONObject(pinObj); }
+    if (contPowerUsage.value > FLT_EPSILON) {
+        JsonObject powerObj = objectOut.createNestedObject(SFP(AStr_Key_ContinuousPowerUsage));
+        contPowerUsage.toJSONObject(powerObj);
+    }
+    if (railName[0]) { objectOut[SFP(AStr_Key_RailName)] = railName; }
+    if (mountName[0]) {
+        objectOut[SFP(AStr_Key_MountName)] = mountName;
+        if (isValidIndex(mountAxisIndex)) { objectOut[SFP(AStr_Key_MountAxisIndex)] = mountAxisIndex; }
+    }
+    if (id.object.classType == (aid_t)AstroActuator::Focuser) {
+        objectOut[SFP(AStr_Key_MinimumPosition)] = minimumPosition;
+        objectOut[SFP(AStr_Key_MaximumPosition)] = maximumPosition;
+    }
+}
+
+void AstroActuatorData::fromJSONObject(JsonObjectConst &objectIn)
+{
+    AstroObjectData::fromJSONObject(objectIn);
+    JsonVariantConst enableModeVar = objectIn[SFP(AStr_Key_EnableMode)];
+    if (!enableModeVar.isNull()) { enableMode = enableModeFromString(enableModeVar); }
+    JsonObjectConst pinObj = objectIn[SFP(AStr_Key_OutputPin)].as<JsonObjectConst>();
+    if (!pinObj.isNull()) { outputPin.fromJSONObject(pinObj); }
+    JsonObjectConst pin2Obj = objectIn[SFP(AStr_Key_OutputPin2)].as<JsonObjectConst>();
+    if (!pin2Obj.isNull()) { outputPin2.fromJSONObject(pin2Obj); }
+    JsonVariantConst powerVar = objectIn[SFP(AStr_Key_ContinuousPowerUsage)];
+    if (!powerVar.isNull()) { contPowerUsage.fromJSONVariant(powerVar); }
+    const char *railNameIn = objectIn[SFP(AStr_Key_RailName)] | nullptr;
+    if (railNameIn) {
+        strncpy(railName, railNameIn, ASTRO_NAME_MAXSIZE - 1);
+        railName[ASTRO_NAME_MAXSIZE - 1] = '\0';
+    }
+    const char *mountNameIn = objectIn[SFP(AStr_Key_MountName)] | nullptr;
+    if (mountNameIn) {
+        strncpy(mountName, mountNameIn, ASTRO_NAME_MAXSIZE - 1);
+        mountName[ASTRO_NAME_MAXSIZE - 1] = '\0';
+    }
+    mountAxisIndex = objectIn[SFP(AStr_Key_MountAxisIndex)] | mountAxisIndex;
+    minimumPosition = objectIn[SFP(AStr_Key_MinimumPosition)] | minimumPosition;
+    maximumPosition = objectIn[SFP(AStr_Key_MaximumPosition)] | maximumPosition;
 }

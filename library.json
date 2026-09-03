@@ -1,6 +1,6 @@
 {
     "name": "Simple-AstroTracker-Arduino",
-    "version": "0.7.1.0",
+    "version": "0.7.2",
     "description": "Astruino: Simple automation controller for DIY astronomical tracking systems.",
     "keywords": [
         "arduino",
@@ -15,9 +15,13 @@
     },
     "authors": [
         {
-            "name": "NachtRaveVL"
+            "name": "NachtRaveVL",
+            "email": "nachtravevl@gmail.com",
+            "url": "https://github.com/NachtRaveVL",
+            "maintainer": true
         }
     ],
+    "homepage": "https://github.com/NachtRaveVL/Simple-AstroTracker-Arduino/",
     "license": "MIT",
     "frameworks": "arduino",
     "platforms": "*",
