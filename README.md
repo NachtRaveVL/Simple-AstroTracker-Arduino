@@ -8,9 +8,11 @@ Licensed under the non-restrictive MIT license.
 
 Created by NachtRaveVL, 2026.
 
+This project is part of a four-library controller family: **Simple-Hydroponics-Arduino (Hydruino)**, **Simple-SolarTracker-Arduino (Helioduino)**, **Simple-Homestead-Arduino (Terraduino)**, and **Simple-AstroTracker-Arduino (Astruino)**.
+
 This controller manages mounts, axis drivers, covers, cameras, focusers, environmental sensors, thermal control, targets, scheduling, logging, publishing, and persistent configuration for home-built astronomical tracking systems. The actual mechanical and electrical implementation remains open to the builder.
 
-Our Keep-It-Simple controller system:
+The Keep-It-Simple controller system:
 
 * Can be used entirely offline with RTC module and optional GPS module (or known static location) for accurate time keeping, or used online through enabled on-board WiFi/Ethernet or external ESP-AT WiFi module.
   * Uses offline astronomical calculations for target positioning and [SolarCalculator](https://github.com/jpb10/SolarCalculator) for sunrise, sunset, & transit calculations used by system scheduling.
@@ -36,23 +38,23 @@ Our Keep-It-Simple controller system:
 * Actuator & Sensor pins can be multiplexed or expanded along with any control input pins through 8/16-bit i2c expanders for pin-limited controllers.
 * Library data can be built into onboard Flash or exported onto external storage to additionally save on compiled sketch size.
 
-Made primarily for Arduino microcontrollers / build environments, but should work with PlatformIO, Espressif, Teensy, STM32, Pico, and others - although one might experience turbulence until the bug reports get ironed out.
+Designed primarily for Arduino and Arduino-compatible build environments. PlatformIO, Espressif, Teensy, STM32, Pico, and other supported toolchains may also be used.
 
-*If you value the work that we do, our small team always appreciates a subscription to our [Patreon](www.patreon.com/nachtrave).*
+*If this work is useful, project support is always appreciated through [Patreon](www.patreon.com/nachtrave).*
 
 ## About
 
-We want to make astronomical trackers more accessible to DIY'ers by utilizing the widely-available low-cost IoT and IoT-like microcontrollers (MCUs) of today.
+The goal is to make astronomical tracking more accessible to DIY builders by using widely available, low-cost microcontrollers (MCUs).
 
-With the advances in miniaturization technology bringing us even more compact MCUs at even lower costs, it becomes a lot more possible to use one of these small devices to continuously resolve target positions, move telescope axes, coordinate attached equipment, and monitor environmental conditions. Astronomical tracking is a strong application for these devices, especially as a data logger, process monitor, and observatory controller. Professional controller systems can cost hundreds to even thousands of dollars, but DIY systems can wind up being a fraction of that cost.
+Modern low-cost MCUs provide enough processing power, memory, and I/O to resolve target positions, drive mount axes, coordinate cameras and focusers, monitor weather, and manage observing equipment. Astronomical tracking is a strong fit for these devices as a local controller, data logger, and process monitor. Commercial controller systems can cost hundreds or thousands of dollars, while DIY systems can be built for substantially less.
 
-Astruino is a MCU-based solution primarily written for Arduino and Arduino-like MCU devices. It allows one to combine hobbyist stepper/servo hardware, telescope mounts, cameras, focusers, environmental sensors, heaters, relays, and other widely available low-cost hardware into a functional DIY astronomical tracking system. Be it a converted manual mount, 3D printed tracker, backyard telescope, roll-off roof, or dome shutter, Astruino leaves the physical implementation open to the builder while providing the common automation and tracking layer.
+Astruino is written primarily for Arduino and Arduino-compatible MCUs. It combines stepper and servo hardware, telescope mounts, cameras, focusers, environmental sensors, heaters, relays, and other widely available low-cost hardware into a functional DIY astronomical tracking system. The physical implementation remains open to the builder.
 
 ## Controller Setup
 
 ### MCU Requirements
 
-There is no single minimum MCU for every Astruino build because enabled UI, networking, logging, target-data storage, and object counts change the program and memory requirements considerably.
+There is no single minimum MCU for every Astruino build because enabled UI, networking, logging, target-data storage, mount and axis-driver configuration, and object counts can change the program and memory requirements considerably.
 
 As a practical starting point:
 
@@ -60,17 +62,17 @@ Minimum planning target: 256–512kB Flash, 16–24kB SRAM, 16MHz+
 
 Recommended: 512kB–1MB+ Flash, 24–32kB+ SRAM, 32–48MHz+
 
-Modern 32-bit boards such as Pico RP2040/RP2350, ESP32, Teensy 3.5+, STM32, GIGA, and Portenta-class devices are the natural starting point when tracking, logging, UI, and networking are expected to run together.
+Modern 32-bit boards such as Pico RP2040/RP2350, ESP32, Teensy 3.5+, STM32, GIGA, and Portenta-class devices are the natural starting point when automation, logging, UI, and networking are expected to run together.
 
-Astronomy calculations use floating-point math regularly. Motor timing, encoder feedback, display load, and communication traffic can matter more than Flash size alone when selecting the MCU.
+Astronomical calculations use floating-point math regularly, while motor timing and encoder feedback can be timing-sensitive. Sensor polling, actuator response, display load, logging, and communication traffic can therefore matter more than Flash size alone when selecting the MCU.
 
 ### Installation
 
-The easiest way to install this controller is to utilize the Arduino IDE library manager, or through a package manager such as PlatformIO. Otherwise, simply download this controller and extract its files into a `Simple-AstroTracker-Arduino` folder in your Arduino custom libraries folder, typically found in your `[My ]Documents\Arduino\libraries` folder (Windows), or `~/Documents/Arduino/libraries/` folder (Linux/OSX).
+Installation through the Arduino IDE Library Manager or a package manager such as PlatformIO is the simplest option. Manual installation consists of extracting the library into a `Simple-AstroTracker-Arduino` directory under the Arduino custom libraries directory, typically `[My ]Documents\Arduino\libraries` on Windows or `~/Documents/Arduino/libraries/` on Linux/macOS.
 
-From there, you can make a local copy of one of the example sketches based on the kind of system setup you want to use. If you are unsure of which, we recommend the Simple Equatorial Example, as it is the smallest complete tracker example and provides a straightforward starting point for mount and axis-driver setup.
+The Simple Equatorial Example is the recommended starting point because it is the smallest complete tracker. The remaining examples provide focused references for additional controller features.
 
-Storage constrained MCUs (< 512kB Flash, particularly <= 256kB) may need further setup file/max-sizes tweaking, and possibly external storage hardware (such as EEPROM or SD Card - see the Data Writer example for more details). Modern MCUs with lots of Flash storage can instead use the larger tracking, scheduling, camera, thermal, and UI features together.
+Storage-constrained MCUs (< 512kB Flash, particularly <= 256kB) may require smaller feature sets, adjusted max-size defines, or external EEPROM/SD storage; see the Data Writer Example. Modern MCUs with larger Flash and SRAM can enable more of the controller at once.
 
 ### Target Data and Tracking
 
@@ -80,7 +82,7 @@ Fixed targets use stored J2000 coordinates and are resolved for the requested UT
 
 ### Host Tests
 
-Core logic and source-data checks can be run without an Arduino connected:
+Host-side tests can be run with CMake:
 
 ```sh
 cmake -S tests -B build-host
@@ -92,11 +94,11 @@ ctest --test-dir build-host --output-on-failure
 
 #### Header Defines
 
-There are several defines inside of the controller's main `Astruino[UI].h` header file that allow for more fine-tuned control of the controller. You may edit and uncomment these lines directly, or supply them via custom build flags. While editing the main header file isn't ideal, it is often easiest. Note that editing the controller's main header file directly will affect all projects compiled on your system using those modified controller files.
+Several defines inside the controller's main `Astruino[UI].h` header file provide fine-grained control over optional features and build behavior. These may be edited directly or supplied through custom build flags. Editing the main header is often the simplest approach, but affects every project compiled against that modified library.
 
-Alternatively, you may also refer to <https://forum.arduino.cc/index.php?topic=602603.0> on how to define custom build flags manually via modifying the platform[.local].txt file, or with the Arduino CLI (preferred way going forward).
+Custom build flags can also be supplied through the Arduino CLI or the older `platform.local.txt` override approach. See <https://forum.arduino.cc/index.php?topic=602603.0> for additional details.
 
-For the older platform.local.txt file override approach, create platform.local.txt alongside platform.txt located in %applocaldata%\Arduino15\packages\{platform}\hardware\{arch}\{version}\ (replacing %applocaldata%\Arduino15 with ~/Library/Arduino15 for OSX, and ~/.arduino15 for Linux), with the contents: `compiler.cpp.extra_flags=-Dname` (replacing `name` with full name of below define). Note that it will affect all builds for that platform until again changed/removed. Some build systems may require directly editing platform.txt and adding onto the end of its CPP build recipe, e.g. Teensy & `recipe.cpp.o.pattern=<bunch-of-stuff> -Dname`.
+For the older `platform.local.txt` override, create `platform.local.txt` alongside `platform.txt` in `%applocaldata%\Arduino15\packages\{platform}\hardware\{arch}\{version}\` (replace `%applocaldata%\Arduino15` with `~/Library/Arduino15` on macOS or `~/.arduino15` on Linux) and add `compiler.cpp.extra_flags=-Dname`, replacing `name` with the required define. This affects all builds for that platform until changed or removed. Some build systems, including Teensy, may instead require editing `platform.txt` and appending the define to the C++ build recipe.
 
 From Astruino.h:
 ```Arduino
@@ -169,7 +171,7 @@ Networking is optional. An offline Astruino system does not need a WiFi, Etherne
 
 #### External UI Libraries
 
-The optional tcMenu UI layer can use the same display and input libraries across the controller family:
+The optional tcMenu UI layer can use the following display and input libraries as required by the selected hardware:
 
 * **tcMenu** for the menu, remote-control, and display abstraction layer.
 * **Adafruit GFX**, **Adafruit ILI9341**, and **Adafruit ST7735 and ST7789 Library** for supported color displays.
@@ -190,7 +192,7 @@ There are several initialization mode settings exposed through this controller t
 
 #### Class Instantiation
 
-The controller's class object must first be instantiated, commonly at the top of the sketch where pin setups are defined (or exposed through some other mechanism), which makes a call to the controller's class constructor. The constructor allows one to set the module's various devices and how they are connected, with defaults providing no device specified.
+Instantiate the controller object before `setup()`, typically near the sketch's pin and device configuration. The constructor accepts optional hardware-device setup values; defaults select no external devices.
 
 From Astruino.h, in class Astruino:
 ```Arduino
@@ -209,7 +211,7 @@ From Astruino.h, in class Astruino:
 
 #### Controller Initialization
 
-Additionally, a call is expected to be provided to the controller class object's `init[From…](…)` method, commonly called inside of the sketch's `setup()` function. This allows one to set the controller's system type (Tracking, Balancing, or Manual), units of measurement (Metric, Imperial, or Scientific), control input mode, and display output mode. The default mode of the controller, if left unspecified, is a Tracking system set to Metric units, without any input control or output display.
+Call the controller object's `init[From…](…)` method from `setup()` to initialize a new system or load a saved configuration. For a new system, `init()` selects the system mode, measurement mode, control-input mode, and display-output mode. Defaults select a Tracking system using the default measurement units with control input and display output disabled.
 
 From Astruino.h, in class Astruino:
 ```Arduino
@@ -260,11 +262,11 @@ From Astruino.h, in class Astruino:
 
 ### Event Logging & Data Publishing
 
-The controller can, after initialization, be set to produce logs and data files that can be further used by other applications. Log entries are timestamped and can keep track of when targets are acquired, when devices enable/disable, scheduler stage changes, etc., while data files can be read into plotting applications or exported to a database for further processing. The passed file prefix is typically the subfolder that such files should reside under and is appended with the year, month, and date (in YYMMDD format).
+After initialization, the controller can write timestamped system logs and sensor data for external analysis. Log entries record controller events, while data files can be imported into plotting tools or databases. File prefixes are typically used as subfolders and are appended with the date in `YYMMDD` format.
 
-Note: You can also get the same logging output sent to the Serial device by defining `ASTRO_ENABLE_DEBUG_OUTPUT`, described above in Header Defines.
+Serial logging output can also be enabled with `ASTRO_ENABLE_DEBUG_OUTPUT`, described above under Header Defines.
 
-Note: Files on FAT32-based SD cards are limited to 8 character file/folder names and a 3 character extension.
+FAT32-based SD cards use 8.3 filenames, limiting file/folder names to eight characters plus a three-character extension.
 
 From Astruino.h, in class Astruino:
 ```Arduino
@@ -469,7 +471,7 @@ Below are several examples of controller usage.
 
 ### Simple Equatorial Mount System Example
 
-The Simple Equatorial Example shows how a basic Astruino system can be setup using a two-axis equatorial mount and ordinary STEP/DIR axis drivers. In this sketch only that which you actually use is built into the final compiled binary, making it an ideal lean choice for a straightforward tracker.
+The Simple Equatorial Example shows how a small Astruino system can be set up with a two-axis equatorial mount and ordinary STEP/DIR axis drivers. Only the objects used by the sketch are built into the final binary, making it a lean starting point.
 
 ```Arduino
 #include <Astruino.h>
@@ -511,7 +513,7 @@ void loop()
 
 ### Main System Examples
 
-The supplied examples focus on different parts of an astronomical tracking system. New users should start with the Simple Equatorial Example above, then use the other examples as focused references when adding more controller features.
+The supplied examples cover the main Astruino system roles. The Simple Equatorial Example above is the recommended starting point; the remaining examples provide focused references for additional controller features.
 
 * **SimpleEquatorial** - Basic equatorial mount and axis-driver setup.
 * **NightSession** - Scheduler-driven observing session behavior.
@@ -521,10 +523,10 @@ The supplied examples focus on different parts of an astronomical tracking syste
 
 ### Data Writer Example
 
-The Data Writer Example can be used to offload exportable target and string data for external storage workflows and to help storage constrained MCUs compile system builds.
+The Data Writer Example can offload exportable target and string data for external storage workflows, which can reduce Flash usage on storage-constrained MCUs.
 
-This Example doesn't run the Astruino controller in full. Instead, it exports the built-in target records as compact JSON along with the library strings used by the controller.
+It does not run the Astruino controller in full. Instead, it exports the built-in target records as compact JSON along with the library strings used by the controller.
 
 Astruino can operate with the target data kept in Flash. External storage is optional and is mainly useful when program space matters or custom target data is desired.
 
-Note: Again, you can get logging output sent to the Serial device by defining `ASTRO_ENABLE_DEBUG_OUTPUT`, described above in Header Defines.
+Serial logging output can also be enabled with `ASTRO_ENABLE_DEBUG_OUTPUT`, described above under Header Defines.
