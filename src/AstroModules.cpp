@@ -14,8 +14,23 @@ void AstroCalibrations::clearUserCalibrations()
 {
     while (_calibrationData.size()) {
         auto iter = _calibrationData.begin();
-        if (iter->second) { delete iter->second; }
-        _calibrationData.erase(iter);
+        akey_t key = iter->first;
+
+        if (iter->second && getController()) {
+            AstroIdentity ownerId(iter->second->ownerName);
+            ownerId.posIndex = 0;
+            auto owner = getController()->objectById(ownerId);
+
+            if (owner && owner->isSensorType()) {
+                static_pointer_cast<AstroSensor>(owner)->setUserCalibrationData(nullptr);
+            }
+        }
+
+        iter = _calibrationData.find(key);
+        if (iter != _calibrationData.end()) {
+            if (iter->second) { delete iter->second; }
+            _calibrationData.erase(iter);
+        }
     }
 }
 

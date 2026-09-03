@@ -103,6 +103,7 @@ int main()
     CHECK(controller.getUserCalibrationData(controllerTemperature->getKey()) == controllerTemperature->getUserCalibrationData());
     controller.clearUserCalibrations();
     CHECK(!controller.hasUserCalibrations());
+    CHECK(controllerTemperature->getUserCalibrationData() == nullptr);
     CHECK(controller.getUserCalibrationData(controllerTemperature->getKey()) == nullptr);
     std::cout << "Infrastructure tests passed\n";
     return 0;
